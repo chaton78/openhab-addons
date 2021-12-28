@@ -56,6 +56,23 @@
 		</config-description>
 	</thing-type>
 
+	<thing-type id="dimmer">
+		<supported-bridge-type-refs>
+			<bridge-type-ref id="gateway" />
+		</supported-bridge-type-refs>
+		<label>Sinopé Dimmer</label>
+		<description>Sinopé Dimmer control</description>
+		<channels>
+			<channel id="dimmerOutputIntensity" typeId="dimmerOutputIntensity" />
+			<channel id="lightMode" typeId="lightMode" />
+		</channels>
+		<config-description>
+			<parameter name="deviceId" type="text" required="true">
+				<label>Dimmer device ID</label>
+			</parameter>
+		</config-description>
+	</thing-type>
+
 	<channel-type id="insideTemperature">
 		<item-type>Number:Temperature</item-type>
 		<label>Temperature</label>
@@ -107,4 +124,28 @@
 		<category>Heating</category>
 		<state min="0" max="100" step="1" pattern="%d %%" readOnly="true" />
 	</channel-type>
+
+	<channel-type id="dimmerOutputIntensity">
+		<item-type>Number:Dimensionless</item-type>
+		<label>Output Intensity</label>
+		<description>Output Intensity</description>
+		<category>Light</category>
+		<state min="0" max="100" step="1" pattern="%d %%" readOnly="false" />
+	</channel-type>
+
+	<channel-type id="lightMode">
+		<item-type>Number</item-type>
+		<label>Dimmer Light Mode</label>
+		<description>Dimmer Light mode</description>
+		<category>Light</category>
+		<state pattern="%s" readOnly="false">
+			<options>
+				<option value="1">Manual (Hold)</option>
+				<option value="2">Auto (Schedule)</option>
+				<option value="3">Random (Simulation of presence)</option>
+				<option value="130">Bypass Auto (Temporary hold until the next scheduled period)</option>
+			</options>
+		</state>
+	</channel-type>
+
 </thing:thing-descriptions>

@@ -32,6 +32,7 @@ public class SinopeBindingConstants {
     // List of all Thing Type UIDs
     public final static ThingTypeUID THING_TYPE_THERMO = new ThingTypeUID(BINDING_ID, "thermostat");
     public final static ThingTypeUID THING_TYPE_GATEWAY = new ThingTypeUID(BINDING_ID, "gateway");
+    public final static ThingTypeUID THING_TYPE_DIMMER = new ThingTypeUID(BINDING_ID, "dimmer");
 
     // List of all Channel ids
     public final static String CHANNEL_HEATINGLEVEL = "heatingLevel";
@@ -39,6 +40,9 @@ public class SinopeBindingConstants {
     public final static String CHANNEL_SETMODE = "setpointMode";
     public final static String CHANNEL_INTEMP = "insideTemperature";
     public final static String CHANNEL_OUTTEMP = "outsideTemperature";
+
+    public final static String CHANNEL_DIMMER_OUTPUTINTENSITY = "dimmerOutputIntensity";
+    public static final String CHANNEL_LIGHTMODE = "lightMode";
 
     public static final String CONFIG_PROPERTY_HOST = "ipAddress";
     public static final String CONFIG_PROPERTY_PORT = "ipPort";
@@ -52,6 +56,7 @@ public class SinopeBindingConstants {
     static {
         SUPPORTED_THING_TYPES_UIDS.add(THING_TYPE_GATEWAY);
         SUPPORTED_THING_TYPES_UIDS.add(THING_TYPE_THERMO);
+        SUPPORTED_THING_TYPES_UIDS.add(THING_TYPE_DIMMER);
     }
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -27,38 +27,39 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
-import org.eclipse.smarthome.core.audio.AudioHTTPServer;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.IncreaseDecreaseType;
-import org.eclipse.smarthome.core.library.types.NextPreviousType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.PercentType;
-import org.eclipse.smarthome.core.library.types.PlayPauseType;
-import org.eclipse.smarthome.core.library.types.RawType;
-import org.eclipse.smarthome.core.library.types.RewindFastforwardType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.ThingHandlerService;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.StateOption;
-import org.eclipse.smarthome.core.types.UnDefType;
-import org.eclipse.smarthome.io.net.http.HttpUtil;
-import org.eclipse.smarthome.io.transport.upnp.UpnpIOService;
 import org.openhab.binding.onkyo.internal.OnkyoAlbumArt;
 import org.openhab.binding.onkyo.internal.OnkyoConnection;
 import org.openhab.binding.onkyo.internal.OnkyoEventListener;
+import org.openhab.binding.onkyo.internal.OnkyoParserHelper;
 import org.openhab.binding.onkyo.internal.OnkyoStateDescriptionProvider;
 import org.openhab.binding.onkyo.internal.ServiceType;
-import org.openhab.binding.onkyo.internal.automation.modules.OnkyoThingActionsService;
+import org.openhab.binding.onkyo.internal.automation.modules.OnkyoThingActions;
 import org.openhab.binding.onkyo.internal.config.OnkyoDeviceConfiguration;
 import org.openhab.binding.onkyo.internal.eiscp.EiscpCommand;
 import org.openhab.binding.onkyo.internal.eiscp.EiscpMessage;
+import org.openhab.core.audio.AudioHTTPServer;
+import org.openhab.core.io.net.http.HttpUtil;
+import org.openhab.core.io.transport.upnp.UpnpIOService;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.IncreaseDecreaseType;
+import org.openhab.core.library.types.NextPreviousType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.PlayPauseType;
+import org.openhab.core.library.types.RawType;
+import org.openhab.core.library.types.RewindFastforwardType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.ThingHandlerService;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.State;
+import org.openhab.core.types.StateOption;
+import org.openhab.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -90,7 +91,7 @@ public class OnkyoHandler extends UpnpAudioSinkHandler implements OnkyoEventList
     private State volumeLevelZone2 = UnDefType.UNDEF;
     private State volumeLevelZone3 = UnDefType.UNDEF;
     private State lastPowerState = OnOffType.OFF;
-    
+
     private final OnkyoStateDescriptionProvider stateDescriptionProvider;
 
     private final OnkyoAlbumArt onkyoAlbumArt = new OnkyoAlbumArt();
@@ -120,8 +121,7 @@ public class OnkyoHandler extends UpnpAudioSinkHandler implements OnkyoEventList
             connection.openConnection();
             if (connection.isConnected()) {
                 updateStatus(ThingStatus.ONLINE);
-
-                sendCommand(EiscpCommand.INFO_QUERY);
+                checkStatus();
             }
         });
 
@@ -324,7 +324,27 @@ public class OnkyoHandler extends UpnpAudioSinkHandler implements OnkyoEventList
                     sendCommand(EiscpCommand.NETUSB_TITLE_QUERY);
                 }
                 break;
+            case CHANNEL_AUDIOINFO:
+                if (command.equals(RefreshType.REFRESH)) {
+                    sendCommand(EiscpCommand.AUDIOINFO_QUERY);
+                }
+                break;
 
+            /*
+             * MEDIA INFO
+             */
+            case CHANNEL_AUDIO_IN_INFO:
+            case CHANNEL_AUDIO_OUT_INFO:
+                if (command.equals(RefreshType.REFRESH)) {
+                    sendCommand(EiscpCommand.AUDIOINFO_QUERY);
+                }
+                break;
+            case CHANNEL_VIDEO_IN_INFO:
+            case CHANNEL_VIDEO_OUT_INFO:
+                if (command.equals(RefreshType.REFRESH)) {
+                    sendCommand(EiscpCommand.VIDEOINFO_QUERY);
+                }
+                break;
             /*
              * MISC
              */
@@ -477,7 +497,16 @@ public class OnkyoHandler extends UpnpAudioSinkHandler implements OnkyoEventList
                 /*
                  * MISC
                  */
-
+                case AUDIOINFO:
+                    updateState(CHANNEL_AUDIOINFO, convertDeviceValueToOpenHabState(data.getValue(), StringType.class));
+                    logger.debug("audioinfo message: '{}'", data.getValue());
+                    updateState(CHANNEL_AUDIO_IN_INFO, OnkyoParserHelper.infoBuilder(data.getValue(), 0, 2));
+                    updateState(CHANNEL_AUDIO_OUT_INFO, OnkyoParserHelper.infoBuilder(data.getValue(), 3, 5));
+                    break;
+                case VIDEOINFO:
+                    updateState(CHANNEL_VIDEO_IN_INFO, OnkyoParserHelper.infoBuilder(data.getValue(), 0, 3));
+                    updateState(CHANNEL_VIDEO_OUT_INFO, OnkyoParserHelper.infoBuilder(data.getValue(), 4, 7));
+                    break;
                 case INFO:
                     processInfo(data.getValue());
                     logger.debug("Info message: '{}'", data.getValue());
@@ -498,6 +527,12 @@ public class OnkyoHandler extends UpnpAudioSinkHandler implements OnkyoEventList
     private void processInfo(String infoXML) {
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            // see https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+            factory.setXIncludeAware(false);
+            factory.setExpandEntityReferences(false);
             DocumentBuilder builder = factory.newDocumentBuilder();
             try (StringReader sr = new StringReader(infoXML)) {
                 InputSource is = new InputSource(sr);
@@ -509,7 +544,6 @@ public class OnkyoHandler extends UpnpAudioSinkHandler implements OnkyoEventList
         } catch (ParserConfigurationException | SAXException | IOException e) {
             logger.debug("Error occured during Info XML parsing.", e);
         }
-
     }
 
     @Override
@@ -620,7 +654,6 @@ public class OnkyoHandler extends UpnpAudioSinkHandler implements OnkyoEventList
             logger.debug("Not supported album art URL type: {}", data.substring(0, 2));
             updateState(CHANNEL_ALBUM_ART_URL, UnDefType.UNDEF);
         }
-
     }
 
     private void updateNetTitle(String data) {
@@ -635,7 +668,6 @@ public class OnkyoHandler extends UpnpAudioSinkHandler implements OnkyoEventList
 
         updateState(CHANNEL_NET_MENU_TITLE,
                 new StringType(service.toString() + ((title.length() > 0) ? ": " + title : "")));
-
     }
 
     private void updateNetMenu(String data) {
@@ -794,6 +826,8 @@ public class OnkyoHandler extends UpnpAudioSinkHandler implements OnkyoEventList
             sendCommand(EiscpCommand.NETUSB_TITLE_QUERY);
             sendCommand(EiscpCommand.LISTEN_MODE_QUERY);
             sendCommand(EiscpCommand.INFO_QUERY);
+            sendCommand(EiscpCommand.AUDIOINFO_QUERY);
+            sendCommand(EiscpCommand.VIDEOINFO_QUERY);
 
             if (isChannelAvailable(CHANNEL_POWERZONE2)) {
                 sendCommand(EiscpCommand.ZONE2_POWER_QUERY);
@@ -913,6 +947,6 @@ public class OnkyoHandler extends UpnpAudioSinkHandler implements OnkyoEventList
 
     @Override
     public Collection<Class<? extends ThingHandlerService>> getServices() {
-        return Collections.singletonList(OnkyoThingActionsService.class);
+        return Collections.singletonList(OnkyoThingActions.class);
     }
 }

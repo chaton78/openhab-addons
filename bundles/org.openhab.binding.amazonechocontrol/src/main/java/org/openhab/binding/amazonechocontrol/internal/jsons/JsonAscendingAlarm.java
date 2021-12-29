@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,18 +12,20 @@
  */
 package org.openhab.binding.amazonechocontrol.internal.jsons;
 
+import java.util.List;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 
 /**
- * The {@link JsonActivity} encapsulate the GSON data of the /api/ascending-alarm response
+ * The {@link JsonAscendingAlarm} encapsulate the GSON data of the /api/ascending-alarm response
  *
  * @author Michael Geramb - Initial contribution
  */
 @NonNullByDefault
 public class JsonAscendingAlarm {
 
-    public @Nullable AscendingAlarmModel @Nullable [] ascendingAlarmModelList;
+    public @Nullable List<AscendingAlarmModel> ascendingAlarmModelList;
 
     public static class AscendingAlarmModel {
         public @Nullable Boolean ascendingAlarmEnabled;

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,26 +16,28 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.net.NoRouteToHostException;
 import java.net.UnknownHostException;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import javax.measure.quantity.Energy;
+import javax.measure.quantity.ElectricCurrent;
+import javax.measure.quantity.ElectricPotential;
 import javax.measure.quantity.Power;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.library.types.QuantityType;
-import org.eclipse.smarthome.core.library.unit.SmartHomeUnits;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
 import org.openhab.binding.omnikinverter.internal.OmnikInverter;
 import org.openhab.binding.omnikinverter.internal.OmnikInverterBindingConstants;
 import org.openhab.binding.omnikinverter.internal.OmnikInverterConfiguration;
 import org.openhab.binding.omnikinverter.internal.OmnikInverterMessage;
+import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.library.unit.Units;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,9 +49,10 @@ import org.slf4j.LoggerFactory;
  */
 @NonNullByDefault
 public class OmnikInverterHandler extends BaseThingHandler {
-    private @Nullable OmnikInverter inverter;
-
     private final Logger logger = LoggerFactory.getLogger(OmnikInverterHandler.class);
+
+    private @Nullable OmnikInverter inverter;
+    private @Nullable ScheduledFuture<?> pollJob;
 
     public OmnikInverterHandler(Thing thing) {
         super(thing);
@@ -57,10 +60,9 @@ public class OmnikInverterHandler extends BaseThingHandler {
 
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
-        if (OmnikInverterBindingConstants.CHANNEL_POWER.equals(channelUID.getId())) {
-            if (command instanceof RefreshType) {
-                updateData();
-            }
+        // All channels depend on data gotten from `updateData()`
+        if (command instanceof RefreshType) {
+            updateData();
         }
     }
 
@@ -68,15 +70,19 @@ public class OmnikInverterHandler extends BaseThingHandler {
     public void initialize() {
         OmnikInverterConfiguration config = getConfigAs(OmnikInverterConfiguration.class);
 
-        try {
-            inverter = new OmnikInverter(config.hostname, config.port, config.serial);
-            scheduler.scheduleWithFixedDelay(this::updateData, 0, 10, TimeUnit.SECONDS);
-        } catch (IOException e) {
-            logger.debug("Could not instantiate OmnikInverter object: {}", e.getMessage());
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.HANDLER_INITIALIZING_ERROR,
-                    "Failed to initialize: " + e.getMessage());
-        }
+        inverter = new OmnikInverter(config.hostname, config.port, config.serial);
+        updateStatus(ThingStatus.UNKNOWN);
+        pollJob = scheduler.scheduleWithFixedDelay(this::updateData, 0, 10, TimeUnit.SECONDS);
+    }
 
+    @Override
+    public void dispose() {
+        ScheduledFuture<?> pollJob = this.pollJob;
+        if (pollJob != null) {
+            pollJob.cancel(true);
+            this.pollJob = null;
+        }
+        super.dispose();
     }
 
     private void updateData() {
@@ -86,14 +92,41 @@ public class OmnikInverterHandler extends BaseThingHandler {
 
                 updateStatus(ThingStatus.ONLINE);
 
-                QuantityType<Power> powerQuantity = new QuantityType<>(message.getPower(), SmartHomeUnits.WATT);
+                QuantityType<Power> powerQuantity = new QuantityType<>(message.getPower(), Units.WATT);
                 updateState(OmnikInverterBindingConstants.CHANNEL_POWER, powerQuantity);
 
+                QuantityType<Power> powerQuantity1 = new QuantityType<>(message.getPowerAC1(), Units.WATT);
+                updateState(OmnikInverterBindingConstants.CHANNEL_POWER_AC1, powerQuantity1);
+
+                QuantityType<Power> powerQuantity2 = new QuantityType<>(message.getPowerAC2(), Units.WATT);
+                updateState(OmnikInverterBindingConstants.CHANNEL_POWER_AC2, powerQuantity2);
+
+                QuantityType<Power> powerQuantity3 = new QuantityType<>(message.getPowerAC3(), Units.WATT);
+                updateState(OmnikInverterBindingConstants.CHANNEL_POWER_AC3, powerQuantity3);
+
+                QuantityType<ElectricCurrent> pvAmp1 = new QuantityType<>(message.getCurrentPV1(), Units.AMPERE);
+                updateState(OmnikInverterBindingConstants.CHANNEL_CURRENT_PV1, pvAmp1);
+
+                QuantityType<ElectricCurrent> pvAmp2 = new QuantityType<>(message.getCurrentPV2(), Units.AMPERE);
+                updateState(OmnikInverterBindingConstants.CHANNEL_CURRENT_PV2, pvAmp2);
+
+                QuantityType<ElectricCurrent> pvAmp3 = new QuantityType<>(message.getCurrentPV3(), Units.AMPERE);
+                updateState(OmnikInverterBindingConstants.CHANNEL_CURRENT_PV3, pvAmp3);
+
+                QuantityType<ElectricPotential> pvVoltage1 = new QuantityType<>(message.getVoltagePV1(), Units.VOLT);
+                updateState(OmnikInverterBindingConstants.CHANNEL_VOLTAGE_PV1, pvVoltage1);
+
+                QuantityType<ElectricPotential> pvVoltage2 = new QuantityType<>(message.getVoltagePV2(), Units.VOLT);
+                updateState(OmnikInverterBindingConstants.CHANNEL_VOLTAGE_PV2, pvVoltage2);
+
+                QuantityType<ElectricPotential> pvVoltage3 = new QuantityType<>(message.getVoltagePV3(), Units.VOLT);
+                updateState(OmnikInverterBindingConstants.CHANNEL_VOLTAGE_PV3, pvVoltage3);
+
                 updateState(OmnikInverterBindingConstants.CHANNEL_ENERGY_TODAY,
-                        new QuantityType<Energy>(message.getEnergyToday(), SmartHomeUnits.KILOWATT_HOUR));
+                        new QuantityType<>(message.getEnergyToday(), Units.KILOWATT_HOUR));
 
                 updateState(OmnikInverterBindingConstants.CHANNEL_ENERGY_TOTAL,
-                        new QuantityType<Energy>(message.getTotalEnergy(), SmartHomeUnits.KILOWATT_HOUR));
+                        new QuantityType<>(message.getTotalEnergy(), Units.KILOWATT_HOUR));
             }
         } catch (UnknownHostException | NoRouteToHostException | ConnectException e) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, e.getMessage());

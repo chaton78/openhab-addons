@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -26,18 +26,17 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.net.util.SubnetUtils;
-import org.eclipse.smarthome.config.discovery.AbstractDiscoveryService;
-import org.eclipse.smarthome.config.discovery.DiscoveryResult;
-import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
-import org.eclipse.smarthome.config.discovery.DiscoveryService;
-import org.eclipse.smarthome.core.thing.ThingUID;
 import org.openhab.binding.russound.internal.net.SocketChannelSession;
 import org.openhab.binding.russound.internal.net.SocketSession;
 import org.openhab.binding.russound.internal.net.WaitingSessionListener;
 import org.openhab.binding.russound.internal.rio.RioConstants;
 import org.openhab.binding.russound.internal.rio.system.RioSystemConfig;
+import org.openhab.core.config.discovery.AbstractDiscoveryService;
+import org.openhab.core.config.discovery.DiscoveryResult;
+import org.openhab.core.config.discovery.DiscoveryResultBuilder;
+import org.openhab.core.config.discovery.DiscoveryService;
+import org.openhab.core.thing.ThingUID;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +47,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Tim Roberts - Initial contribution
  */
-@Component(service = DiscoveryService.class, immediate = true, configurationPid = "discovery.russound")
+@Component(service = DiscoveryService.class, configurationPid = "discovery.russound")
 public class RioSystemDiscovery extends AbstractDiscoveryService {
     /** The logger */
     private final Logger logger = LoggerFactory.getLogger(RioSystemDiscovery.class);
@@ -143,7 +142,6 @@ public class RioSystemDiscovery extends AbstractDiscoveryService {
         }
         executorService.shutdown();
         executorService = null;
-
     }
 
     /**
@@ -153,7 +151,7 @@ public class RioSystemDiscovery extends AbstractDiscoveryService {
      * @param ipAddress a possibly null, possibly empty ip address (null/empty addresses will be ignored)
      */
     private void scanAddress(String ipAddress) {
-        if (StringUtils.isEmpty(ipAddress)) {
+        if (ipAddress == null || ipAddress.isEmpty()) {
             return;
         }
 
@@ -176,7 +174,7 @@ public class RioSystemDiscovery extends AbstractDiscoveryService {
                     continue;
                 }
                 final String type = resp.substring(13, resp.length() - 1);
-                if (!StringUtils.isBlank(type)) {
+                if (!type.isBlank()) {
                     logger.debug("Found a RIO type #{}", type);
                     addResult(ipAddress, type);
                     break;
@@ -203,10 +201,10 @@ public class RioSystemDiscovery extends AbstractDiscoveryService {
      * @throws IllegalArgumentException if ipaddress or type is null or empty
      */
     private void addResult(String ipAddress, String type) {
-        if (StringUtils.isEmpty(ipAddress)) {
+        if (ipAddress == null || ipAddress.isEmpty()) {
             throw new IllegalArgumentException("ipAddress cannot be null or empty");
         }
-        if (StringUtils.isEmpty(type)) {
+        if (type == null || type.isEmpty()) {
             throw new IllegalArgumentException("type cannot be null or empty");
         }
 
@@ -223,6 +221,5 @@ public class RioSystemDiscovery extends AbstractDiscoveryService {
                     .withLabel("Russound " + type).build();
             thingDiscovered(result);
         }
-
     }
 }

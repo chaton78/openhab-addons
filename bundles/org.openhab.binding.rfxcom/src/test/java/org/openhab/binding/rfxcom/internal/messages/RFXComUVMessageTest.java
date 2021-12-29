@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,12 +12,12 @@
  */
 package org.openhab.binding.rfxcom.internal.messages;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.util.HexUtils;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComException;
+import org.openhab.core.util.HexUtils;
 
 /**
  * Test for RFXCom-binding
@@ -32,21 +32,21 @@ public class RFXComUVMessageTest {
         String hexMessage = "095703123421194731E9";
 
         byte[] message = HexUtils.hexToBytes(hexMessage);
-        RFXComUVMessage msg = (RFXComUVMessage) RFXComMessageFactory.createMessage(message);
+        RFXComUVMessage msg = (RFXComUVMessage) RFXComMessageFactoryImpl.INSTANCE.createMessage(message);
 
-        assertEquals("SubType", RFXComUVMessage.SubType.UV3, msg.subType);
-        assertEquals("Seq Number", 18, msg.seqNbr);
-        assertEquals("Sensor Id", "13345", msg.getDeviceId());
+        assertEquals(RFXComUVMessage.SubType.UV3, msg.subType, "SubType");
+        assertEquals(18, msg.seqNbr, "Seq Number");
+        assertEquals("13345", msg.getDeviceId(), "Sensor Id");
 
-        assertEquals("UV", 2.5, msg.uv, 0.001);
-        assertEquals("Temperature", 1822.5, msg.temperature, 0.001);
+        assertEquals(2.5, msg.uv, 0.001, "UV");
+        assertEquals(1822.5, msg.temperature, 0.001, "Temperature");
 
-        assertEquals("Signal Level", 14, msg.signalLevel);
-        assertEquals("Battery Level", 9, msg.batteryLevel);
+        assertEquals(14, msg.signalLevel, "Signal Level");
+        assertEquals(9, msg.batteryLevel, "Battery Level");
 
         byte[] decoded = msg.decodeMessage();
 
-        assertEquals("Message converted back", hexMessage, HexUtils.bytesToHex(decoded));
+        assertEquals(hexMessage, HexUtils.bytesToHex(decoded), "Message converted back");
     }
 
     @Test
@@ -54,20 +54,20 @@ public class RFXComUVMessageTest {
         String hexMessage = "09570312342119C731E9";
 
         byte[] message = HexUtils.hexToBytes(hexMessage);
-        RFXComUVMessage msg = (RFXComUVMessage) RFXComMessageFactory.createMessage(message);
+        RFXComUVMessage msg = (RFXComUVMessage) RFXComMessageFactoryImpl.INSTANCE.createMessage(message);
 
-        assertEquals("SubType", RFXComUVMessage.SubType.UV3, msg.subType);
-        assertEquals("Seq Number", 18, msg.seqNbr);
-        assertEquals("Sensor Id", "13345", msg.getDeviceId());
+        assertEquals(RFXComUVMessage.SubType.UV3, msg.subType, "SubType");
+        assertEquals(18, msg.seqNbr, "Seq Number");
+        assertEquals("13345", msg.getDeviceId(), "Sensor Id");
 
-        assertEquals("UV", 2.5, msg.uv, 0.001);
-        assertEquals("Temperature", -1822.5, msg.temperature, 0.001);
+        assertEquals(2.5, msg.uv, 0.001, "UV");
+        assertEquals(-1822.5, msg.temperature, 0.001, "Temperature");
 
-        assertEquals("Signal Level", 14, msg.signalLevel);
-        assertEquals("Battery Level", 9, msg.batteryLevel);
+        assertEquals(14, msg.signalLevel, "Signal Level");
+        assertEquals(9, msg.batteryLevel, "Battery Level");
 
         byte[] decoded = msg.decodeMessage();
 
-        assertEquals("Message converted back", hexMessage, HexUtils.bytesToHex(decoded));
+        assertEquals(hexMessage, HexUtils.bytesToHex(decoded), "Message converted back");
     }
 }

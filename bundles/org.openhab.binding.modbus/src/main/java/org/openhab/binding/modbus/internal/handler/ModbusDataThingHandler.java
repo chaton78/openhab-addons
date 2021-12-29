@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -18,68 +18,68 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.library.items.ContactItem;
-import org.eclipse.smarthome.core.library.items.DateTimeItem;
-import org.eclipse.smarthome.core.library.items.DimmerItem;
-import org.eclipse.smarthome.core.library.items.NumberItem;
-import org.eclipse.smarthome.core.library.items.RollershutterItem;
-import org.eclipse.smarthome.core.library.items.StringItem;
-import org.eclipse.smarthome.core.library.items.SwitchItem;
-import org.eclipse.smarthome.core.library.types.DateTimeType;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.OpenClosedType;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.ThingStatusInfo;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.thing.binding.BridgeHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandlerCallback;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.modbus.handler.EndpointNotInitializedException;
 import org.openhab.binding.modbus.handler.ModbusEndpointThingHandler;
+import org.openhab.binding.modbus.handler.ModbusPollerThingHandler;
+import org.openhab.binding.modbus.internal.CascadedValueTransformationImpl;
 import org.openhab.binding.modbus.internal.ModbusBindingConstantsInternal;
 import org.openhab.binding.modbus.internal.ModbusConfigurationException;
-import org.openhab.binding.modbus.internal.Transformation;
+import org.openhab.binding.modbus.internal.SingleValueTransformation;
+import org.openhab.binding.modbus.internal.ValueTransformation;
 import org.openhab.binding.modbus.internal.config.ModbusDataConfiguration;
-import org.openhab.io.transport.modbus.BasicModbusWriteCoilRequestBlueprint;
-import org.openhab.io.transport.modbus.BasicModbusWriteRegisterRequestBlueprint;
-import org.openhab.io.transport.modbus.BasicWriteTask;
-import org.openhab.io.transport.modbus.BitArray;
-import org.openhab.io.transport.modbus.ModbusBitUtilities;
-import org.openhab.io.transport.modbus.ModbusConnectionException;
-import org.openhab.io.transport.modbus.ModbusConstants;
-import org.openhab.io.transport.modbus.ModbusConstants.ValueType;
-import org.openhab.io.transport.modbus.ModbusManager;
-import org.openhab.io.transport.modbus.ModbusReadCallback;
-import org.openhab.io.transport.modbus.ModbusReadFunctionCode;
-import org.openhab.io.transport.modbus.ModbusReadRequestBlueprint;
-import org.openhab.io.transport.modbus.ModbusRegisterArray;
-import org.openhab.io.transport.modbus.ModbusResponse;
-import org.openhab.io.transport.modbus.ModbusTransportException;
-import org.openhab.io.transport.modbus.ModbusWriteCallback;
-import org.openhab.io.transport.modbus.ModbusWriteRequestBlueprint;
-import org.openhab.io.transport.modbus.PollTask;
-import org.openhab.io.transport.modbus.endpoint.ModbusSlaveEndpoint;
-import org.openhab.io.transport.modbus.json.WriteRequestJsonUtilities;
+import org.openhab.core.io.transport.modbus.AsyncModbusFailure;
+import org.openhab.core.io.transport.modbus.AsyncModbusReadResult;
+import org.openhab.core.io.transport.modbus.AsyncModbusWriteResult;
+import org.openhab.core.io.transport.modbus.BitArray;
+import org.openhab.core.io.transport.modbus.ModbusBitUtilities;
+import org.openhab.core.io.transport.modbus.ModbusCommunicationInterface;
+import org.openhab.core.io.transport.modbus.ModbusConstants;
+import org.openhab.core.io.transport.modbus.ModbusConstants.ValueType;
+import org.openhab.core.io.transport.modbus.ModbusReadFunctionCode;
+import org.openhab.core.io.transport.modbus.ModbusReadRequestBlueprint;
+import org.openhab.core.io.transport.modbus.ModbusRegisterArray;
+import org.openhab.core.io.transport.modbus.ModbusWriteCoilRequestBlueprint;
+import org.openhab.core.io.transport.modbus.ModbusWriteRegisterRequestBlueprint;
+import org.openhab.core.io.transport.modbus.ModbusWriteRequestBlueprint;
+import org.openhab.core.io.transport.modbus.exception.ModbusConnectionException;
+import org.openhab.core.io.transport.modbus.exception.ModbusTransportException;
+import org.openhab.core.io.transport.modbus.json.WriteRequestJsonUtilities;
+import org.openhab.core.library.items.ContactItem;
+import org.openhab.core.library.items.DateTimeItem;
+import org.openhab.core.library.items.DimmerItem;
+import org.openhab.core.library.items.NumberItem;
+import org.openhab.core.library.items.RollershutterItem;
+import org.openhab.core.library.items.StringItem;
+import org.openhab.core.library.items.SwitchItem;
+import org.openhab.core.library.types.DateTimeType;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.OpenClosedType;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.ThingStatusInfo;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.thing.binding.BridgeHandler;
+import org.openhab.core.thing.binding.ThingHandlerCallback;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.State;
+import org.openhab.core.types.UnDefType;
+import org.openhab.core.util.HexUtils;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
 import org.slf4j.Logger;
@@ -97,7 +97,7 @@ import org.slf4j.LoggerFactory;
  * @author Sami Salonen - Initial contribution
  */
 @NonNullByDefault
-public class ModbusDataThingHandler extends BaseThingHandler implements ModbusReadCallback, ModbusWriteCallback {
+public class ModbusDataThingHandler extends BaseThingHandler {
 
     private final Logger logger = LoggerFactory.getLogger(ModbusDataThingHandler.class);
 
@@ -131,20 +131,21 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
     private volatile @Nullable ModbusDataConfiguration config;
     private volatile @Nullable ValueType readValueType;
     private volatile @Nullable ValueType writeValueType;
-    private volatile @Nullable Transformation readTransformation;
-    private volatile @Nullable Transformation writeTransformation;
+    private volatile @Nullable CascadedValueTransformationImpl readTransformation;
+    private volatile @Nullable CascadedValueTransformationImpl writeTransformation;
     private volatile Optional<Integer> readIndex = Optional.empty();
     private volatile Optional<Integer> readSubIndex = Optional.empty();
-    private volatile @Nullable Integer writeStart;
+    private volatile Optional<Integer> writeStart = Optional.empty();
+    private volatile Optional<Integer> writeSubIndex = Optional.empty();
     private volatile int pollStart;
     private volatile int slaveId;
+    private volatile @Nullable ModbusReadFunctionCode functionCode;
+    private volatile @Nullable ModbusReadRequestBlueprint readRequest;
     private volatile long updateUnchangedValuesEveryMillis;
-    private volatile @Nullable ModbusSlaveEndpoint slaveEndpoint;
-    private volatile @Nullable ModbusManager manager;
-    private volatile @Nullable PollTask pollTask;
+    private volatile @NonNullByDefault({}) ModbusCommunicationInterface comms;
     private volatile boolean isWriteEnabled;
     private volatile boolean isReadEnabled;
-    private volatile boolean transformationOnlyInWrite;
+    private volatile boolean writeParametersHavingTransformationOnly;
     private volatile boolean childOfEndpoint;
     private volatile @Nullable ModbusPollerThingHandler pollerHandler;
     private volatile Map<String, ChannelUID> channelCache = new HashMap<>();
@@ -165,8 +166,7 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
         logger.trace("Thing {} '{}' received command '{}' to channel '{}'", getThing().getUID(), getThing().getLabel(),
                 command, channelUID);
         ModbusDataConfiguration config = this.config;
-        ModbusManager manager = this.manager;
-        if (config == null || manager == null) {
+        if (config == null) {
             return;
         }
 
@@ -203,9 +203,9 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
 
         // We did not have JSON output from the transformation, so writeStart is absolute required. Abort if it is
         // missing
-        Integer writeStart = this.writeStart;
-        if (writeStart == null) {
-            logger.warn(
+        Optional<Integer> writeStart = this.writeStart;
+        if (writeStart.isEmpty()) {
+            logger.debug(
                     "Thing {} '{}': not processing command {} since writeStart is missing and transformation output is not a JSON",
                     getThing().getUID(), getThing().getLabel(), command);
             return;
@@ -219,15 +219,13 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
         }
 
         ModbusWriteRequestBlueprint request = requestFromCommand(channelUID, command, config, transformedCommand.get(),
-                writeStart);
-        ModbusSlaveEndpoint slaveEndpoint = this.slaveEndpoint;
-        if (request == null || slaveEndpoint == null) {
+                writeStart.get());
+        if (request == null) {
             return;
         }
 
-        BasicWriteTask writeTask = new BasicWriteTask(slaveEndpoint, request, this);
-        logger.trace("Submitting write task: {}", writeTask);
-        manager.submitOneTimeWrite(writeTask);
+        logger.trace("Submitting write task {} to endpoint {}", request, comms.getEndpoint());
+        comms.submitOneTimeWrite(request, this::onWriteResponse, this::handleWriteError);
     }
 
     /**
@@ -244,7 +242,7 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
     private @Nullable Optional<Command> transformCommandAndProcessJSON(ChannelUID channelUID, Command command) {
         String transformOutput;
         Optional<Command> transformedCommand;
-        Transformation writeTransformation = this.writeTransformation;
+        ValueTransformation writeTransformation = this.writeTransformation;
         if (writeTransformation == null || writeTransformation.isIdentityTransform()) {
             transformedCommand = Optional.of(command);
         } else {
@@ -252,16 +250,13 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
             if (transformOutput.contains("[")) {
                 processJsonTransform(command, transformOutput);
                 return null;
-            } else if (transformationOnlyInWrite) {
-                logger.error(
-                        "Thing {} seems to have writeTransformation but no other write parameters. Since the transformation did not return a JSON for command '{}' (channel {}), this is a configuration error.",
-                        getThing().getUID(), command, channelUID);
+            } else if (writeParametersHavingTransformationOnly) {
                 updateStatusIfChanged(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, String.format(
                         "Seems to have writeTransformation but no other write parameters. Since the transformation did not return a JSON for command '%s' (channel %s), this is a configuration error",
                         command, channelUID));
                 return null;
             } else {
-                transformedCommand = Transformation.tryConvertToCommand(transformOutput);
+                transformedCommand = SingleValueTransformation.tryConvertToCommand(transformOutput);
                 logger.trace("Converted transform output '{}' to command '{}' (type {})", transformOutput,
                         transformedCommand.map(c -> c.toString()).orElse("<conversion failed>"),
                         transformedCommand.map(c -> c.getClass().getName()).orElse("<conversion failed>"));
@@ -275,7 +270,9 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
         ModbusWriteRequestBlueprint request;
         boolean writeMultiple = config.isWriteMultipleEvenWithSingleRegisterOrCoil();
         String writeType = config.getWriteType();
+        ModbusPollerThingHandler pollerHandler = this.pollerHandler;
         if (writeType == null) {
+            // disposed thing
             return null;
         }
         if (writeType.equals(WRITE_TYPE_COIL)) {
@@ -287,7 +284,7 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
                 return null;
             }
             boolean data = commandAsBoolean.get();
-            request = new BasicModbusWriteCoilRequestBlueprint(slaveId, writeStart, data, writeMultiple,
+            request = new ModbusWriteCoilRequestBlueprint(slaveId, writeStart, data, writeMultiple,
                     config.getWriteMaxTries());
         } else if (writeType.equals(WRITE_TYPE_HOLDING)) {
             ValueType writeValueType = this.writeValueType;
@@ -297,25 +294,88 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
                 logger.warn("Received command but write value type not set! Ignoring command");
                 return null;
             }
-            ModbusRegisterArray data = ModbusBitUtilities.commandToRegisters(transformedCommand, writeValueType);
+            final ModbusRegisterArray data;
+            if (writeValueType.equals(ValueType.BIT)) {
+                if (writeSubIndex.isEmpty()) {
+                    // Should not happen! should be in configuration error
+                    logger.error("Bug: sub index not present but writeValueType=BIT. Should be in configuration error");
+                    return null;
+                }
+                Optional<Boolean> commandBool = ModbusBitUtilities.translateCommand2Boolean(transformedCommand);
+                if (commandBool.isEmpty()) {
+                    logger.warn(
+                            "Data thing is configured to write individual bit but we received command that is not convertible to 0/1 bit. Ignoring.");
+                    return null;
+                } else if (pollerHandler == null) {
+                    logger.warn("Bug: sub index present but not child of poller. Should be in configuration erro");
+                    return null;
+                }
+
+                // writing bit of an individual register. Using cache from poller
+                AtomicReference<@Nullable ModbusRegisterArray> cachedRegistersRef = pollerHandler
+                        .getLastPolledDataCache();
+                ModbusRegisterArray mutatedRegisters = cachedRegistersRef
+                        .updateAndGet(cachedRegisters -> cachedRegisters == null ? null
+                                : combineCommandWithRegisters(cachedRegisters, writeStart, writeSubIndex.get(),
+                                        commandBool.get()));
+                if (mutatedRegisters == null) {
+                    logger.warn(
+                            "Received command to thing with writeValueType=bit (pointing to individual bit of a holding register) but internal cache not yet populated. Ignoring command");
+                    return null;
+                }
+                // extract register (first byte index = register index * 2)
+                byte[] allMutatedBytes = mutatedRegisters.getBytes();
+                int writeStartRelative = writeStart - pollStart;
+                data = new ModbusRegisterArray(allMutatedBytes[writeStartRelative * 2],
+                        allMutatedBytes[writeStartRelative * 2 + 1]);
+
+            } else {
+                data = ModbusBitUtilities.commandToRegisters(transformedCommand, writeValueType);
+            }
             writeMultiple = writeMultiple || data.size() > 1;
-            request = new BasicModbusWriteRegisterRequestBlueprint(slaveId, writeStart, data, writeMultiple,
+            request = new ModbusWriteRegisterRequestBlueprint(slaveId, writeStart, data, writeMultiple,
                     config.getWriteMaxTries());
         } else {
             // Should not happen! This method is not called in case configuration errors and writeType is validated
             // already in initialization (validateAndParseWriteParameters).
             // We keep this here for future-proofing the code (new writeType values)
-            throw new NotImplementedException(String.format(
+            throw new IllegalStateException(String.format(
                     "writeType does not equal %s or %s and thus configuration is invalid. Should not end up this far with configuration error.",
                     WRITE_TYPE_COIL, WRITE_TYPE_HOLDING));
         }
         return request;
     }
 
+    /**
+     * Combine boolean-like command with registers. Updated registers are returned
+     *
+     * @return
+     */
+    private ModbusRegisterArray combineCommandWithRegisters(ModbusRegisterArray registers, int registerIndex,
+            int bitIndex, boolean b) {
+        byte[] allBytes = registers.getBytes();
+        int bitIndexWithinRegister = bitIndex % 16;
+        boolean hiByte = bitIndexWithinRegister >= 8;
+        int indexWithinByte = bitIndexWithinRegister % 8;
+        int registerIndexRelative = registerIndex - pollStart;
+        int byteIndex = 2 * registerIndexRelative + (hiByte ? 0 : 1);
+        if (b) {
+            allBytes[byteIndex] |= 1 << indexWithinByte;
+        } else {
+            allBytes[byteIndex] &= ~(1 << indexWithinByte);
+        }
+        if (logger.isTraceEnabled()) {
+            logger.trace(
+                    "Boolean-like command {} from item, combining command with internal register ({}) with registerIndex={} (relative {}), bitIndex={}, resulting register {}",
+                    b, HexUtils.bytesToHex(registers.getBytes()), registerIndex, registerIndexRelative, bitIndex,
+                    HexUtils.bytesToHex(allBytes));
+        }
+        return new ModbusRegisterArray(allBytes);
+    }
+
     private void processJsonTransform(Command command, String transformOutput) {
-        ModbusSlaveEndpoint slaveEndpoint = this.slaveEndpoint;
-        ModbusManager manager = this.manager;
-        if (slaveEndpoint == null || manager == null) {
+        ModbusCommunicationInterface localComms = this.comms;
+        if (localComms == null) {
             return;
         }
         Collection<ModbusWriteRequestBlueprint> requests;
@@ -328,9 +388,10 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
             return;
         }
 
-        requests.stream().map(request -> new BasicWriteTask(slaveEndpoint, request, this)).forEach(writeTask -> {
-            logger.trace("Submitting write task: {} (based from transformation {})", writeTask, transformOutput);
-            manager.submitOneTimeWrite(writeTask);
+        requests.stream().forEach(request -> {
+            logger.trace("Submitting write request: {} to endpoint {} (based from transformation {})", request,
+                    localComms.getEndpoint(), transformOutput);
+            localComms.submitOneTimeWrite(request, this::onWriteResponse, this::handleWriteError);
         });
     }
 
@@ -340,12 +401,13 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
         // Long running initialization should be done asynchronously in background.
         try {
             logger.trace("initialize() of thing {} '{}' starting", thing.getUID(), thing.getLabel());
-            config = getConfigAs(ModbusDataConfiguration.class);
-            updateUnchangedValuesEveryMillis = config.getUpdateUnchangedValuesEveryMillis();
+            ModbusDataConfiguration localConfig = config = getConfigAs(ModbusDataConfiguration.class);
+            updateUnchangedValuesEveryMillis = localConfig.getUpdateUnchangedValuesEveryMillis();
             Bridge bridge = getBridge();
-            if (bridge == null) {
-                logger.debug("Thing {} '{}' has no bridge", getThing().getUID(), getThing().getLabel());
-                updateStatusIfChanged(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_OFFLINE, "No poller bridge");
+            if (bridge == null || !bridge.getStatus().equals(ThingStatus.ONLINE)) {
+                logger.debug("Thing {} '{}' has no bridge or it is not online", getThing().getUID(),
+                        getThing().getLabel());
+                updateStatusIfChanged(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_OFFLINE, "No online bridge");
                 return;
             }
             BridgeHandler bridgeHandler = bridge.getHandler();
@@ -359,29 +421,31 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
                 // Write-only thing, parent is endpoint
                 ModbusEndpointThingHandler endpointHandler = (ModbusEndpointThingHandler) bridgeHandler;
                 slaveId = endpointHandler.getSlaveId();
-                slaveEndpoint = endpointHandler.asSlaveEndpoint();
-                manager = endpointHandler.getManagerRef().get();
+                comms = endpointHandler.getCommunicationInterface();
                 childOfEndpoint = true;
-                pollTask = null;
+                functionCode = null;
+                readRequest = null;
             } else {
-                pollerHandler = (ModbusPollerThingHandler) bridgeHandler;
-                PollTask pollTask = pollerHandler.getPollTask();
-                this.pollTask = pollTask;
-                if (pollTask == null) {
-                    logger.debug("Poller {} '{}' has no poll task -- configuration is changing?", bridge.getUID(),
-                            bridge.getLabel());
+                ModbusPollerThingHandler localPollerHandler = (ModbusPollerThingHandler) bridgeHandler;
+                pollerHandler = localPollerHandler;
+                ModbusReadRequestBlueprint localReadRequest = localPollerHandler.getRequest();
+                if (localReadRequest == null) {
+                    logger.debug(
+                            "Poller {} '{}' has no read request -- configuration is changing or bridge having invalid configuration?",
+                            bridge.getUID(), bridge.getLabel());
                     updateStatusIfChanged(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_OFFLINE,
                             String.format("Poller %s '%s' has no poll task", bridge.getUID(), bridge.getLabel()));
                     return;
                 }
-                slaveId = pollTask.getRequest().getUnitID();
-                slaveEndpoint = pollTask.getEndpoint();
-                manager = pollerHandler.getManagerRef().get();
-                pollStart = pollTask.getRequest().getReference();
+                readRequest = localReadRequest;
+                slaveId = localReadRequest.getUnitID();
+                functionCode = localReadRequest.getFunctionCode();
+                comms = localPollerHandler.getCommunicationInterface();
+                pollStart = localReadRequest.getReference();
                 childOfEndpoint = false;
             }
-            validateAndParseReadParameters();
-            validateAndParseWriteParameters();
+            validateAndParseReadParameters(localConfig);
+            validateAndParseWriteParameters(localConfig);
             validateMustReadOrWrite();
 
             updateStatusIfChanged(ThingStatus.ONLINE);
@@ -403,15 +467,16 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
         writeTransformation = null;
         readIndex = Optional.empty();
         readSubIndex = Optional.empty();
-        writeStart = null;
+        writeStart = Optional.empty();
+        writeSubIndex = Optional.empty();
         pollStart = 0;
         slaveId = 0;
-        slaveEndpoint = null;
-        manager = null;
-        pollTask = null;
+        comms = null;
+        functionCode = null;
+        readRequest = null;
         isWriteEnabled = false;
         isReadEnabled = false;
-        transformationOnlyInWrite = false;
+        writeParametersHavingTransformationOnly = false;
         childOfEndpoint = false;
         pollerHandler = null;
         channelCache = new HashMap<>();
@@ -440,17 +505,14 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
         }
     }
 
-    private void validateAndParseReadParameters() throws ModbusConfigurationException {
-        ModbusDataConfiguration config = this.config;
-        Objects.requireNonNull(config);
-        @SuppressWarnings("null")
-        ModbusReadFunctionCode functionCode = pollTask == null ? null : pollTask.getRequest().getFunctionCode();
+    private void validateAndParseReadParameters(ModbusDataConfiguration config) throws ModbusConfigurationException {
+        ModbusReadFunctionCode functionCode = this.functionCode;
         boolean readingDiscreteOrCoil = functionCode == ModbusReadFunctionCode.READ_COILS
                 || functionCode == ModbusReadFunctionCode.READ_INPUT_DISCRETES;
-        boolean readStartMissing = StringUtils.isBlank(config.getReadStart());
-        boolean readValueTypeMissing = StringUtils.isBlank(config.getReadValueType());
+        boolean readStartMissing = config.getReadStart() == null || config.getReadStart().isBlank();
+        boolean readValueTypeMissing = config.getReadValueType() == null || config.getReadValueType().isBlank();
 
-        if (childOfEndpoint && pollTask == null) {
+        if (childOfEndpoint && readRequest == null) {
             if (!readStartMissing || !readValueTypeMissing) {
                 String errmsg = String.format(
                         "Thing %s readStart=%s, and readValueType=%s were specified even though the data thing is child of endpoint (that is, write-only)!",
@@ -493,7 +555,12 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
         }
 
         if (isReadEnabled) {
-            String[] readParts = config.getReadStart().split("\\.", 2);
+            String readStart = config.getReadStart();
+            if (readStart == null) {
+                throw new ModbusConfigurationException(
+                        String.format("Thing %s invalid readStart: %s", getThing().getUID(), config.getReadStart()));
+            }
+            String[] readParts = readStart.split("\\.", 2);
             try {
                 readIndex = Optional.of(Integer.parseInt(readParts[0]));
                 if (readParts.length == 2) {
@@ -507,58 +574,89 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
                 throw new ModbusConfigurationException(errmsg);
             }
         }
-        readTransformation = new Transformation(config.getReadTransform());
-
-        validateReadIndex(pollTask);
+        readTransformation = new CascadedValueTransformationImpl(config.getReadTransform());
+        validateReadIndex();
     }
 
-    private void validateAndParseWriteParameters() throws ModbusConfigurationException {
-        boolean writeTypeMissing = StringUtils.isBlank(config.getWriteType());
-        boolean writeStartMissing = StringUtils.isBlank(config.getWriteStart());
-        boolean writeValueTypeMissing = StringUtils.isBlank(config.getWriteValueType());
-        boolean writeTransformationMissing = StringUtils.isBlank(config.getWriteTransform());
-        writeTransformation = new Transformation(config.getWriteTransform());
-
+    private void validateAndParseWriteParameters(ModbusDataConfiguration config) throws ModbusConfigurationException {
+        boolean writeTypeMissing = config.getWriteType() == null || config.getWriteType().isBlank();
+        boolean writeStartMissing = config.getWriteStart() == null || config.getWriteStart().isBlank();
+        boolean writeValueTypeMissing = config.getWriteValueType() == null || config.getWriteValueType().isBlank();
+        boolean writeTransformationMissing = config.getWriteTransform() == null || config.getWriteTransform().isBlank();
+        writeTransformation = new CascadedValueTransformationImpl(config.getWriteTransform());
         boolean writingCoil = WRITE_TYPE_COIL.equals(config.getWriteType());
-        transformationOnlyInWrite = (writeTypeMissing && writeStartMissing && writeValueTypeMissing
+        writeParametersHavingTransformationOnly = (writeTypeMissing && writeStartMissing && writeValueTypeMissing
                 && !writeTransformationMissing);
-        boolean allMissingOrAllPresentOrOnlyTransform = (writeTypeMissing && writeStartMissing && writeValueTypeMissing)
-                || (!writeTypeMissing && !writeStartMissing && (!writeValueTypeMissing || writingCoil))
-                || transformationOnlyInWrite;
-        if (!allMissingOrAllPresentOrOnlyTransform) {
+        boolean allMissingOrAllPresentOrOnlyNonDefaultTransform = //
+                // read-only thing, no write specified
+                (writeTypeMissing && writeStartMissing && writeValueTypeMissing)
+                        // mandatory write parameters provided. With coils one can drop value type
+                        || (!writeTypeMissing && !writeStartMissing && (!writeValueTypeMissing || writingCoil))
+                        // only transformation provided
+                        || writeParametersHavingTransformationOnly;
+        if (!allMissingOrAllPresentOrOnlyNonDefaultTransform) {
             String errmsg = String.format(
                     "writeType=%s, writeStart=%s, and writeValueType=%s should be all present, or all missing! Alternatively, you can provide just writeTransformation, and use transformation returning JSON.",
                     config.getWriteType(), config.getWriteStart(), config.getWriteValueType());
             throw new ModbusConfigurationException(errmsg);
-        } else if (!writeTypeMissing || transformationOnlyInWrite) {
+        } else if (!writeTypeMissing || writeParametersHavingTransformationOnly) {
             isWriteEnabled = true;
             // all write values are present
-            if (!transformationOnlyInWrite && !WRITE_TYPE_HOLDING.equals(config.getWriteType())
+            if (!writeParametersHavingTransformationOnly && !WRITE_TYPE_HOLDING.equals(config.getWriteType())
                     && !WRITE_TYPE_COIL.equals(config.getWriteType())) {
                 String errmsg = String.format("Invalid writeType=%s. Expecting %s or %s!", config.getWriteType(),
                         WRITE_TYPE_HOLDING, WRITE_TYPE_COIL);
                 throw new ModbusConfigurationException(errmsg);
             }
-            if (transformationOnlyInWrite) {
+            final ValueType localWriteValueType;
+            if (writeParametersHavingTransformationOnly) {
                 // Placeholder for further checks
-                writeValueType = ModbusConstants.ValueType.INT16;
+                localWriteValueType = writeValueType = ModbusConstants.ValueType.INT16;
             } else if (writingCoil && writeValueTypeMissing) {
-                writeValueType = ModbusConstants.ValueType.BIT;
+                localWriteValueType = writeValueType = ModbusConstants.ValueType.BIT;
             } else {
                 try {
-                    writeValueType = ValueType.fromConfigValue(config.getWriteValueType());
+                    localWriteValueType = writeValueType = ValueType.fromConfigValue(config.getWriteValueType());
                 } catch (IllegalArgumentException e) {
                     String errmsg = String.format("Invalid writeValueType=%s!", config.getWriteValueType());
                     throw new ModbusConfigurationException(errmsg);
                 }
             }
 
-            if (writingCoil && !ModbusConstants.ValueType.BIT.equals(writeValueType)) {
+            try {
+                if (!writeParametersHavingTransformationOnly) {
+                    String localWriteStart = config.getWriteStart();
+                    if (localWriteStart == null) {
+                        String errmsg = String.format("Thing %s invalid writeStart: %s", getThing().getUID(),
+                                config.getWriteStart());
+                        throw new ModbusConfigurationException(errmsg);
+                    }
+                    String[] writeParts = localWriteStart.split("\\.", 2);
+                    try {
+                        writeStart = Optional.of(Integer.parseInt(writeParts[0]));
+                        if (writeParts.length == 2) {
+                            writeSubIndex = Optional.of(Integer.parseInt(writeParts[1]));
+                        } else {
+                            writeSubIndex = Optional.empty();
+                        }
+                    } catch (IllegalArgumentException e) {
+                        String errmsg = String.format("Thing %s invalid writeStart: %s", getThing().getUID(),
+                                config.getReadStart());
+                        throw new ModbusConfigurationException(errmsg);
+                    }
+                }
+            } catch (IllegalArgumentException e) {
+                String errmsg = String.format("Thing %s invalid writeStart: %s", getThing().getUID(),
+                        config.getWriteStart());
+                throw new ModbusConfigurationException(errmsg);
+            }
+
+            if (writingCoil && !ModbusConstants.ValueType.BIT.equals(localWriteValueType)) {
                 String errmsg = String.format(
                         "Invalid writeValueType: Only writeValueType='%s' (or undefined) supported with coils. Value type was: %s",
                         ModbusConstants.ValueType.BIT, config.getWriteValueType());
                 throw new ModbusConfigurationException(errmsg);
-            } else if (!writingCoil && writeValueType.getBits() < 16) {
+            } else if (writeSubIndex.isEmpty() && !writingCoil && localWriteValueType.getBits() < 16) {
                 // trying to write holding registers with < 16 bit value types. Not supported
                 String errmsg = String.format(
                         "Invalid writeValueType: Only writeValueType with larger or equal to 16 bits are supported holding registers. Value type was: %s",
@@ -566,28 +664,41 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
                 throw new ModbusConfigurationException(errmsg);
             }
 
-            try {
-                if (!transformationOnlyInWrite) {
-                    writeStart = Integer.parseInt(config.getWriteStart().trim());
+            if (writeSubIndex.isPresent()) {
+                if (writeValueTypeMissing || writeTypeMissing || !WRITE_TYPE_HOLDING.equals(config.getWriteType())
+                        || !ModbusConstants.ValueType.BIT.equals(localWriteValueType) || childOfEndpoint) {
+                    String errmsg = String.format(
+                            "Thing %s invalid writeType, writeValueType or parent. Since writeStart=X.Y, one should set writeType=holding, writeValueType=bit and have the thing as child of poller",
+                            getThing().getUID(), config.getWriteStart());
+                    throw new ModbusConfigurationException(errmsg);
                 }
-            } catch (IllegalArgumentException e) {
-                String errmsg = String.format("Thing %s invalid writeStart: %s", getThing().getUID(),
-                        config.getWriteStart());
-                throw new ModbusConfigurationException(errmsg);
+                ModbusReadRequestBlueprint readRequest = this.readRequest;
+                if (readRequest == null
+                        || readRequest.getFunctionCode() != ModbusReadFunctionCode.READ_MULTIPLE_REGISTERS) {
+                    String errmsg = String.format(
+                            "Thing %s invalid. Since writeStart=X.Y, expecting poller reading holding registers.",
+                            getThing().getUID());
+                    throw new ModbusConfigurationException(errmsg);
+                }
             }
+            validateWriteIndex();
         } else {
             isWriteEnabled = false;
         }
     }
 
-    private void validateReadIndex(@Nullable PollTask pollTask) throws ModbusConfigurationException {
-        if (!readIndex.isPresent() || pollTask == null) {
+    private void validateReadIndex() throws ModbusConfigurationException {
+        @Nullable
+        ModbusReadRequestBlueprint readRequest = this.readRequest;
+        ValueType readValueType = this.readValueType;
+        if (!readIndex.isPresent() || readRequest == null) {
             return;
         }
+        assert readValueType != null;
         // bits represented by the value type, e.g. int32 -> 32
         int valueTypeBitCount = readValueType.getBits();
         int dataElementBits;
-        switch (pollTask.getRequest().getFunctionCode()) {
+        switch (readRequest.getFunctionCode()) {
             case READ_INPUT_REGISTERS:
             case READ_MULTIPLE_REGISTERS:
                 dataElementBits = 16;
@@ -597,7 +708,7 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
                 dataElementBits = 1;
                 break;
             default:
-                throw new IllegalStateException(pollTask.getRequest().getFunctionCode().toString());
+                throw new IllegalStateException(readRequest.getFunctionCode().toString());
         }
 
         boolean bitQuery = dataElementBits == 1;
@@ -607,11 +718,14 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
         }
 
         if (valueTypeBitCount >= 16 && readSubIndex.isPresent()) {
-            String errmsg = String
-                    .format("readStart=X.Y is not allowed to be used with value types larger than 16bit!");
+            String errmsg = String.format(
+                    "readStart=X.Y notation is not allowed to be used with value types larger than 16bit! Use readStart=X instead.");
             throw new ModbusConfigurationException(errmsg);
         } else if (!bitQuery && valueTypeBitCount < 16 && !readSubIndex.isPresent()) {
-            String errmsg = String.format("readStart=X.Y must be used with value types less than 16bit!");
+            // User has specified value type which is less than register width (16 bits).
+            // readStart=X.Y notation must be used to define which data to extract from the 16 bit register.
+            String errmsg = String
+                    .format("readStart=X.Y must be used with value types (readValueType) less than 16bit!");
             throw new ModbusConfigurationException(errmsg);
         } else if (readSubIndex.isPresent() && (readSubIndex.get() + 1) * valueTypeBitCount > 16) {
             // the sub index Y (in X.Y) is above the register limits
@@ -620,8 +734,8 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
         }
 
         // Determine bit positions polled, both start and end inclusive
-        int pollStartBitIndex = pollTask.getRequest().getReference() * dataElementBits;
-        int pollEndBitIndex = pollStartBitIndex + pollTask.getRequest().getDataLength() * dataElementBits;
+        int pollStartBitIndex = readRequest.getReference() * dataElementBits;
+        int pollEndBitIndex = pollStartBitIndex + readRequest.getDataLength() * dataElementBits - 1;
 
         // Determine bit positions read, both start and end inclusive
         int readStartBitIndex = readIndex.get() * dataElementBits + readSubIndex.orElse(0) * valueTypeBitCount;
@@ -632,6 +746,41 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
                     "Out-of-bounds: Poller is reading from index %d to %d (inclusive) but this thing configured to read '%s' starting from element %d. Exceeds polled data bounds.",
                     pollStartBitIndex / dataElementBits, pollEndBitIndex / dataElementBits, readValueType,
                     readIndex.get());
+            throw new ModbusConfigurationException(errmsg);
+        }
+    }
+
+    private void validateWriteIndex() throws ModbusConfigurationException {
+        @Nullable
+        ModbusReadRequestBlueprint readRequest = this.readRequest;
+        if (!writeStart.isPresent() || !writeSubIndex.isPresent()) {
+            //
+            // this validation is really about writeStart=X.Y validation
+            //
+            return;
+        } else if (readRequest == null) {
+            // should not happen, already validated
+            throw new ModbusConfigurationException("Must poll data with writeStart=X.Y");
+        }
+
+        if (writeSubIndex.isPresent() && (writeSubIndex.get() + 1) > 16) {
+            // the sub index Y (in X.Y) is above the register limits
+            String errmsg = String.format("readStart=X.Y, the value Y is too large");
+            throw new ModbusConfigurationException(errmsg);
+        }
+
+        // Determine bit positions polled, both start and end inclusive
+        int pollStartBitIndex = readRequest.getReference() * 16;
+        int pollEndBitIndex = pollStartBitIndex + readRequest.getDataLength() * 16 - 1;
+
+        // Determine bit positions read, both start and end inclusive
+        int writeStartBitIndex = writeStart.get() * 16 + readSubIndex.orElse(0);
+        int writeEndBitIndex = writeStartBitIndex - 1;
+
+        if (writeStartBitIndex < pollStartBitIndex || writeEndBitIndex > pollEndBitIndex) {
+            String errmsg = String.format(
+                    "Out-of-bounds: Poller is reading from index %d to %d (inclusive) but this thing configured to write  starting from element %d. Must write within polled limits",
+                    pollStartBitIndex / 16, pollEndBitIndex / 16, writeStart.get());
             throw new ModbusConfigurationException(errmsg);
         }
     }
@@ -648,8 +797,20 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
         });
     }
 
-    @Override
-    public synchronized void onRegisters(ModbusReadRequestBlueprint request, ModbusRegisterArray registers) {
+    public synchronized void onReadResult(AsyncModbusReadResult result) {
+        result.getRegisters().ifPresent(registers -> onRegisters(result.getRequest(), registers));
+        result.getBits().ifPresent(bits -> onBits(result.getRequest(), bits));
+    }
+
+    public synchronized void handleReadError(AsyncModbusFailure<ModbusReadRequestBlueprint> failure) {
+        onError(failure.getRequest(), failure.getCause());
+    }
+
+    public synchronized void handleWriteError(AsyncModbusFailure<ModbusWriteRequestBlueprint> failure) {
+        onError(failure.getRequest(), failure.getCause());
+    }
+
+    private synchronized void onRegisters(ModbusReadRequestBlueprint request, ModbusRegisterArray registers) {
         if (hasConfigurationError()) {
             return;
         } else if (!isReadEnabled) {
@@ -690,8 +851,7 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
                 boolValue, registers, request);
     }
 
-    @Override
-    public synchronized void onBits(ModbusReadRequestBlueprint request, BitArray bits) {
+    private synchronized void onBits(ModbusReadRequestBlueprint request, BitArray bits) {
         if (hasConfigurationError()) {
             return;
         } else if (!isReadEnabled) {
@@ -705,18 +865,17 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
                 thing.getUID(), values, readValueType, readIndex, numericState, boolValue, bits, request);
     }
 
-    @Override
-    public synchronized void onError(ModbusReadRequestBlueprint request, Exception error) {
+    private synchronized void onError(ModbusReadRequestBlueprint request, Exception error) {
         if (hasConfigurationError()) {
             return;
         } else if (!isReadEnabled) {
             return;
         }
         if (error instanceof ModbusConnectionException) {
-            logger.error("Thing {} '{}' had {} error on read: {}", getThing().getUID(), getThing().getLabel(),
+            logger.trace("Thing {} '{}' had {} error on read: {}", getThing().getUID(), getThing().getLabel(),
                     error.getClass().getSimpleName(), error.toString());
         } else if (error instanceof ModbusTransportException) {
-            logger.error("Thing {} '{}' had {} error on read: {}", getThing().getUID(), getThing().getLabel(),
+            logger.trace("Thing {} '{}' had {} error on read: {}", getThing().getUID(), getThing().getLabel(),
                     error.getClass().getSimpleName(), error.toString());
         } else {
             logger.error(
@@ -724,7 +883,7 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
                     getThing().getUID(), getThing().getLabel(), error.getClass().getName(), error.toString(),
                     error.getMessage(), error);
         }
-        Map<@NonNull ChannelUID, @NonNull State> states = new HashMap<>();
+        Map<ChannelUID, State> states = new HashMap<>();
         ChannelUID lastReadErrorUID = getChannelUID(ModbusBindingConstantsInternal.CHANNEL_LAST_READ_ERROR);
         if (isLinked(lastReadErrorUID)) {
             states.put(lastReadErrorUID, new DateTimeType());
@@ -742,18 +901,17 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
         }
     }
 
-    @Override
-    public synchronized void onError(ModbusWriteRequestBlueprint request, Exception error) {
+    private synchronized void onError(ModbusWriteRequestBlueprint request, Exception error) {
         if (hasConfigurationError()) {
             return;
         } else if (!isWriteEnabled) {
             return;
         }
         if (error instanceof ModbusConnectionException) {
-            logger.error("Thing {} '{}' had {} error on write: {}", getThing().getUID(), getThing().getLabel(),
+            logger.debug("Thing {} '{}' had {} error on write: {}", getThing().getUID(), getThing().getLabel(),
                     error.getClass().getSimpleName(), error.toString());
         } else if (error instanceof ModbusTransportException) {
-            logger.error("Thing {} '{}' had {} error on write: {}", getThing().getUID(), getThing().getLabel(),
+            logger.debug("Thing {} '{}' had {} error on write: {}", getThing().getUID(), getThing().getLabel(),
                     error.getClass().getSimpleName(), error.toString());
         } else {
             logger.error(
@@ -761,7 +919,7 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
                     getThing().getUID(), getThing().getLabel(), error.getClass().getName(), error.toString(),
                     error.getMessage(), error);
         }
-        Map<@NonNull ChannelUID, @NonNull State> states = new HashMap<>();
+        Map<ChannelUID, State> states = new HashMap<>();
         ChannelUID lastWriteErrorUID = getChannelUID(ModbusBindingConstantsInternal.CHANNEL_LAST_WRITE_ERROR);
         if (isLinked(lastWriteErrorUID)) {
             states.put(lastWriteErrorUID, new DateTimeType());
@@ -779,14 +937,13 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
         }
     }
 
-    @Override
-    public synchronized void onWriteResponse(ModbusWriteRequestBlueprint request, ModbusResponse response) {
+    public synchronized void onWriteResponse(AsyncModbusWriteResult result) {
         if (hasConfigurationError()) {
             return;
         } else if (!isWriteEnabled) {
             return;
         }
-        logger.debug("Successful write, matching request {}", request);
+        logger.debug("Successful write, matching request {}", result.getRequest());
         updateStatusIfChanged(ThingStatus.ONLINE);
         ChannelUID lastWriteSuccessUID = getChannelUID(ModbusBindingConstantsInternal.CHANNEL_LAST_WRITE_SUCCESS);
         if (isLinked(lastWriteSuccessUID)) {
@@ -802,7 +959,13 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
      * @return updated channel data
      */
     private Map<ChannelUID, State> processUpdatedValue(State numericState, boolean boolValue) {
-        Map<@NonNull ChannelUID, @NonNull State> states = new HashMap<>();
+        ValueTransformation localReadTransformation = readTransformation;
+        if (localReadTransformation == null) {
+            // We should always have transformation available if thing is initalized properly
+            logger.trace("No transformation available, aborting processUpdatedValue");
+            return Collections.emptyMap();
+        }
+        Map<ChannelUID, State> states = new HashMap<>();
         CHANNEL_ID_TO_ACCEPTED_TYPES.keySet().stream().forEach(channelId -> {
             ChannelUID channelUID = getChannelUID(channelId);
             if (!isLinked(channelUID)) {
@@ -823,7 +986,7 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
             }
 
             State transformedState;
-            if (readTransformation.isIdentityTransform()) {
+            if (localReadTransformation.isIdentityTransform()) {
                 if (boolLikeState != null) {
                     // A bit of smartness for ON/OFF and OPEN/CLOSED with boolean like items
                     transformedState = boolLikeState;
@@ -831,11 +994,12 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
                     // Numeric states always go through transformation. This allows value of 17.5 to be
                     // converted to
                     // 17.5% with percent types (instead of raising error)
-                    transformedState = readTransformation.transformState(bundleContext, acceptedDataTypes,
+                    transformedState = localReadTransformation.transformState(bundleContext, acceptedDataTypes,
                             numericState);
                 }
             } else {
-                transformedState = readTransformation.transformState(bundleContext, acceptedDataTypes, numericState);
+                transformedState = localReadTransformation.transformState(bundleContext, acceptedDataTypes,
+                        numericState);
             }
 
             if (transformedState != null) {
@@ -843,15 +1007,15 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
                         "Channel {} will be updated to '{}' (type {}). Input data: number value {} (value type '{}' taken into account) and bool value {}. Transformation: {}",
                         channelId, transformedState, transformedState.getClass().getSimpleName(), numericState,
                         readValueType, boolValue,
-                        readTransformation.isIdentityTransform() ? "<identity>" : readTransformation);
+                        localReadTransformation.isIdentityTransform() ? "<identity>" : localReadTransformation);
                 states.put(channelUID, transformedState);
             } else {
-                String types = StringUtils.join(acceptedDataTypes.stream().map(cls -> cls.getSimpleName()).toArray(),
-                        ", ");
+                String types = String.join(", ",
+                        acceptedDataTypes.stream().map(cls -> cls.getSimpleName()).toArray(String[]::new));
                 logger.warn(
                         "Channel {} will not be updated since transformation was unsuccessful. Channel is expecting the following data types [{}]. Input data: number value {} (value type '{}' taken into account) and bool value {}. Transformation: {}",
                         channelId, types, numericState, readValueType, boolValue,
-                        readTransformation.isIdentityTransform() ? "<identity>" : readTransformation);
+                        localReadTransformation.isIdentityTransform() ? "<identity>" : localReadTransformation);
             }
         });
 
@@ -873,6 +1037,8 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
         }
     }
 
+    // since lastState can be null, and "lastState == null" in conditional is not useless
+    @SuppressWarnings("null")
     private void updateExpiredChannel(long now, ChannelUID uid, State state) {
         @Nullable
         State lastState = channelLastState.get(uid);
@@ -896,7 +1062,8 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
     }
 
     private ChannelUID getChannelUID(String channelID) {
-        return channelCache.computeIfAbsent(channelID, id -> new ChannelUID(getThing().getUID(), id));
+        return Objects
+                .requireNonNull(channelCache.computeIfAbsent(channelID, id -> new ChannelUID(getThing().getUID(), id)));
     }
 
     private void updateStatusIfChanged(ThingStatus status) {
@@ -933,5 +1100,4 @@ public class ModbusDataThingHandler extends BaseThingHandler implements ModbusRe
             }
         }
     }
-
 }

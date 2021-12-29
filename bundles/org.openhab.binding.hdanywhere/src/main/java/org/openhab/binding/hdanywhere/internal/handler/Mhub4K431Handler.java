@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,8 +12,6 @@
  */
 package org.openhab.binding.hdanywhere.internal.handler;
 
-import static org.apache.commons.lang.StringUtils.isNotBlank;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,15 +22,15 @@ import java.util.Properties;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.io.net.http.HttpUtil;
 import org.openhab.binding.hdanywhere.internal.HDanywhereBindingConstants.Port;
+import org.openhab.core.io.net.http.HttpUtil;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,27 +91,25 @@ public class Mhub4K431Handler extends BaseThingHandler {
             String content = "{tag:ptn}";
             InputStream stream = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
 
-            if (isNotBlank(httpMethod) && isNotBlank(url)) {
-                String response = HttpUtil.executeUrl(httpMethod, url, null, stream, null, timeout);
-                response = response.trim();
-                response = response.substring(1, response.length() - 1);
+            String response = HttpUtil.executeUrl(httpMethod, url, null, stream, null, timeout);
+            response = response.trim();
+            response = response.substring(1, response.length() - 1);
 
-                if (response != null) {
-                    updateStatus(ThingStatus.ONLINE);
+            if (response != null) {
+                updateStatus(ThingStatus.ONLINE);
 
-                    java.lang.reflect.Type type = new TypeToken<Map<String, String>>() {
-                    }.getType();
-                    Map<String, String> map = gson.fromJson(response, type);
+                java.lang.reflect.Type type = new TypeToken<Map<String, String>>() {
+                }.getType();
+                Map<String, String> map = gson.fromJson(response, type);
 
-                    String inputChannel = map.get("Inputchannel");
+                String inputChannel = map.get("Inputchannel");
 
-                    for (int i = 0; i < numberOfPorts; i++) {
-                        DecimalType decimalType = new DecimalType(String.valueOf(inputChannel.charAt(i)));
-                        updateState(new ChannelUID(getThing().getUID(), Port.get(i + 1).channelID()), decimalType);
-                    }
-                } else {
-                    updateStatus(ThingStatus.OFFLINE);
+                for (int i = 0; i < numberOfPorts; i++) {
+                    DecimalType decimalType = new DecimalType(String.valueOf(inputChannel.charAt(i)));
+                    updateState(new ChannelUID(getThing().getUID(), Port.get(i + 1).channelID()), decimalType);
                 }
+            } else {
+                updateStatus(ThingStatus.OFFLINE);
             }
         } catch (Exception e) {
             logger.debug("An exception occurred while polling the HDanwywhere matrix: '{}'", e.getMessage());
@@ -155,7 +151,7 @@ public class Mhub4K431Handler extends BaseThingHandler {
                 httpHeaders.setProperty("Cookie", "logintype-88=01");
 
                 try {
-                    String response = HttpUtil.executeUrl(httpMethod, url, httpHeaders, stream,
+                    HttpUtil.executeUrl(httpMethod, url, httpHeaders, stream,
                             "application/x-www-form-urlencoded; charset=UTF-8", timeout);
                 } catch (IOException e) {
                     logger.debug("Communication with device failed", e);
@@ -164,5 +160,4 @@ public class Mhub4K431Handler extends BaseThingHandler {
             }
         }
     }
-
 }

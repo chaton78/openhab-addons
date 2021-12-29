@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,7 +16,6 @@ import java.math.BigDecimal;
 import java.text.MessageFormat;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,34 +25,34 @@ import java.util.function.Supplier;
 import javax.measure.Quantity;
 import javax.measure.Unit;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jdt.annotation.DefaultLocation;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.config.core.Configuration;
-import org.eclipse.smarthome.core.library.types.QuantityType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.thing.binding.builder.ChannelBuilder;
-import org.eclipse.smarthome.core.thing.binding.builder.ThingBuilder;
-import org.eclipse.smarthome.core.thing.type.ChannelType;
-import org.eclipse.smarthome.core.thing.type.ChannelTypeUID;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.TypeParser;
-import org.eclipse.smarthome.core.util.HexUtils;
-import org.eclipse.smarthome.io.transport.serial.SerialPortManager;
 import org.openhab.binding.smartmeter.SmartMeterBindingConstants;
 import org.openhab.binding.smartmeter.SmartMeterConfiguration;
 import org.openhab.binding.smartmeter.internal.conformity.Conformity;
 import org.openhab.binding.smartmeter.internal.helper.Baudrate;
+import org.openhab.core.config.core.Configuration;
+import org.openhab.core.io.transport.serial.SerialPortManager;
+import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.thing.binding.builder.ChannelBuilder;
+import org.openhab.core.thing.binding.builder.ThingBuilder;
+import org.openhab.core.thing.type.ChannelType;
+import org.openhab.core.thing.type.ChannelTypeUID;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.State;
+import org.openhab.core.types.TypeParser;
+import org.openhab.core.util.HexUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,32 +92,27 @@ public class SmartMeterHandler extends BaseThingHandler {
         cancelRead();
 
         SmartMeterConfiguration config = getConfigAs(SmartMeterConfiguration.class);
-        logger.debug("config port = {}", config.port);
 
-        boolean validConfig = true;
-        String errorMsg = null;
+        String port = config.port;
+        logger.debug("config port = {}", port);
 
-        if (StringUtils.trimToNull(config.port) == null) {
-            errorMsg = "Parameter 'port' is mandatory and must be configured";
-            validConfig = false;
-        }
-
-        if (validConfig) {
+        if (port == null || port.isBlank()) {
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
+                    "Parameter 'port' is mandatory and must be configured");
+        } else {
             byte[] pullSequence = config.initMessage == null ? null
                     : HexUtils.hexToBytes(StringUtils.deleteWhitespace(config.initMessage));
             int baudrate = config.baudrate == null ? Baudrate.AUTO.getBaudrate()
                     : Baudrate.fromString(config.baudrate).getBaudrate();
             this.conformity = config.conformity == null ? Conformity.NONE : Conformity.valueOf(config.conformity);
             this.smlDevice = MeterDeviceFactory.getDevice(serialPortManagerSupplier, config.mode,
-                    this.thing.getUID().getAsString(), config.port, pullSequence, baudrate, config.baudrateChangeDelay);
+                    this.thing.getUID().getAsString(), port, pullSequence, baudrate, config.baudrateChangeDelay);
             updateStatus(ThingStatus.UNKNOWN, ThingStatusDetail.HANDLER_CONFIGURATION_PENDING,
                     "Waiting for messages from device");
 
             smlDevice.addValueChangeListener(channelTypeProvider);
 
             updateOBISValue();
-        } else {
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, errorMsg);
         }
     }
 
@@ -193,7 +187,7 @@ public class SmartMeterHandler extends BaseThingHandler {
                         ChannelUID channelId = channel.getUID();
 
                         // add all valid channels to the thing builder
-                        List<Channel> channels = new ArrayList<Channel>(getThing().getChannels());
+                        List<Channel> channels = new ArrayList<>(getThing().getChannels());
                         if (channels.stream().filter((element) -> element.getUID().equals(channelId)).count() == 0) {
                             channels.add(channel);
                             thingBuilder.withChannels(channels);
@@ -204,7 +198,9 @@ public class SmartMeterHandler extends BaseThingHandler {
                     if (!channel.getProperties().containsKey(SmartMeterBindingConstants.CHANNEL_PROPERTY_OBIS)) {
                         addObisPropertyToChannel(obis, channel);
                     }
-                    updateState(channel.getUID(), state);
+                    if (state != null) {
+                        updateState(channel.getUID(), state);
+                    }
 
                     updateStatus(ThingStatus.ONLINE, ThingStatusDetail.NONE);
                 } else {
@@ -219,7 +215,7 @@ public class SmartMeterHandler extends BaseThingHandler {
                         .withDefaultTags(channel.getDefaultTags()).withConfiguration(channel.getConfiguration())
                         .withDescription(description == null ? "" : description).withKind(channel.getKind())
                         .withLabel(label == null ? "" : label).withType(channel.getChannelTypeUID());
-                HashMap<String, String> properties = new HashMap<>(channel.getProperties());
+                Map<String, String> properties = new HashMap<>(channel.getProperties());
                 properties.put(SmartMeterBindingConstants.CHANNEL_PROPERTY_OBIS, obis);
                 newChannel.withProperties(properties);
                 updateThing(editThing().withoutChannel(channel.getUID()).withChannel(newChannel.build()).build());
@@ -251,26 +247,29 @@ public class SmartMeterHandler extends BaseThingHandler {
         if (isLinked(channelId.getId())) {
             Channel channel = this.thing.getChannel(channelId.getId());
             if (channel != null) {
-
                 String obis = channel.getProperties().get(SmartMeterBindingConstants.CHANNEL_PROPERTY_OBIS);
-                MeterValue<?> value = this.smlDevice.getMeterValue(obis);
-                if (value != null) {
-
-                    State state = getStateForObisValue(value, channel);
-                    updateState(channel.getUID(), state);
+                if (obis != null) {
+                    MeterValue<?> value = this.smlDevice.getMeterValue(obis);
+                    if (value != null) {
+                        State state = getStateForObisValue(value, channel);
+                        if (state != null) {
+                            updateState(channel.getUID(), state);
+                        }
+                    }
                 }
             }
         }
     }
 
     @SuppressWarnings("unchecked")
-    private <Q extends Quantity<Q>> State getStateForObisValue(MeterValue<?> value, @Nullable Channel channel) {
+    private @Nullable <Q extends Quantity<Q>> State getStateForObisValue(MeterValue<?> value,
+            @Nullable Channel channel) {
         Unit<?> unit = value.getUnit();
         String valueString = value.getValue();
         if (unit != null) {
             valueString += " " + value.getUnit();
         }
-        State state = TypeParser.parseState(Arrays.asList(QuantityType.class, StringType.class), valueString);
+        State state = TypeParser.parseState(List.of(QuantityType.class, StringType.class), valueString);
         if (channel != null && state instanceof QuantityType) {
             state = applyConformity(channel, (QuantityType<Q>) state);
             Number conversionRatio = (Number) channel.getConfiguration()
@@ -290,5 +289,4 @@ public class SmartMeterHandler extends BaseThingHandler {
         }
         return currentState;
     }
-
 }

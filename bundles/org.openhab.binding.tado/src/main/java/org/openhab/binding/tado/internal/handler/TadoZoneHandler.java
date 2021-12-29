@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -20,21 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 import javax.measure.quantity.Temperature;
 
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.QuantityType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.library.unit.ImperialUnits;
-import org.eclipse.smarthome.core.library.unit.SIUnits;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.ThingStatusInfo;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.State;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.tado.internal.TadoBindingConstants;
 import org.openhab.binding.tado.internal.TadoBindingConstants.OperationMode;
 import org.openhab.binding.tado.internal.TadoBindingConstants.TemperatureUnit;
@@ -50,6 +36,21 @@ import org.openhab.binding.tado.internal.api.model.OverlayTerminationCondition;
 import org.openhab.binding.tado.internal.api.model.Zone;
 import org.openhab.binding.tado.internal.api.model.ZoneState;
 import org.openhab.binding.tado.internal.config.TadoZoneConfig;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.library.unit.ImperialUnits;
+import org.openhab.core.library.unit.SIUnits;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.ThingStatusInfo;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +59,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Dennis Frommknecht - Initial contribution
  * @author Andrew Fiddian-Green - Added Low Battery Alarm, A/C Power and Open Window channels
- * 
+ *
  */
 public class TadoZoneHandler extends BaseHomeThingHandler {
     private Logger logger = LoggerFactory.getLogger(TadoZoneHandler.class);
@@ -81,9 +82,9 @@ public class TadoZoneHandler extends BaseHomeThingHandler {
         return this.configuration.fallbackTimerDuration;
     }
 
-    public ZoneType getZoneType() {
+    public @Nullable ZoneType getZoneType() {
         String zoneTypeStr = this.thing.getProperties().get(TadoBindingConstants.PROPERTY_ZONE_TYPE);
-        return ZoneType.valueOf(zoneTypeStr);
+        return zoneTypeStr != null ? ZoneType.valueOf(zoneTypeStr) : null;
     }
 
     public OverlayTerminationCondition getDefaultTerminationCondition() throws IOException, ApiException {
@@ -185,6 +186,11 @@ public class TadoZoneHandler extends BaseHomeThingHandler {
     }
 
     @Override
+    public void dispose() {
+        cancelScheduledZoneStateUpdate();
+    }
+
+    @Override
     public void bridgeStatusChanged(ThingStatusInfo bridgeStatusInfo) {
         if (bridgeStatusInfo.getStatus() == ThingStatus.ONLINE) {
             try {
@@ -218,6 +224,11 @@ public class TadoZoneHandler extends BaseHomeThingHandler {
     }
 
     private void updateZoneState(boolean forceUpdate) {
+        TadoHomeHandler home = getHomeHandler();
+        if (home != null) {
+            home.updateHomeState();
+        }
+
         // No update during HVAC change debounce
         if (!forceUpdate && scheduledHvacChange != null && !scheduledHvacChange.isDone()) {
             return;
@@ -235,7 +246,7 @@ public class TadoZoneHandler extends BaseHomeThingHandler {
             TadoZoneStateAdapter state = new TadoZoneStateAdapter(zoneState, getTemperatureUnit());
             updateStateIfNotNull(TadoBindingConstants.CHANNEL_ZONE_CURRENT_TEMPERATURE, state.getInsideTemperature());
             updateStateIfNotNull(TadoBindingConstants.CHANNEL_ZONE_HUMIDITY, state.getHumidity());
-            
+
             updateStateIfNotNull(TadoBindingConstants.CHANNEL_ZONE_HEATING_POWER, state.getHeatingPower());
             updateStateIfNotNull(TadoBindingConstants.CHANNEL_ZONE_AC_POWER, state.getAcPower());
 
@@ -257,8 +268,7 @@ public class TadoZoneHandler extends BaseHomeThingHandler {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                     "Could not connect to server due to " + e.getMessage());
         }
-        
-        TadoHomeHandler home = getHomeHandler();
+
         if (home != null) {
             updateState(TadoBindingConstants.CHANNEL_ZONE_BATTERY_LOW_ALARM, home.getBatteryLowAlarm(getZoneId()));
         }
@@ -307,5 +317,4 @@ public class TadoZoneHandler extends BaseHomeThingHandler {
             updateState(channelID, state);
         }
     }
-
 }

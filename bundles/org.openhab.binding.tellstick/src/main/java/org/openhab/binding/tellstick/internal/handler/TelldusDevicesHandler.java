@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -15,27 +15,34 @@ package org.openhab.binding.tellstick.internal.handler;
 import static org.openhab.binding.tellstick.internal.TellstickBindingConstants.*;
 
 import java.math.BigDecimal;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Calendar;
 
-import org.eclipse.smarthome.config.core.Configuration;
-import org.eclipse.smarthome.core.library.types.DateTimeType;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.PercentType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.ThingStatusInfo;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.State;
 import org.openhab.binding.tellstick.internal.TellstickBindingConstants;
 import org.openhab.binding.tellstick.internal.live.xml.DataTypeValue;
 import org.openhab.binding.tellstick.internal.live.xml.TellstickNetSensor;
 import org.openhab.binding.tellstick.internal.live.xml.TellstickNetSensorEvent;
+import org.openhab.binding.tellstick.internal.local.dto.LocalDataTypeValueDTO;
+import org.openhab.binding.tellstick.internal.local.dto.TellstickLocalSensorDTO;
+import org.openhab.binding.tellstick.internal.local.dto.TellstickLocalSensorEventDTO;
+import org.openhab.core.config.core.Configuration;
+import org.openhab.core.library.types.DateTimeType;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.library.unit.SIUnits;
+import org.openhab.core.library.unit.Units;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.ThingStatusInfo;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.tellstick.device.TellstickDeviceEvent;
@@ -106,9 +113,15 @@ public class TelldusDevicesHandler extends BaseThingHandler implements DeviceSta
             return;
         }
         if (command instanceof RefreshType) {
-            getBridge().getHandler().handleCommand(channelUID, command);
-            refreshDevice(dev);
-            return;
+            Bridge bridge = getBridge();
+            if (bridge != null) {
+                TelldusBridgeHandler localBridgeHandler = (TelldusBridgeHandler) bridge.getHandler();
+                if (localBridgeHandler != null) {
+                    localBridgeHandler.handleCommand(channelUID, command);
+                    refreshDevice(dev);
+                    return;
+                }
+            }
         }
         if (channelUID.getId().equals(CHANNEL_DIMMER) || channelUID.getId().equals(CHANNEL_STATE)) {
             try {
@@ -120,14 +133,10 @@ public class TelldusDevicesHandler extends BaseThingHandler implements DeviceSta
             } catch (TellstickException e) {
                 logger.debug("Failed to send command to tellstick", e);
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, e.getMessage());
-            } catch (Exception e) {
-                logger.error("Failed to send command to tellstick", e);
-                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, e.getMessage());
             }
         } else {
             logger.warn("Setting of channel {} not possible. Read-only", channelUID);
         }
-
     }
 
     private void refreshDevice(Device dev) {
@@ -157,8 +166,9 @@ public class TelldusDevicesHandler extends BaseThingHandler implements DeviceSta
         if (repeatCount != null) {
             resend = repeatCount.intValue();
         }
-        if (getBridge() != null) {
-            bridgeStatusChanged(getBridge().getStatusInfo());
+        Bridge bridge = getBridge();
+        if (bridge != null) {
+            bridgeStatusChanged(bridge.getStatusInfo());
         }
     }
 
@@ -167,31 +177,34 @@ public class TelldusDevicesHandler extends BaseThingHandler implements DeviceSta
         logger.debug("device: {} bridgeStatusChanged: {}", deviceId, bridgeStatusInfo);
         if (bridgeStatusInfo.getStatus() == ThingStatus.ONLINE) {
             try {
-                TelldusBridgeHandler tellHandler = (TelldusBridgeHandler) getBridge().getHandler();
-                logger.debug("Init bridge for {}, bridge:{}", deviceId, tellHandler);
-                if (tellHandler != null) {
-                    this.bridgeHandler = tellHandler;
-                    this.bridgeHandler.registerDeviceStatusListener(this);
-                    Configuration config = editConfiguration();
-                    Device dev = getDevice(tellHandler, deviceId);
-                    if (dev != null) {
-                        if (dev.getName() != null) {
-                            config.put(TellstickBindingConstants.DEVICE_NAME, dev.getName());
-                        }
-                        if (dev.getProtocol() != null) {
-                            config.put(TellstickBindingConstants.DEVICE_PROTOCOL, dev.getProtocol());
-                        }
-                        if (dev.getModel() != null) {
-                            config.put(TellstickBindingConstants.DEVICE_MODEL, dev.getModel());
-                        }
-                        updateConfiguration(config);
+                Bridge localBridge = getBridge();
+                if (localBridge != null) {
+                    TelldusBridgeHandler telldusBridgeHandler = (TelldusBridgeHandler) localBridge.getHandler();
+                    logger.debug("Init bridge for {}, bridge:{}", deviceId, telldusBridgeHandler);
+                    if (telldusBridgeHandler != null) {
+                        this.bridgeHandler = telldusBridgeHandler;
+                        this.bridgeHandler.registerDeviceStatusListener(this);
+                        Configuration config = editConfiguration();
+                        Device dev = getDevice(telldusBridgeHandler, deviceId);
+                        if (dev != null) {
+                            if (dev.getName() != null) {
+                                config.put(TellstickBindingConstants.DEVICE_NAME, dev.getName());
+                            }
+                            if (dev.getProtocol() != null) {
+                                config.put(TellstickBindingConstants.DEVICE_PROTOCOL, dev.getProtocol());
+                            }
+                            if (dev.getModel() != null) {
+                                config.put(TellstickBindingConstants.DEVICE_MODEL, dev.getModel());
+                            }
+                            updateConfiguration(config);
 
-                        updateStatus(ThingStatus.ONLINE);
-                    } else {
-                        logger.warn(
-                                "Could not find {}, please make sure it is defined and that telldus service is running",
-                                deviceId);
-                        updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR);
+                            updateStatus(ThingStatus.ONLINE);
+                        } else {
+                            logger.warn(
+                                    "Could not find {}, please make sure it is defined and that telldus service is running",
+                                    deviceId);
+                            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR);
+                        }
                     }
                 }
             } catch (Exception e) {
@@ -205,11 +218,13 @@ public class TelldusDevicesHandler extends BaseThingHandler implements DeviceSta
 
     private Device getDevice(TelldusBridgeHandler tellHandler, String deviceId) {
         Device dev = null;
-        if (deviceId != null && isSensor()) {
-            dev = tellHandler.getSensor(deviceId);
-        } else if (deviceId != null) {
-            dev = tellHandler.getDevice(deviceId);
-            updateDeviceState(dev);
+        if (deviceId != null) {
+            if (isSensor()) {
+                dev = tellHandler.getSensor(deviceId);
+            } else {
+                dev = tellHandler.getDevice(deviceId);
+                updateDeviceState(dev);
+            }
         }
         return dev;
     }
@@ -236,6 +251,10 @@ public class TelldusDevicesHandler extends BaseThingHandler implements DeviceSta
             for (DataTypeValue type : ((TellstickNetSensor) dev).getData()) {
                 updateSensorDataState(type);
             }
+        } else if (dev instanceof TellstickLocalSensorDTO) {
+            for (LocalDataTypeValueDTO type : ((TellstickLocalSensorDTO) dev).getData()) {
+                updateSensorDataState(type);
+            }
         }
     }
 
@@ -256,6 +275,9 @@ public class TelldusDevicesHandler extends BaseThingHandler implements DeviceSta
             } else if (event instanceof TellstickNetSensorEvent) {
                 TellstickNetSensorEvent sensorevent = (TellstickNetSensorEvent) event;
                 updateSensorDataState(sensorevent.getDataTypeValue());
+            } else if (event instanceof TellstickLocalSensorEventDTO) {
+                TellstickLocalSensorEventDTO sensorevent = (TellstickLocalSensorEventDTO) event;
+                updateSensorDataState(sensorevent.getDataTypeValue());
             } else if (event instanceof TellstickSensorEvent) {
                 TellstickSensorEvent sensorevent = (TellstickSensorEvent) event;
                 updateSensorDataState(sensorevent.getDataType(), sensorevent.getData());
@@ -264,32 +286,33 @@ public class TelldusDevicesHandler extends BaseThingHandler implements DeviceSta
             }
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(event.getTimestamp());
-            updateState(timestampChannel, new DateTimeType(cal));
+            updateState(timestampChannel,
+                    new DateTimeType(ZonedDateTime.ofInstant(cal.toInstant(), ZoneId.systemDefault())));
         }
     }
 
     private void updateSensorDataState(DataType dataType, String data) {
         switch (dataType) {
             case HUMIDITY:
-                updateState(humidityChannel, new DecimalType(data));
+                updateState(humidityChannel, new QuantityType<>(new BigDecimal(data), HUMIDITY_UNIT));
                 break;
             case TEMPERATURE:
-                updateState(tempChannel, new DecimalType(data));
+                updateState(tempChannel, new QuantityType<>(new BigDecimal(data), SIUnits.CELSIUS));
                 break;
             case RAINRATE:
-                updateState(rainRateChannel, new DecimalType(data));
+                updateState(rainRateChannel, new QuantityType<>(new BigDecimal(data), RAIN_UNIT));
                 break;
             case RAINTOTAL:
-                updateState(raintTotChannel, new DecimalType(data));
+                updateState(raintTotChannel, new QuantityType<>(new BigDecimal(data), RAIN_UNIT));
                 break;
             case WINDAVERAGE:
-                updateState(windAverageChannel, new DecimalType(data));
+                updateState(windAverageChannel, new QuantityType<>(new BigDecimal(data), WIND_SPEED_UNIT_MS));
                 break;
             case WINDDIRECTION:
-                updateState(windDirectionChannel, new StringType(data));
+                updateState(windDirectionChannel, new QuantityType<>(new BigDecimal(data), WIND_DIRECTION_UNIT));
                 break;
             case WINDGUST:
-                updateState(windGuestChannel, new DecimalType(data));
+                updateState(windGuestChannel, new QuantityType<>(new BigDecimal(data), WIND_SPEED_UNIT_MS));
                 break;
             default:
         }
@@ -298,35 +321,78 @@ public class TelldusDevicesHandler extends BaseThingHandler implements DeviceSta
     private void updateSensorDataState(DataTypeValue dataType) {
         switch (dataType.getName()) {
             case HUMIDITY:
-                updateState(humidityChannel, new DecimalType(dataType.getValue()));
+                updateState(humidityChannel, new QuantityType<>(new BigDecimal(dataType.getValue()), HUMIDITY_UNIT));
                 break;
             case TEMPERATURE:
-                updateState(tempChannel, new DecimalType(dataType.getValue()));
+                updateState(tempChannel, new QuantityType<>(new BigDecimal(dataType.getValue()), SIUnits.CELSIUS));
                 break;
             case RAINRATE:
-                updateState(rainRateChannel, new DecimalType(dataType.getValue()));
+                updateState(rainRateChannel, new QuantityType<>(new BigDecimal(dataType.getValue()), RAIN_UNIT));
                 break;
             case RAINTOTAL:
-                updateState(raintTotChannel, new DecimalType(dataType.getValue()));
+                updateState(raintTotChannel, new QuantityType<>(new BigDecimal(dataType.getValue()), RAIN_UNIT));
                 break;
             case WINDAVERAGE:
-                updateState(windAverageChannel, new DecimalType(dataType.getValue()));
+                updateState(windAverageChannel,
+                        new QuantityType<>(new BigDecimal(dataType.getValue()), WIND_SPEED_UNIT_MS));
                 break;
             case WINDDIRECTION:
-                updateState(windDirectionChannel, new StringType(dataType.getValue()));
+                updateState(windDirectionChannel,
+                        new QuantityType<>(new BigDecimal(dataType.getValue()), WIND_DIRECTION_UNIT));
                 break;
             case WINDGUST:
-                updateState(windGuestChannel, new DecimalType(dataType.getValue()));
+                updateState(windGuestChannel,
+                        new QuantityType<>(new BigDecimal(dataType.getValue()), WIND_SPEED_UNIT_MS));
                 break;
             case WATT:
                 if (dataType.getUnit() != null && dataType.getUnit().equals("A")) {
-                    updateState(ampereChannel, new DecimalType(dataType.getValue()));
+                    updateState(ampereChannel, new QuantityType<>(new BigDecimal(dataType.getValue()), ELECTRIC_UNIT));
                 } else {
-                    updateState(wattChannel, new DecimalType(dataType.getValue()));
+                    updateState(wattChannel, new QuantityType<>(new BigDecimal(dataType.getValue()), POWER_UNIT));
                 }
                 break;
             case LUMINATION:
-                updateState(luxChannel, new DecimalType(dataType.getValue()));
+                updateState(luxChannel, new QuantityType<>(new DecimalType(dataType.getValue()), LUX_UNIT));
+                break;
+            default:
+        }
+    }
+
+    private void updateSensorDataState(LocalDataTypeValueDTO dataType) {
+        switch (dataType.getName()) {
+            case HUMIDITY:
+                updateState(humidityChannel, new QuantityType<>(new BigDecimal(dataType.getValue()), HUMIDITY_UNIT));
+                break;
+            case TEMPERATURE:
+                updateState(tempChannel, new QuantityType<>(new BigDecimal(dataType.getValue()), SIUnits.CELSIUS));
+                break;
+            case RAINRATE:
+                updateState(rainRateChannel, new QuantityType<>(new BigDecimal(dataType.getValue()), RAIN_UNIT));
+                break;
+            case RAINTOTAL:
+                updateState(raintTotChannel, new QuantityType<>(new BigDecimal(dataType.getValue()), RAIN_UNIT));
+                break;
+            case WINDAVERAGE:
+                updateState(windAverageChannel,
+                        new QuantityType<>(new BigDecimal(dataType.getValue()), WIND_SPEED_UNIT_MS));
+                break;
+            case WINDDIRECTION:
+                updateState(windDirectionChannel,
+                        new QuantityType<>(new BigDecimal(dataType.getValue()), WIND_DIRECTION_UNIT));
+                break;
+            case WINDGUST:
+                updateState(windGuestChannel,
+                        new QuantityType<>(new BigDecimal(dataType.getValue()), WIND_SPEED_UNIT_MS));
+                break;
+            case WATT:
+                if (dataType.getScale() == 5) {
+                    updateState(ampereChannel, new QuantityType<>(new BigDecimal(dataType.getValue()), ELECTRIC_UNIT));
+                } else if (dataType.getScale() == 2) {
+                    updateState(wattChannel, new QuantityType<>(new BigDecimal(dataType.getValue()), Units.WATT));
+                }
+                break;
+            case LUMINATION:
+                updateState(luxChannel, new QuantityType<>(new DecimalType(dataType.getValue()), LUX_UNIT));
                 break;
             default:
         }
@@ -366,5 +432,4 @@ public class TelldusDevicesHandler extends BaseThingHandler implements DeviceSta
     @Override
     public void onDeviceAdded(Bridge bridge, Device device) {
     }
-
 }

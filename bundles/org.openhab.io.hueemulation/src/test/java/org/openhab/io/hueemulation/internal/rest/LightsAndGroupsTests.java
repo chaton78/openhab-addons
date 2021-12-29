@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,7 +13,8 @@
 package org.openhab.io.hueemulation.internal.rest;
 
 import static org.hamcrest.CoreMatchers.*;
-import static org.junit.Assert.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 
@@ -23,18 +24,18 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Response;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.events.Event;
-import org.eclipse.smarthome.core.items.GroupItem;
-import org.eclipse.smarthome.core.items.ItemRegistry;
-import org.eclipse.smarthome.core.items.events.ItemCommandEvent;
-import org.eclipse.smarthome.core.library.items.ColorItem;
-import org.eclipse.smarthome.core.library.items.SwitchItem;
-import org.eclipse.smarthome.core.library.types.HSBType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.glassfish.jersey.server.ResourceConfig;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.openhab.core.events.Event;
+import org.openhab.core.items.GroupItem;
+import org.openhab.core.items.ItemRegistry;
+import org.openhab.core.items.events.ItemCommandEvent;
+import org.openhab.core.library.items.ColorItem;
+import org.openhab.core.library.items.SwitchItem;
+import org.openhab.core.library.types.HSBType;
+import org.openhab.core.library.types.OnOffType;
 import org.openhab.io.hueemulation.internal.ConfigStore;
 import org.openhab.io.hueemulation.internal.DeviceType;
 import org.openhab.io.hueemulation.internal.dto.HueGroupEntry;
@@ -56,7 +57,7 @@ public class LightsAndGroupsTests {
 
     LightsAndGroups subject = new LightsAndGroups();
 
-    @Before
+    @BeforeEach
     public void setUp() throws IOException {
         commonSetup = new CommonSetup(false);
         itemRegistry = new DummyItemRegistry();
@@ -81,8 +82,8 @@ public class LightsAndGroupsTests {
         commonSetup.start(new ResourceConfig().registerInstances(subject));
     }
 
-    @After
-    public void tearDown() {
+    @AfterEach
+    public void tearDown() throws Exception {
         commonSetup.dispose();
     }
 
@@ -94,7 +95,6 @@ public class LightsAndGroupsTests {
         HueLightEntry device = cs.ds.lights.get(cs.mapItemUIDtoHueID(item));
         assertThat(device.item, is(item));
         assertThat(device.state, is(instanceOf(HueStatePlug.class)));
-
     }
 
     @Test
@@ -124,6 +124,17 @@ public class LightsAndGroupsTests {
         HueGroupEntry device = cs.ds.groups.get(cs.mapItemUIDtoHueID(item));
         assertThat(device.groupItem, is(item));
         assertThat(device.action, is(instanceOf(HueStatePlug.class)));
+    }
+
+    @Test
+    public void addDeviceAsGroupSwitchableByTag() {
+        GroupItem item = new GroupItem("group1", new SwitchItem("switch1"));
+        item.addTag("Switchable");
+        item.addTag("Huelight");
+        itemRegistry.add(item);
+        HueLightEntry device = cs.ds.lights.get(cs.mapItemUIDtoHueID(item));
+        assertThat(device.item, is(item));
+        assertThat(device.state, is(instanceOf(HueStatePlug.class)));
     }
 
     @Test
@@ -186,7 +197,6 @@ public class LightsAndGroupsTests {
 
     @Test
     public void changeSwitchState() {
-
         assertThat(((HueStatePlug) cs.ds.lights.get("1").state).on, is(false));
 
         String body = "{'on':true}";
@@ -203,7 +213,6 @@ public class LightsAndGroupsTests {
 
     @Test
     public void changeGroupItemSwitchState() {
-
         assertThat(((HueStatePlug) cs.ds.groups.get("10").action).on, is(false));
 
         String body = "{'on':true}";
@@ -220,7 +229,6 @@ public class LightsAndGroupsTests {
 
     @Test
     public void changeOnValue() {
-
         assertThat(((HueStateColorBulb) cs.ds.lights.get("2").state).on, is(false));
 
         String body = "{'on':true}";
@@ -234,9 +242,8 @@ public class LightsAndGroupsTests {
 
     @Test
     public void changeOnAndBriValues() {
-
         assertThat(((HueStateColorBulb) cs.ds.lights.get("2").state).on, is(false));
-        assertThat(((HueStateColorBulb) cs.ds.lights.get("2").state).bri, is(0));
+        assertThat(((HueStateColorBulb) cs.ds.lights.get("2").state).bri, is(1));
 
         String body = "{'on':true,'bri':200}";
         Response response = commonSetup.client.target(commonSetup.basePath + "/testuser/lights/2/state").request()
@@ -292,13 +299,14 @@ public class LightsAndGroupsTests {
     @Test
     public void switchOnWithXY() {
         assertThat(((HueStateColorBulb) cs.ds.lights.get("2").state).on, is(false));
-        assertThat(((HueStateColorBulb) cs.ds.lights.get("2").state).bri, is(0));
+        assertThat(((HueStateColorBulb) cs.ds.lights.get("2").state).bri, is(1));
 
         String body = "{'on':true,'bri':200,'xy':[0.5119,0.4147]}";
         Response response = commonSetup.client.target(commonSetup.basePath + "/testuser/lights/2/state").request()
                 .put(Entity.json(body));
         assertEquals(200, response.getStatus());
         assertThat(response.readEntity(String.class), containsString("success"));
+        assertThat(response.readEntity(String.class), containsString("xy"));
         assertThat(((HueStateColorBulb) cs.ds.lights.get("2").state).on, is(true));
         assertThat(((HueStateColorBulb) cs.ds.lights.get("2").state).bri, is(200));
         assertThat(((HueStateColorBulb) cs.ds.lights.get("2").state).xy[0], is(0.5119));

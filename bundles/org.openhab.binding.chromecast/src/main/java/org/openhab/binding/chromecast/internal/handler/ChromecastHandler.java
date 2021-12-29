@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,63 +12,65 @@
  */
 package org.openhab.binding.chromecast.internal.handler;
 
-import static org.openhab.binding.chromecast.internal.ChromecastBindingConstants.*;
-
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.util.Collections;
+import java.security.GeneralSecurityException;
+import java.util.Collection;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.smarthome.core.audio.AudioFormat;
-import org.eclipse.smarthome.core.audio.AudioHTTPServer;
-import org.eclipse.smarthome.core.audio.AudioSink;
-import org.eclipse.smarthome.core.audio.AudioStream;
-import org.eclipse.smarthome.core.audio.UnsupportedAudioFormatException;
-import org.eclipse.smarthome.core.audio.UnsupportedAudioStreamException;
-import org.eclipse.smarthome.core.library.types.PercentType;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.State;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.chromecast.internal.ChromecastAudioSink;
 import org.openhab.binding.chromecast.internal.ChromecastCommander;
 import org.openhab.binding.chromecast.internal.ChromecastEventReceiver;
 import org.openhab.binding.chromecast.internal.ChromecastScheduler;
 import org.openhab.binding.chromecast.internal.ChromecastStatusUpdater;
+import org.openhab.binding.chromecast.internal.action.ChromecastActions;
+import org.openhab.binding.chromecast.internal.config.ChromecastConfig;
+import org.openhab.core.audio.AudioFormat;
+import org.openhab.core.audio.AudioHTTPServer;
+import org.openhab.core.audio.AudioSink;
+import org.openhab.core.audio.AudioStream;
+import org.openhab.core.audio.UnsupportedAudioFormatException;
+import org.openhab.core.audio.UnsupportedAudioStreamException;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.thing.binding.ThingHandlerService;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import su.litvak.chromecast.api.v2.ChromeCast;
 
 /**
- * The {@link ChromecastHandler} is responsible for handling commands, which are
- * sent to one of the channels. It furthermore implements {@link AudioSink} support.
+ * The {@link ChromecastHandler} is responsible for handling commands, which are sent to one of the channels. It
+ * furthermore implements {@link AudioSink} support.
  *
  * @author Markus Rathgeb, Kai Kreuzer - Initial contribution
  * @author Daniel Walters - Online status fix, handle playuri channel and refactor play media code
  * @author Jason Holmes - Media Status. Refactor the monolith into separate classes.
+ * @author Scott Hanson - Added Actions.
  */
+@NonNullByDefault
 public class ChromecastHandler extends BaseThingHandler implements AudioSink {
+    private final Logger logger = LoggerFactory.getLogger(ChromecastHandler.class);
 
-    private static final Set<AudioFormat> SUPPORTED_FORMATS = Collections
-            .unmodifiableSet(Stream.of(AudioFormat.MP3, AudioFormat.WAV).collect(Collectors.toSet()));
-    private static final Set<Class<? extends AudioStream>> SUPPORTED_STREAMS = Collections.singleton(AudioStream.class);
+    private static final Set<AudioFormat> SUPPORTED_FORMATS = Set.of(AudioFormat.MP3, AudioFormat.WAV);
+    private static final Set<Class<? extends AudioStream>> SUPPORTED_STREAMS = Set.of(AudioStream.class);
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
     private final AudioHTTPServer audioHTTPServer;
-    private final String callbackUrl;
+    private final @Nullable String callbackUrl;
 
     /**
-     * The actual implementation. A new one is created each time #initalize is called.
+     * The actual implementation. A new one is created each time #initialize is called.
      */
-    private Coordinator coordinator;
+    private @Nullable Coordinator coordinator;
 
     /**
      * Constructor.
@@ -77,7 +79,7 @@ public class ChromecastHandler extends BaseThingHandler implements AudioSink {
      * @param audioHTTPServer server for hosting audio streams
      * @param callbackUrl url to be used to tell the Chromecast which host to call for audio urls
      */
-    public ChromecastHandler(final Thing thing, AudioHTTPServer audioHTTPServer, String callbackUrl) {
+    public ChromecastHandler(final Thing thing, AudioHTTPServer audioHTTPServer, @Nullable String callbackUrl) {
         super(thing);
         this.audioHTTPServer = audioHTTPServer;
         this.callbackUrl = callbackUrl;
@@ -85,68 +87,55 @@ public class ChromecastHandler extends BaseThingHandler implements AudioSink {
 
     @Override
     public void initialize() {
-        final Object ipAddress = getConfig().get(HOST);
-        if (!(ipAddress instanceof String)) {
+        ChromecastConfig config = getConfigAs(ChromecastConfig.class);
+
+        final String ipAddress = config.ipAddress;
+        if (ipAddress == null || ipAddress.isBlank()) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.CONFIGURATION_ERROR,
-                    "Cannot connect to Chromecast. IP address is invalid.");
+                    "Cannot connect to Chromecast. IP address is not valid or missing.");
             return;
         }
 
-        final String host = (String) ipAddress;
-        if (StringUtils.isBlank(host)) {
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.CONFIGURATION_ERROR,
-                    "Cannot connect to Chromecast. IP address is not set.");
-            return;
+        updateStatus(ThingStatus.UNKNOWN);
+
+        Coordinator localCoordinator = coordinator;
+        if (localCoordinator != null && (!localCoordinator.chromeCast.getAddress().equals(ipAddress)
+                || (localCoordinator.chromeCast.getPort() != config.port))) {
+            localCoordinator.destroy();
+            localCoordinator = coordinator = null;
         }
 
-        final Object portNumber = getConfig().get(PORT);
-        logger.debug("portNumber Type is {}", portNumber.getClass().getTypeName());
-        final int port;
-        if (portNumber instanceof BigDecimal) {
-            port = ((BigDecimal) portNumber).intValue();
-        } else if (portNumber instanceof Integer) {
-            port = (Integer) portNumber;
-        } else {
-            port = 8009;
-        }
+        if (localCoordinator == null) {
+            ChromeCast chromecast = new ChromeCast(ipAddress, config.port);
+            localCoordinator = new Coordinator(this, thing, chromecast, config.refreshRate, audioHTTPServer,
+                    callbackUrl);
+            coordinator = localCoordinator;
 
-        final Integer refreshRate;
-        final Object rawRefreshRate = getConfig().get(REFRESH_RATE_SECONDS);
-        if (rawRefreshRate instanceof BigDecimal) {
-            refreshRate = ((BigDecimal) rawRefreshRate).intValue();
-        } else if (rawRefreshRate instanceof Integer) {
-            refreshRate = (Integer) rawRefreshRate;
-        } else {
-            refreshRate = 10;
-        }
-
-        if (coordinator != null
-                && (!coordinator.chromeCast.getAddress().equals(host) || (coordinator.chromeCast.getPort() != port))) {
-            coordinator.destroy();
-            coordinator = null;
-        }
-
-        if (coordinator == null) {
-            ChromeCast chromecast = new ChromeCast(host, port);
-            coordinator = new Coordinator(this, thing, chromecast, refreshRate, audioHTTPServer, callbackUrl);
-            coordinator.initialize();
+            scheduler.submit(() -> {
+                Coordinator c = coordinator;
+                if (c != null) {
+                    c.initialize();
+                }
+            });
         }
     }
 
     @Override
     public void dispose() {
-        if (coordinator != null) {
-            coordinator.destroy();
+        Coordinator localCoordinator = coordinator;
+        if (localCoordinator != null) {
+            localCoordinator.destroy();
             coordinator = null;
         }
     }
 
     @Override
     public void handleCommand(final ChannelUID channelUID, final Command command) {
-        if (coordinator != null) {
-            coordinator.commander.handleCommand(channelUID, command);
+        Coordinator localCoordinator = coordinator;
+        if (localCoordinator != null) {
+            localCoordinator.commander.handleCommand(channelUID, command);
         } else {
-            logger.info("Cannot handle command. No coordinator was initialized");
+            logger.debug("Cannot handle command. No coordinator has been initialized");
         }
     }
 
@@ -161,7 +150,7 @@ public class ChromecastHandler extends BaseThingHandler implements AudioSink {
     }
 
     @Override // Just exposing this for ChromecastStatusUpdater.
-    public void updateStatus(ThingStatus status, ThingStatusDetail statusDetail, String description) {
+    public void updateStatus(ThingStatus status, ThingStatusDetail statusDetail, @Nullable String description) {
         super.updateStatus(status, statusDetail, description);
     }
 
@@ -181,7 +170,7 @@ public class ChromecastHandler extends BaseThingHandler implements AudioSink {
     }
 
     @Override
-    public String getLabel(Locale locale) {
+    public @Nullable String getLabel(@Nullable Locale locale) {
         return thing.getLabel();
     }
 
@@ -196,37 +185,54 @@ public class ChromecastHandler extends BaseThingHandler implements AudioSink {
     }
 
     @Override
-    public void process(AudioStream audioStream)
+    public void process(@Nullable AudioStream audioStream)
             throws UnsupportedAudioFormatException, UnsupportedAudioStreamException {
-        if (coordinator != null) {
-            coordinator.audioSink.process(audioStream);
+        Coordinator localCoordinator = coordinator;
+        if (localCoordinator != null) {
+            localCoordinator.audioSink.process(audioStream);
         } else {
-            logger.info("Cannot process audioStream. No coordinator has been initialized.");
+            logger.debug("Cannot process audioStream. No coordinator has been initialized.");
         }
     }
 
     @Override
     public PercentType getVolume() throws IOException {
-        if (coordinator != null) {
-            return coordinator.statusUpdater.getVolume();
+        Coordinator localCoordinator = coordinator;
+        if (localCoordinator != null) {
+            return localCoordinator.statusUpdater.getVolume();
         } else {
-            logger.info("Cannot get volume. No coordinator has been initialized.");
-            return PercentType.ZERO;
+            throw new IOException("Cannot get volume. No coordinator has been initialized.");
         }
     }
 
     @Override
     public void setVolume(PercentType percentType) throws IOException {
-        if (coordinator != null) {
-            coordinator.commander.handleVolume(percentType);
+        Coordinator localCoordinator = coordinator;
+        if (localCoordinator != null) {
+            localCoordinator.commander.handleVolume(percentType);
         } else {
-            logger.info("Cannot set volume. No coordinator has been initialized.");
+            throw new IOException("Cannot set volume. No coordinator has been initialized.");
         }
     }
 
+    @Override
+    public Collection<Class<? extends ThingHandlerService>> getServices() {
+        return List.of(ChromecastActions.class);
+    }
+
+    public boolean playURL(String url, @Nullable String mediaType) {
+        Coordinator localCoordinator = coordinator;
+        if (localCoordinator != null) {
+            localCoordinator.commander.playMedia(null, url, mediaType);
+            return true;
+        }
+        return false;
+    }
+
     private static class Coordinator {
-        private static final int CONNECT_DELAY = 10;
         private final Logger logger = LoggerFactory.getLogger(Coordinator.class);
+
+        private static final long CONNECT_DELAY = 10;
 
         private final ChromeCast chromeCast;
         private final ChromecastAudioSink audioSink;
@@ -235,19 +241,25 @@ public class ChromecastHandler extends BaseThingHandler implements AudioSink {
         private final ChromecastStatusUpdater statusUpdater;
         private final ChromecastScheduler scheduler;
 
-        private final Runnable refreshRunnable = new Runnable() {
-            @Override
-            public void run() {
-                commander.handleRefresh();
-            }
-        };
+        /**
+         * used internally to represent the connection state
+         */
+        private enum ConnectionState {
+            UNKNOWN,
+            CONNECTING,
+            CONNECTED,
+            DISCONNECTING,
+            DISCONNECTED
+        }
 
-        private Coordinator(ChromecastHandler handler, Thing thing, ChromeCast chromeCast, int refreshRate,
-                AudioHTTPServer audioHttpServer, String callbackURL) {
+        private ConnectionState connectionState = ConnectionState.UNKNOWN;
+
+        private Coordinator(ChromecastHandler handler, Thing thing, ChromeCast chromeCast, long refreshRate,
+                AudioHTTPServer audioHttpServer, @Nullable String callbackURL) {
             this.chromeCast = chromeCast;
 
             this.scheduler = new ChromecastScheduler(handler.scheduler, CONNECT_DELAY, this::connect, refreshRate,
-                    refreshRunnable);
+                    this::refresh);
             this.statusUpdater = new ChromecastStatusUpdater(thing, handler);
 
             this.commander = new ChromecastCommander(chromeCast, scheduler, statusUpdater);
@@ -256,34 +268,60 @@ public class ChromecastHandler extends BaseThingHandler implements AudioSink {
         }
 
         void initialize() {
+            if (connectionState == ConnectionState.CONNECTED) {
+                logger.debug("Already connected");
+                return;
+            } else if (connectionState == ConnectionState.CONNECTING) {
+                logger.debug("Already connecting");
+                return;
+            } else if (connectionState == ConnectionState.DISCONNECTING) {
+                logger.warn("Trying to re-connect while still disconnecting");
+                return;
+            }
+            connectionState = ConnectionState.CONNECTING;
+
             chromeCast.registerListener(eventReceiver);
             chromeCast.registerConnectionListener(eventReceiver);
 
-            this.connect();
+            connect();
         }
 
         void destroy() {
+            connectionState = ConnectionState.DISCONNECTING;
+
             chromeCast.unregisterConnectionListener(eventReceiver);
             chromeCast.unregisterListener(eventReceiver);
 
+            scheduler.destroy();
+
             try {
-                scheduler.destroy();
                 chromeCast.disconnect();
-            } catch (final IOException ex) {
-                logger.debug("Disconnect failed: {}", ex.getMessage());
+
+                connectionState = ConnectionState.DISCONNECTED;
+            } catch (final IOException e) {
+                logger.debug("Disconnect failed: {}", e.getMessage());
+                connectionState = ConnectionState.UNKNOWN;
             }
         }
 
         private void connect() {
             try {
                 chromeCast.connect();
+
                 statusUpdater.updateMediaStatus(null);
                 statusUpdater.updateStatus(ThingStatus.ONLINE);
-            } catch (final Exception e) {
+
+                connectionState = ConnectionState.CONNECTED;
+            } catch (final IOException | GeneralSecurityException e) {
+                logger.debug("Connect failed, trying to reconnect: {}", e.getMessage());
                 statusUpdater.updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.COMMUNICATION_ERROR,
                         e.getMessage());
                 scheduler.scheduleConnect();
             }
+        }
+
+        private void refresh() {
+            commander.handleRefresh();
         }
     }
 }

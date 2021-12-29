@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
 public class Parser {
     private static final Logger LOGGER = LoggerFactory.getLogger(Parser.class);
 
-    private static final Pattern PATTERN = Pattern.compile("^\\s+([a-z\\s._]+)[:=]\\s*<?\"?([^>\"]+)\"?>?$");
+    private static final Pattern PATTERN = Pattern.compile("^\\s*([a-z\\s._]+)[:=]\\s*<?\\\"?([^>\\\"]+)\\\"?>?$");
     private static final Pattern VOLUME_PATTERN = Pattern
             .compile("^([\\w\\-]+):( *[\\d]+ \\/)? *([\\d]+)% *\\/? *([\\d\\-., dB]+)?$");
     private static final Pattern FALL_BACK_PATTERN = Pattern
@@ -135,15 +135,18 @@ public class Parser {
                     }
                 }
                 if (properties.containsKey("muted")) {
-                    sink.setMuted(properties.get("muted").equalsIgnoreCase("yes"));
+                    sink.setMuted("yes".equalsIgnoreCase(properties.get("muted")));
                 }
                 if (properties.containsKey("volume")) {
                     sink.setVolume(Integer.valueOf(parseVolume(properties.get("volume"))));
                 }
                 if (properties.containsKey("combine.slaves")) {
                     // this is a combined sink, the combined sink object should be
-                    for (String sinkName : properties.get("combine.slaves").replace("\"", "").split(",")) {
-                        sink.addCombinedSinkName(sinkName);
+                    String sinkNames = properties.get("combine.slaves");
+                    if (sinkNames != null) {
+                        for (String sinkName : sinkNames.replace("\"", "").split(",")) {
+                            sink.addCombinedSinkName(sinkName);
+                        }
                     }
                     combinedSinks.add(sink);
                 }
@@ -203,7 +206,7 @@ public class Parser {
                     }
                 }
                 if (properties.containsKey("muted")) {
-                    item.setMuted(properties.get("muted").equalsIgnoreCase("yes"));
+                    item.setMuted("yes".equalsIgnoreCase(properties.get("muted")));
                 }
                 if (properties.containsKey("volume")) {
                     item.setVolume(Integer.valueOf(parseVolume(properties.get("volume"))));
@@ -262,13 +265,14 @@ public class Parser {
                     }
                 }
                 if (properties.containsKey("muted")) {
-                    source.setMuted(properties.get("muted").equalsIgnoreCase("yes"));
+                    source.setMuted("yes".equalsIgnoreCase(properties.get("muted")));
                 }
                 if (properties.containsKey("volume")) {
-                    source.setVolume(Integer.valueOf(parseVolume(properties.get("volume"))));
+                    source.setVolume(parseVolume(properties.get("volume")));
                 }
-                if (properties.containsKey("monitor_of")) {
-                    source.setMonitorOf(client.getSink(Integer.valueOf(properties.get("monitor_of"))));
+                String monitorOf = properties.get("monitor_of");
+                if (monitorOf != null) {
+                    source.setMonitorOf(client.getSink(Integer.valueOf(monitorOf)));
                 }
                 sources.add(source);
             }
@@ -321,7 +325,7 @@ public class Parser {
                     }
                 }
                 if (properties.containsKey("muted")) {
-                    item.setMuted(properties.get("muted").equalsIgnoreCase("yes"));
+                    item.setMuted("yes".equalsIgnoreCase(properties.get("muted")));
                 }
                 if (properties.containsKey("volume")) {
                     item.setVolume(Integer.valueOf(parseVolume(properties.get("volume"))));

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -21,6 +21,7 @@ package org.openhab.binding.nibeheatpump.internal.models;
 public enum PumpModel {
     F1X45("F1X45"),
     F1X55("F1X55"),
+    SMO40("SMO40"),
     F750("F750"),
     F470("F470");
 
@@ -36,7 +37,6 @@ public enum PumpModel {
     }
 
     public static PumpModel getPumpModel(String pumpModel) throws IllegalArgumentException {
-
         try {
             return PumpModel.valueOf(pumpModel.toUpperCase());
         } catch (Exception e) {

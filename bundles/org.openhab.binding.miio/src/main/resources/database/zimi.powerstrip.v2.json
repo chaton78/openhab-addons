@@ -11,12 +11,15 @@
 				"channel": "power",
 				"type": "Switch",
 				"refresh": true,
-				"ChannelGroup": "",
 				"actions": [
 					{
 						"command": "set_power",
 						"parameterType": "ONOFF"
 					}
+				],
+				"category": "switch",
+				"tags": [
+					"Switch"
 				]
 			},
 			{
@@ -24,21 +27,22 @@
 				"friendlyName": "Power Consumption",
 				"channel": "powerUsage",
 				"type": "Number",
+				"stateDescription": {
+					"pattern": "%.0fW"
+				},
 				"refresh": true,
-				"ChannelGroup": "",
 				"actions": [
 					{
-						
+						"parameterType": "EMPTY"
 					}
 				]
 			},
 			{
 				"property": "wifi_led",
-				"friendlyName": "wifi_led",
+				"friendlyName": "wifi LED",
 				"channel": "led",
 				"type": "Switch",
 				"refresh": true,
-				"ChannelGroup": "",
 				"actions": [
 					{
 						"command": "set_wifi_led",
@@ -52,11 +56,10 @@
 				"channel": "power_price",
 				"type": "Number",
 				"refresh": true,
-				"ChannelGroup": "",
 				"actions": [
 					{
 						"command": "set_power_price",
-						"parameterType": "Number"
+						"parameterType": "NUMBER"
 					}
 				]
 			},
@@ -65,17 +68,52 @@
 				"friendlyName": "Current",
 				"channel": "current",
 				"type": "Number",
+				"stateDescription": {
+					"pattern": "%.2fA"
+				},
 				"refresh": true,
-				"ChannelGroup": "",
 				"actions": []
 			},
 			{
 				"property": "temperature",
 				"friendlyName": "Temperature",
 				"channel": "temperature",
+				"type": "Number:Temperature",
+				"unit": "CELSIUS",
+				"stateDescription": {
+					"pattern": "%.1f %unit%",
+					"readOnly": true
+				},
+				"refresh": true,
+				"actions": [],
+				"category": "temperature",
+				"tags": [
+					"Measurement",
+					"Temperature"
+				]
+			},
+			{
+				"property": "lp_autooff",
+				"friendlyName": "Low Power Auto Off",
+				"channel": "lp_autooff",
 				"type": "Number",
 				"refresh": true,
-				"ChannelGroup": "",
+				"actions": []
+			},
+			{
+				"property": "lp_autooff_delay",
+				"friendlyName": "Low Power Limit Time",
+				"channel": "lp_autooff_delay",
+				"type": "Number",
+				"refresh": true,
+				"actions": []
+			},
+			{
+				"property": "lp_threshold",
+				"friendlyName": "Low Power Threshold",
+				"channel": "lp_threshold",
+				"type": "Number",
+				"refresh": true,
 				"actions": []
 			}
 		]

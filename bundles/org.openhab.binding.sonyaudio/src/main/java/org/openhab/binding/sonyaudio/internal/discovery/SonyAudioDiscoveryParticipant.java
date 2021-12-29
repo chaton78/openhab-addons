@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -22,14 +22,13 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.smarthome.config.discovery.DiscoveryResult;
-import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
-import org.eclipse.smarthome.config.discovery.upnp.UpnpDiscoveryParticipant;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.ThingUID;
 import org.jupnp.model.meta.RemoteDevice;
 import org.openhab.binding.sonyaudio.internal.SonyAudioBindingConstants;
+import org.openhab.core.config.discovery.DiscoveryResult;
+import org.openhab.core.config.discovery.DiscoveryResultBuilder;
+import org.openhab.core.config.discovery.upnp.UpnpDiscoveryParticipant;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +38,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author David Åberg - Initial contribution
  */
-@Component(immediate = true)
+@Component
 public class SonyAudioDiscoveryParticipant implements UpnpDiscoveryParticipant {
 
     private final Logger logger = LoggerFactory.getLogger(SonyAudioDiscoveryParticipant.class);
@@ -61,15 +60,15 @@ public class SonyAudioDiscoveryParticipant implements UpnpDiscoveryParticipant {
 
         ThingUID thingUid = getThingUID(device);
         if (thingUid != null) {
-            String label = StringUtils.isEmpty(device.getDetails().getFriendlyName()) ? device.getDisplayString()
-                    : device.getDetails().getFriendlyName();
-            String host = device.getIdentity().getDescriptorURL().getHost();
-            int port = device.getIdentity().getDescriptorURL().getPort();
-            String path = device.getIdentity().getDescriptorURL().getPath();
+            String friendlyName = device.getDetails().getFriendlyName();
+            String label = friendlyName == null || friendlyName.isEmpty() ? device.getDisplayString() : friendlyName;
+            URL descriptorURL = device.getIdentity().getDescriptorURL();
+            String host = descriptorURL.getHost();
+            int port = descriptorURL.getPort();
+            String path = descriptorURL.getPath();
             try {
                 Map<String, Object> properties = getDescription(host, port, path);
-                properties.put(SonyAudioBindingConstants.HOST_PARAMETER,
-                        device.getIdentity().getDescriptorURL().getHost());
+                properties.put(SonyAudioBindingConstants.HOST_PARAMETER, descriptorURL.getHost());
                 result = DiscoveryResultBuilder.create(thingUid).withLabel(label).withProperties(properties).build();
             } catch (IOException e) {
                 return null;
@@ -82,18 +81,20 @@ public class SonyAudioDiscoveryParticipant implements UpnpDiscoveryParticipant {
     public ThingUID getThingUID(RemoteDevice device) {
         ThingUID result = null;
 
-        if (!StringUtils.containsIgnoreCase(device.getDetails().getManufacturerDetails().getManufacturer(),
-                SonyAudioBindingConstants.MANUFACTURER)) {
+        String manufacturer = device.getDetails().getManufacturerDetails().getManufacturer();
+        if (manufacturer == null
+                || !manufacturer.toLowerCase().contains(SonyAudioBindingConstants.MANUFACTURER.toLowerCase())) {
             return result;
         }
 
         logger.debug("Manufacturer matched: search: {}, device value: {}.", SonyAudioBindingConstants.MANUFACTURER,
-                device.getDetails().getManufacturerDetails().getManufacturer());
-        if (!StringUtils.containsIgnoreCase(device.getType().getType(), SonyAudioBindingConstants.UPNP_DEVICE_TYPE)) {
+                manufacturer);
+        String type = device.getType().getType();
+        if (type == null || !type.toLowerCase().contains(SonyAudioBindingConstants.UPNP_DEVICE_TYPE.toLowerCase())) {
             return result;
         }
         logger.debug("Device type matched: search: {}, device value: {}.", SonyAudioBindingConstants.UPNP_DEVICE_TYPE,
-                device.getType().getType());
+                type);
         logger.debug("Device services: {}", device.getServices().toString());
         String deviceModel = device.getDetails().getModelDetails() != null
                 ? device.getDetails().getModelDetails().getModelName()

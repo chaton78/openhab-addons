@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,12 +17,12 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.library.types.PercentType;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.State;
 import org.openhab.binding.nikobus.internal.protocol.SwitchModuleGroup;
 import org.openhab.binding.nikobus.internal.utils.Utils;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.State;
 
 /**
  * The {@link NikobusDimmerModuleHandler} is responsible for communication between Nikobus dim-controller and binding.
@@ -53,16 +53,16 @@ public class NikobusDimmerModuleHandler extends NikobusSwitchModuleHandler {
     }
 
     @Override
-    protected int valueFromCommand(Command command) {
+    protected int valueFromCommand(String channelId, Command command) {
         if (command instanceof PercentType) {
             return Math.round(((PercentType) command).floatValue() / 100f * 255f);
         }
 
-        return super.valueFromCommand(command);
+        return super.valueFromCommand(channelId, command);
     }
 
     @Override
-    protected State stateFromValue(int value) {
+    protected State stateFromValue(String channelId, int value) {
         int result = Math.round(value * 100f / 255f);
         return new PercentType(result);
     }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -10,7 +10,6 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
-
 /* This file is based on:
  *
  * TextInputStatusInfo
@@ -82,16 +81,14 @@ public class TextInputStatusInfo {
     public TextInputType getTextInputType() {
         TextInputType textInputType = TextInputType.DEFAULT;
 
-        if (contentType != null) {
-            if (contentType.equals("number")) {
-                textInputType = TextInputType.NUMBER;
-            } else if (contentType.equals("phonenumber")) {
-                textInputType = TextInputType.PHONE_NUMBER;
-            } else if (contentType.equals("url")) {
-                textInputType = TextInputType.URL;
-            } else if (contentType.equals("email")) {
-                textInputType = TextInputType.EMAIL;
-            }
+        if ("number".equals(contentType)) {
+            textInputType = TextInputType.NUMBER;
+        } else if ("phonenumber".equals(contentType)) {
+            textInputType = TextInputType.PHONE_NUMBER;
+        } else if ("url".equals(contentType)) {
+            textInputType = TextInputType.URL;
+        } else if ("email".equals(contentType)) {
+            textInputType = TextInputType.EMAIL;
         }
 
         return textInputType;

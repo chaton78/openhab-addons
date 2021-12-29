@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,10 +13,10 @@
 package org.openhab.binding.nikobus.internal.handler;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.State;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.State;
 
 /**
  * The {@link NikobusSwitchModuleHandler} is responsible for communication between Nikobus switch module and binding.
@@ -30,7 +30,7 @@ public class NikobusSwitchModuleHandler extends NikobusModuleHandler {
     }
 
     @Override
-    protected int valueFromCommand(Command command) {
+    protected int valueFromCommand(String channelId, Command command) {
         if (command == OnOffType.ON) {
             return 0xff;
         }
@@ -43,7 +43,7 @@ public class NikobusSwitchModuleHandler extends NikobusModuleHandler {
     }
 
     @Override
-    protected State stateFromValue(int value) {
+    protected State stateFromValue(String channelId, int value) {
         return value != 0 ? OnOffType.ON : OnOffType.OFF;
     }
 }

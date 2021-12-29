@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,25 +12,16 @@
  */
 package org.openhab.binding.unifi.internal.handler;
 
-import static org.eclipse.smarthome.core.thing.ThingStatus.*;
-import static org.eclipse.smarthome.core.thing.ThingStatusDetail.CONFIGURATION_ERROR;
 import static org.openhab.binding.unifi.internal.UniFiBindingConstants.*;
+import static org.openhab.core.thing.ThingStatus.*;
+import static org.openhab.core.thing.ThingStatusDetail.CONFIGURATION_ERROR;
 
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Calendar;
 
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.library.types.DateTimeType;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.unifi.internal.UniFiBindingConstants;
 import org.openhab.binding.unifi.internal.UniFiClientThingConfig;
 import org.openhab.binding.unifi.internal.api.UniFiException;
@@ -40,6 +31,16 @@ import org.openhab.binding.unifi.internal.api.model.UniFiDevice;
 import org.openhab.binding.unifi.internal.api.model.UniFiSite;
 import org.openhab.binding.unifi.internal.api.model.UniFiWiredClient;
 import org.openhab.binding.unifi.internal.api.model.UniFiWirelessClient;
+import org.openhab.core.library.types.DateTimeType;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.State;
+import org.openhab.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,21 +69,19 @@ public class UniFiClientThingHandler extends UniFiBaseThingHandler<UniFiClient, 
     @Override
     protected synchronized void initialize(UniFiClientThingConfig config) {
         // mgb: called when the config changes
-        if (thing.getStatus() == INITIALIZING) {
-            logger.debug("Initializing the UniFi Client Handler with config = {}", config);
-            if (!config.isValid()) {
-                updateStatus(OFFLINE, CONFIGURATION_ERROR,
-                        "You must define a MAC address, IP address, hostname or alias for this thing.");
-                return;
-            }
-            this.config = config;
-            updateStatus(ONLINE);
+        logger.debug("Initializing the UniFi Client Handler with config = {}", config);
+        if (!config.isValid()) {
+            updateStatus(OFFLINE, CONFIGURATION_ERROR,
+                    "You must define a MAC address, IP address, hostname or alias for this thing.");
+            return;
         }
+        this.config = config;
+        updateStatus(ONLINE);
     }
 
     private static boolean belongsToSite(UniFiClient client, String siteName) {
         boolean result = true; // mgb: assume true = proof by contradiction
-        if (StringUtils.isNotEmpty(siteName)) {
+        if (!siteName.isEmpty()) {
             UniFiSite site = client.getSite();
             // mgb: if the 'site' can't be found or the name doesn't match...
             if (site == null || !site.matchesName(siteName)) {
@@ -164,21 +163,21 @@ public class UniFiClientThingHandler extends UniFiBaseThingHandler<UniFiClient, 
 
             // :site
             case CHANNEL_SITE:
-                if (clientHome && site != null && StringUtils.isNotBlank(site.getDescription())) {
+                if (clientHome && site != null && site.getDescription() != null && !site.getDescription().isBlank()) {
                     state = StringType.valueOf(site.getDescription());
                 }
                 break;
 
             // :macAddress
             case CHANNEL_MAC_ADDRESS:
-                if (clientHome && StringUtils.isNotBlank(client.getMac())) {
+                if (clientHome && client.getMac() != null && !client.getMac().isBlank()) {
                     state = StringType.valueOf(client.getMac());
                 }
                 break;
 
             // :ipAddress
             case CHANNEL_IP_ADDRESS:
-                if (clientHome && StringUtils.isNotBlank(client.getIp())) {
+                if (clientHome && client.getIp() != null && !client.getIp().isBlank()) {
                     state = StringType.valueOf(client.getIp());
                 }
                 break;
@@ -194,7 +193,8 @@ public class UniFiClientThingHandler extends UniFiBaseThingHandler<UniFiClient, 
             case CHANNEL_LAST_SEEN:
                 // mgb: we don't check clientOnline as lastSeen is also included in the Insights data
                 if (client.getLastSeen() != null) {
-                    state = new DateTimeType(client.getLastSeen());
+                    state = new DateTimeType(
+                            ZonedDateTime.ofInstant(client.getLastSeen().toInstant(), ZoneId.systemDefault()));
                 }
                 break;
 
@@ -232,14 +232,14 @@ public class UniFiClientThingHandler extends UniFiBaseThingHandler<UniFiClient, 
             // :ap
             case CHANNEL_AP:
                 UniFiDevice device = client.getDevice();
-                if (clientHome && device != null && StringUtils.isNotBlank(device.getName())) {
+                if (clientHome && device != null && device.getName() != null && !device.getName().isBlank()) {
                     state = StringType.valueOf(device.getName());
                 }
                 break;
 
             // :essid
             case CHANNEL_ESSID:
-                if (clientHome && StringUtils.isNotBlank(client.getEssid())) {
+                if (clientHome && client.getEssid() != null && !client.getEssid().isBlank()) {
                     state = StringType.valueOf(client.getEssid());
                 }
                 break;
@@ -296,5 +296,4 @@ public class UniFiClientThingHandler extends UniFiBaseThingHandler<UniFiClient, 
                     command, channelUID);
         }
     }
-
 }

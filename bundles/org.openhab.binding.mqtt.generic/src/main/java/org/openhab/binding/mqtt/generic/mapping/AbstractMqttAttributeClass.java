@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.io.transport.mqtt.MqttBrokerConnection;
+import org.openhab.core.io.transport.mqtt.MqttBrokerConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -172,7 +172,7 @@ public abstract class AbstractMqttAttributeClass implements SubscribeFieldToMQTT
             int timeout) {
         // We first need to unsubscribe old subscriptions if any
         final CompletableFuture<@Nullable Void> startFuture;
-        if (subscriptions.size() > 0) {
+        if (!subscriptions.isEmpty()) {
             startFuture = unsubscribe();
         } else {
             startFuture = CompletableFuture.completedFuture(null);
@@ -316,5 +316,4 @@ public abstract class AbstractMqttAttributeClass implements SubscribeFieldToMQTT
      * Implement this method in your field class and return "this".
      */
     public abstract Object getFieldsOf();
-
 }

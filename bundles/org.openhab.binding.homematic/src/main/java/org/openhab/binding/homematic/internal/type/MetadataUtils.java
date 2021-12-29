@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -29,11 +30,10 @@ import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.WordUtils;
-import org.eclipse.smarthome.config.core.ConfigDescriptionParameter.Type;
+import org.openhab.binding.homematic.internal.misc.MiscUtils;
 import org.openhab.binding.homematic.internal.model.HmDatapoint;
 import org.openhab.binding.homematic.internal.model.HmDevice;
+import org.openhab.core.config.core.ConfigDescriptionParameter.Type;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.FrameworkUtil;
 import org.slf4j.Logger;
@@ -49,8 +49,8 @@ import org.slf4j.LoggerFactory;
 public class MetadataUtils {
     private static final Logger logger = LoggerFactory.getLogger(MetadataUtils.class);
     private static ResourceBundle descriptionsBundle;
-    private static Map<String, String> descriptions = new HashMap<String, String>();
-    private static Map<String, Set<String>> standardDatapoints = new HashMap<String, Set<String>>();
+    private static Map<String, String> descriptions = new HashMap<>();
+    private static Map<String, Set<String>> standardDatapoints = new HashMap<>();
 
     protected static void initialize() {
         // loads all Homematic device names
@@ -62,7 +62,7 @@ public class MetadataUtils {
     private static void loadBundle(String filename) {
         descriptionsBundle = ResourceBundle.getBundle(filename, Locale.getDefault());
         for (String key : descriptionsBundle.keySet()) {
-            descriptions.put(key, descriptionsBundle.getString(key));
+            descriptions.put(key.toUpperCase(), descriptionsBundle.getString(key));
         }
         ResourceBundle.clearCache();
         descriptionsBundle = null;
@@ -75,16 +75,22 @@ public class MetadataUtils {
         Bundle bundle = FrameworkUtil.getBundle(MetadataUtils.class);
         try (InputStream stream = bundle.getResource("homematic/standard-datapoints.properties").openStream();
                 BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
-
             String line;
             while ((line = reader.readLine()) != null) {
-                if (StringUtils.trimToNull(line) != null && !StringUtils.startsWith(line, "#")) {
-                    String channelType = StringUtils.trimToNull(StringUtils.substringBefore(line, "|"));
-                    String datapointName = StringUtils.trimToNull(StringUtils.substringAfter(line, "|"));
+                if (!line.trim().isEmpty() && !line.startsWith("#")) {
+                    String[] parts = line.split("\\|");
+                    String channelType = null;
+                    String datapointName = null;
+                    if (parts.length > 0) {
+                        channelType = parts[0].trim();
+                        if (parts.length > 1) {
+                            datapointName = parts[1].trim();
+                        }
+                    }
 
                     Set<String> channelDatapoints = standardDatapoints.get(channelType);
                     if (channelDatapoints == null) {
-                        channelDatapoints = new HashSet<String>();
+                        channelDatapoints = new HashSet<>();
                         standardDatapoints.put(channelType, channelDatapoints);
                     }
 
@@ -108,7 +114,7 @@ public class MetadataUtils {
         if (dp.getOptions() == null) {
             logger.warn("No options for ENUM datapoint {}", dp);
         } else {
-            options = new ArrayList<T>();
+            options = new ArrayList<>();
             for (int i = 0; i < dp.getOptions().length; i++) {
                 String description = null;
                 if (!dp.isVariable() && !dp.isScript()) {
@@ -143,8 +149,7 @@ public class MetadataUtils {
      */
     public static String getUnit(HmDatapoint dp) {
         if (dp.getUnit() != null) {
-            String unit = StringUtils.replace(dp.getUnit(), "100%", "%");
-            return StringUtils.replace(unit, "%", "%%");
+            return dp.getUnit().replace("100%", "%").replace("%", "%%");
         }
         return null;
     }
@@ -167,7 +172,10 @@ public class MetadataUtils {
      */
     public static String getStatePattern(HmDatapoint dp) {
         String unit = getUnit(dp);
-        if (unit != null && unit != "") {
+        if ("%%".equals(unit)) {
+            return "%d %%";
+        }
+        if (unit != null && !unit.isEmpty()) {
             String pattern = getPattern(dp);
             if (pattern != null) {
                 return String.format("%s %s", pattern, "%unit%");
@@ -180,7 +188,7 @@ public class MetadataUtils {
      * Returns the label string for the given Datapoint.
      */
     public static String getLabel(HmDatapoint dp) {
-        return WordUtils.capitalizeFully(StringUtils.replace(dp.getName(), "_", " "));
+        return MiscUtils.capitalize(dp.getName().replace("_", " "));
     }
 
     /**
@@ -196,18 +204,18 @@ public class MetadataUtils {
     public static String getDescription(String... keys) {
         StringBuilder sb = new StringBuilder();
         for (int startIdx = 0; startIdx < keys.length; startIdx++) {
-            String key = StringUtils.join(keys, "|", startIdx, keys.length);
+            String key = String.join("|", Arrays.copyOfRange(keys, startIdx, keys.length));
             if (key.endsWith("|")) {
                 key = key.substring(0, key.length() - 1);
             }
-            String description = descriptions.get(key);
+            String description = descriptions.get(key.toUpperCase());
             if (description != null) {
                 return description;
             }
             sb.append(key).append(", ");
         }
         if (logger.isTraceEnabled()) {
-            logger.trace("Description not found for: {}", StringUtils.substring(sb.toString(), 0, -2));
+            logger.trace("Description not found for: {}", sb.toString().substring(0, sb.length() - 2));
         }
         return null;
     }
@@ -222,9 +230,8 @@ public class MetadataUtils {
 
         String deviceDescription = null;
         boolean isTeam = device.getType().endsWith("-Team");
-        String type = isTeam ? StringUtils.remove(device.getType(), "-Team") : device.getType();
+        String type = isTeam ? device.getType().replace("-Team", "") : device.getType();
         deviceDescription = getDescription(type);
-
         if (deviceDescription != null && isTeam) {
             deviceDescription += " Team";
         }
@@ -274,11 +281,15 @@ public class MetadataUtils {
      */
     public static String getItemType(HmDatapoint dp) {
         String dpName = dp.getName();
-        String channelType = StringUtils.defaultString(dp.getChannel().getType());
+        String channelType = dp.getChannel().getType();
+        if (channelType == null) {
+            channelType = "";
+        }
 
         if (dp.isBooleanType()) {
             if (((dpName.equals(DATAPOINT_NAME_STATE) || dpName.equals(VIRTUAL_DATAPOINT_NAME_STATE_CONTACT))
-                    && channelType.equals(CHANNEL_TYPE_SHUTTER_CONTACT))
+                    && (channelType.equals(CHANNEL_TYPE_SHUTTER_CONTACT)
+                            || channelType.contentEquals(CHANNEL_TYPE_TILT_SENSOR)))
                     || (dpName.equals(DATAPOINT_NAME_SENSOR) && channelType.equals(CHANNEL_TYPE_SENSOR))) {
                 return ITEM_TYPE_CONTACT;
             } else {
@@ -299,6 +310,7 @@ public class MetadataUtils {
                         return ITEM_TYPE_NUMBER + ":Temperature";
                     case "V":
                         return ITEM_TYPE_NUMBER + ":ElectricPotential";
+                    case "100%":
                     case "%":
                         return ITEM_TYPE_NUMBER + ":Dimensionless";
                     case "mHz":
@@ -320,14 +332,16 @@ public class MetadataUtils {
                         return ITEM_TYPE_NUMBER + ":Energy";
                     case "m3":
                         return ITEM_TYPE_NUMBER + ":Volume";
+                    case "":
+                        if (dpName.startsWith(DATAPOINT_NAME_OPERATING_VOLTAGE)) {
+                            return ITEM_TYPE_NUMBER + ":ElectricPotential";
+                        }
                     case "s":
                     case "min":
                     case "minutes":
                     case "day":
                     case "month":
                     case "year":
-                    case "100%":
-                    case "":
                     default:
                         return ITEM_TYPE_NUMBER;
                 }
@@ -345,8 +359,10 @@ public class MetadataUtils {
     public static boolean isRollerShutter(HmDatapoint dp) {
         String channelType = dp.getChannel().getType();
         return channelType.equals(CHANNEL_TYPE_BLIND) || channelType.equals(CHANNEL_TYPE_JALOUSIE)
+                || channelType.equals(CHANNEL_TYPE_BLIND_TRANSMITTER)
                 || channelType.equals(CHANNEL_TYPE_SHUTTER_TRANSMITTER)
-                || channelType.equals(CHANNEL_TYPE_SHUTTER_VIRTUAL_RECEIVER);
+                || channelType.equals(CHANNEL_TYPE_SHUTTER_VIRTUAL_RECEIVER)
+                || channelType.contentEquals(CHANNEL_TYPE_BLIND_VIRTUAL_RECEIVER);
     }
 
     /**
@@ -354,7 +370,10 @@ public class MetadataUtils {
      */
     public static String getCategory(HmDatapoint dp, String itemType) {
         String dpName = dp.getName();
-        String channelType = StringUtils.defaultString(dp.getChannel().getType());
+        String channelType = dp.getChannel().getType();
+        if (channelType == null) {
+            channelType = "";
+        }
 
         if (dpName.equals(DATAPOINT_NAME_BATTERY_TYPE) || dpName.equals(DATAPOINT_NAME_LOWBAT)
                 || dpName.equals(DATAPOINT_NAME_LOWBAT_IP)) {
@@ -386,12 +405,11 @@ public class MetadataUtils {
         } else if (itemType.equals(ITEM_TYPE_CONTACT)) {
             return CATEGORY_CONTACT;
         } else if (itemType.equals(ITEM_TYPE_DIMMER)) {
-            return CATEGORY_DIMMABLE_LIGHT;
+            return "";
         } else if (itemType.equals(ITEM_TYPE_SWITCH)) {
             return CATEGORY_SWITCH;
         } else {
             return null;
         }
     }
-
 }

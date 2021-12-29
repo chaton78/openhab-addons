@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.apache.commons.lang.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,7 +83,7 @@ public class BinRpcMessage implements RpcRequest<byte[]>, RpcResponse {
         if (length != 4) {
             throw new EOFException("Only " + length + " bytes received reading message length");
         }
-        int datasize = (new BigInteger(ArrayUtils.subarray(sig, 4, 8))).intValue();
+        int datasize = (new BigInteger(Arrays.copyOfRange(sig, 4, 8))).intValue();
         byte payload[] = new byte[datasize];
         int offset = 0;
         int currentLength;
@@ -93,11 +92,13 @@ public class BinRpcMessage implements RpcRequest<byte[]>, RpcResponse {
             offset += currentLength;
         }
         if (offset != datasize) {
-            throw new EOFException(
-                    "Only " + offset + " bytes received while reading message payload, expected " + datasize
-                            + " bytes");
+            throw new EOFException("Only " + offset + " bytes received while reading message payload, expected "
+                    + datasize + " bytes");
         }
-        byte[] message = ArrayUtils.addAll(sig, payload);
+        byte[] message = new byte[sig.length + payload.length];
+        System.arraycopy(sig, 0, message, 0, sig.length);
+        System.arraycopy(payload, 0, message, sig.length, payload.length);
+
         decodeMessage(message, methodHeader);
     }
 
@@ -137,7 +138,7 @@ public class BinRpcMessage implements RpcRequest<byte[]>, RpcResponse {
 
     private void generateResponseData() throws IOException {
         offset = 8 + (methodName != null ? methodName.length() + 8 : 0);
-        List<Object> values = new ArrayList<Object>();
+        List<Object> values = new ArrayList<>();
         while (offset < binRpcData.length) {
             values.add(readRpcValue());
         }
@@ -205,6 +206,13 @@ public class BinRpcMessage implements RpcRequest<byte[]>, RpcResponse {
         return (new BigInteger(bi)).intValue();
     }
 
+    private long readInt64() {
+        byte bi[] = new byte[8];
+        System.arraycopy(binRpcData, offset, bi, 0, 8);
+        offset += 8;
+        return (new BigInteger(bi)).longValue();
+    }
+
     private String readString() throws UnsupportedEncodingException {
         int len = readInt();
         offset += len;
@@ -215,7 +223,7 @@ public class BinRpcMessage implements RpcRequest<byte[]>, RpcResponse {
         int type = readInt();
         switch (type) {
             case 1:
-                return new Integer(readInt());
+                return Integer.valueOf(readInt());
             case 2:
                 return binRpcData[offset++] != 0 ? Boolean.TRUE : Boolean.FALSE;
             case 3:
@@ -227,10 +235,13 @@ public class BinRpcMessage implements RpcRequest<byte[]>, RpcResponse {
                 return bd.setScale(6, RoundingMode.HALF_DOWN).doubleValue();
             case 5:
                 return new Date(readInt() * 1000);
+            case 0xD1:
+                // Int64
+                return Long.valueOf(readInt64());
             case 0x100:
                 // Array
                 int numElements = readInt();
-                Collection<Object> array = new ArrayList<Object>();
+                Collection<Object> array = new ArrayList<>();
                 while (numElements-- > 0) {
                     array.add(readRpcValue());
                 }
@@ -238,7 +249,7 @@ public class BinRpcMessage implements RpcRequest<byte[]>, RpcResponse {
             case 0x101:
                 // Struct
                 numElements = readInt();
-                Map<String, Object> struct = new TreeMap<String, Object>();
+                Map<String, Object> struct = new TreeMap<>();
                 while (numElements-- > 0) {
                     String name = readString();
                     struct.put(name, readRpcValue());

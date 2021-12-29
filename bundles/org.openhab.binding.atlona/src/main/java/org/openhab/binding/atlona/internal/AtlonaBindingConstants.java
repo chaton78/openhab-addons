@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,12 +13,13 @@
 package org.openhab.binding.atlona.internal;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingTypeUID;
 
 /**
  * The {@link AtlonaBinding} class defines common constants, which are used across the whole binding.
  *
  * @author Tim Roberts - Initial contribution
+ * @author Michael Lobstein - Add support for AT-PRO3HD66M
  */
 @NonNullByDefault
 public class AtlonaBindingConstants {
@@ -48,4 +49,8 @@ public class AtlonaBindingConstants {
      */
     public static final ThingTypeUID THING_TYPE_PRO3_1616M = new ThingTypeUID(BINDING_ID, "pro3-1616m");
 
+    /**
+     * Thing ID for the AT-PRO3HD66M (HD 6x6 hdbaset matrix)
+     */
+    public static final ThingTypeUID THING_TYPE_PRO3HD_66M = new ThingTypeUID(BINDING_ID, "pro3-hd66m");
 }

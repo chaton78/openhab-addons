@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,7 +12,7 @@
  */
 package org.openhab.binding.rfxcom.internal.messages;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openhab.binding.rfxcom.internal.RFXComBindingConstants.*;
 import static org.openhab.binding.rfxcom.internal.messages.RFXComRFXSensorMessage.SubType.*;
 
@@ -20,11 +20,11 @@ import javax.xml.bind.DatatypeConverter;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.types.State;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComException;
 import org.openhab.binding.rfxcom.internal.handler.DeviceState;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.types.State;
 
 /**
  * Test for RFXCom-binding
@@ -39,22 +39,22 @@ public class RFXComRFXSensorMessageTest {
             @Nullable Double temperature, @Nullable Double voltage, @Nullable Double referenceVoltage,
             @Nullable Double expectedPressure, @Nullable Double expectedHumidity, int signalLevel,
             DeviceState deviceState) throws RFXComException {
-        final RFXComRFXSensorMessage msg = (RFXComRFXSensorMessage) RFXComMessageFactory
+        final RFXComRFXSensorMessage msg = (RFXComRFXSensorMessage) RFXComMessageFactoryImpl.INSTANCE
                 .createMessage(DatatypeConverter.parseHexBinary(hexMsg));
-        assertEquals("SubType", subType, msg.subType);
-        assertEquals("Seq Number", seqNbr, (short) (msg.seqNbr & 0xFF));
-        assertEquals("Sensor Id", deviceId, msg.getDeviceId());
-        assertEquals("Signal Level", signalLevel, msg.signalLevel);
-        assertEquals("Temperature", temperature, getMessageTemperature(msg, deviceState));
-        assertEquals("Voltage", voltage, getChannelAsDouble(CHANNEL_VOLTAGE, msg, deviceState));
-        assertEquals("Reference Voltage", referenceVoltage,
-                getChannelAsDouble(CHANNEL_REFERENCE_VOLTAGE, msg, deviceState));
-        assertEquals("Humidity", expectedHumidity, getChannelAsDouble(CHANNEL_HUMIDITY, msg, deviceState));
-        assertEquals("Pressure", expectedPressure, getChannelAsDouble(CHANNEL_PRESSURE, msg, deviceState));
+        assertEquals(subType, msg.subType, "SubType");
+        assertEquals(seqNbr, (short) (msg.seqNbr & 0xFF), "Seq Number");
+        assertEquals(deviceId, msg.getDeviceId(), "Sensor Id");
+        assertEquals(signalLevel, msg.signalLevel, "Signal Level");
+        assertEquals(temperature, getMessageTemperature(msg, deviceState), "Temperature");
+        assertEquals(voltage, getChannelAsDouble(CHANNEL_VOLTAGE, msg, deviceState), "Voltage");
+        assertEquals(referenceVoltage, getChannelAsDouble(CHANNEL_REFERENCE_VOLTAGE, msg, deviceState),
+                "Reference Voltage");
+        assertEquals(expectedHumidity, getChannelAsDouble(CHANNEL_HUMIDITY, msg, deviceState), "Humidity");
+        assertEquals(expectedPressure, getChannelAsDouble(CHANNEL_PRESSURE, msg, deviceState), "Pressure");
 
         byte[] decoded = msg.decodeMessage();
 
-        assertEquals("Message converted back", hexMsg, DatatypeConverter.printHexBinary(decoded));
+        assertEquals(hexMsg, DatatypeConverter.printHexBinary(decoded), "Message converted back");
     }
 
     @Test
@@ -89,7 +89,7 @@ public class RFXComRFXSensorMessageTest {
 
     private @Nullable Double getChannelAsDouble(String channelId, RFXComRFXSensorMessage msg, DeviceState deviceState)
             throws RFXComException {
-        return getStateAsDouble(msg.convertToState(channelId, deviceState));
+        return getStateAsDouble(msg.convertToState(channelId, null, deviceState));
     }
 
     private @Nullable Double getStateAsDouble(State state) {

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -20,7 +20,7 @@ import java.util.Arrays;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.util.HexUtils;
+import org.openhab.core.util.HexUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +71,7 @@ public class DoorbirdEvent {
      * - if both of these attempts fail, the binding will be functional, except for
      * its ability to decrypt the UDP events.
      */
+    @NonNullByDefault
     private static class LazySodiumJavaHolder {
         private static final Logger LOGGER = LoggerFactory.getLogger(LazySodiumJavaHolder.class);
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,15 +17,16 @@ import static org.openhab.binding.rfxcom.internal.messages.RFXComBaseMessage.Pac
 
 import java.util.Arrays;
 
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.Type;
-import org.eclipse.smarthome.core.util.HexUtils;
+import org.openhab.binding.rfxcom.internal.config.RFXComDeviceConfiguration;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComException;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComMessageTooLongException;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComUnsupportedChannelException;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComUnsupportedValueException;
 import org.openhab.binding.rfxcom.internal.handler.DeviceState;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.types.State;
+import org.openhab.core.types.Type;
+import org.openhab.core.util.HexUtils;
 
 /**
  * RFXCOM data class for undecoded messages.
@@ -59,6 +60,10 @@ public class RFXComUndecodedRFMessage extends RFXComDeviceMessageImpl<RFXComUnde
         RTS(0x14),
         SELECT_PLUS(0x15),
         HOME_CONFORT(0x16),
+        EDISIO(0x17),
+        HONEYWELL(0x18),
+        FUNKBUS(0x19),
+        BYRONSX(0x1A),
 
         UNKNOWN(0xFF);
 
@@ -85,7 +90,7 @@ public class RFXComUndecodedRFMessage extends RFXComDeviceMessageImpl<RFXComUnde
     }
 
     public SubType subType;
-    public byte[] rawPayload = new byte[0];
+    public byte[] rawPayload;
 
     public RFXComUndecodedRFMessage() {
         super(UNDECODED_RF_MESSAGE);
@@ -136,7 +141,8 @@ public class RFXComUndecodedRFMessage extends RFXComDeviceMessageImpl<RFXComUnde
     }
 
     @Override
-    public State convertToState(String channelId, DeviceState deviceState) throws RFXComUnsupportedChannelException {
+    public State convertToState(String channelId, RFXComDeviceConfiguration config, DeviceState deviceState)
+            throws RFXComUnsupportedChannelException {
         switch (channelId) {
             case CHANNEL_RAW_MESSAGE:
                 return new StringType(HexUtils.bytesToHex(rawMessage));

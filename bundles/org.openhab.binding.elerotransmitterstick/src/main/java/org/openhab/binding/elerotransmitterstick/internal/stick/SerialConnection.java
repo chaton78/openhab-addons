@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,19 +14,20 @@ package org.openhab.binding.elerotransmitterstick.internal.stick;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.TooManyListenersException;
 
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
+import org.openhab.core.io.transport.serial.PortInUseException;
+import org.openhab.core.io.transport.serial.SerialPort;
+import org.openhab.core.io.transport.serial.SerialPortEvent;
+import org.openhab.core.io.transport.serial.SerialPortEventListener;
+import org.openhab.core.io.transport.serial.SerialPortIdentifier;
+import org.openhab.core.io.transport.serial.SerialPortManager;
+import org.openhab.core.io.transport.serial.UnsupportedCommOperationException;
+import org.openhab.core.util.HexUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import gnu.io.CommPortIdentifier;
-import gnu.io.NoSuchPortException;
-import gnu.io.PortInUseException;
-import gnu.io.SerialPort;
-import gnu.io.SerialPortEvent;
-import gnu.io.SerialPortEventListener;
-import gnu.io.UnsupportedCommOperationException;
 
 /**
  * @author Volker Bier - Initial contribution
@@ -37,11 +38,14 @@ public class SerialConnection {
     private SerialPort serialPort;
     private boolean open;
     private String portName;
-    private final ArrayList<Byte> bytes = new ArrayList<>();
+    private final List<Byte> bytes = new ArrayList<>();
+    private CommandPacket lastSentPacket = null;
     private Response response = null;
+    private final SerialPortManager serialPortManager;
 
-    public SerialConnection(String portName) {
+    public SerialConnection(String portName, SerialPortManager serialPortManager) {
         this.portName = portName;
+        this.serialPortManager = serialPortManager;
     }
 
     public synchronized void open() throws ConnectException {
@@ -49,10 +53,12 @@ public class SerialConnection {
             if (!open) {
                 logger.debug("Trying to open serial connection to port {}...", portName);
 
-                CommPortIdentifier portIdentifier;
+                SerialPortIdentifier portIdentifier = serialPortManager.getIdentifier(portName);
+                if (portIdentifier == null) {
+                    throw new ConnectException("No such port: " + portName);
+                }
 
                 try {
-                    portIdentifier = CommPortIdentifier.getPortIdentifier(portName);
                     serialPort = portIdentifier.open("openhab", 3000);
                     open = true;
                     logger.debug("Serial connection to port {} opened.", portName);
@@ -79,7 +85,7 @@ public class SerialConnection {
                     throw new ConnectException(ex);
                 }
             }
-        } catch (NoSuchPortException | PortInUseException ex) {
+        } catch (PortInUseException ex) {
             throw new ConnectException(ex);
         }
     }
@@ -102,16 +108,14 @@ public class SerialConnection {
     // send a packet to the stick and wait for the response
     public synchronized Response sendPacket(CommandPacket p) throws IOException {
         if (open) {
-            Response r = response;
+            Response r = null;
 
             synchronized (bytes) {
                 response = null;
+                lastSentPacket = p;
+
                 logger.debug("Writing packet to stick: {}", p);
                 serialPort.getOutputStream().write(p.getBytes());
-
-                if (r != null) {
-                    return r;
-                }
 
                 final long responseTimeout = p.getResponseTimeout();
                 try {
@@ -151,9 +155,10 @@ public class SerialConnection {
         }
 
         if (logger.isTraceEnabled()) {
-            logger.trace("buffer contains {} bytes: {}", bytes.size(),
-                    ArrayUtils.toPrimitive(bytes.toArray(new Byte[bytes.size()])));
+            logger.trace("buffer contains bytes: {}",
+                    HexUtils.bytesToHex(ArrayUtils.toPrimitive(bytes.toArray(new Byte[bytes.size()]))));
         }
+
         if (bytes.size() > 1) {
             // second byte should be length byte (has to be either 0x04 or 0x05)
             int len = bytes.get(1);
@@ -175,7 +180,13 @@ public class SerialConnection {
                         long val = bytes.get(0) + bytes.get(1) + bytes.get(2) + bytes.get(3) + bytes.get(4)
                                 + bytes.get(5);
                         if (val % 256 == 0) {
-                            response = ResponseUtil.createResponse(bytes.get(3), bytes.get(4));
+                            Response r = ResponseUtil.createResponse(bytes.get(3), bytes.get(4));
+                            if (lastSentPacket != null && lastSentPacket.isEasyCheck()) {
+                                response = r;
+                            } else {
+                                logger.warn("response type does not match command {}. Skipping response.",
+                                        lastSentPacket);
+                            }
                         } else {
                             logger.warn("invalid response checksum. Skipping response.");
                         }
@@ -187,7 +198,12 @@ public class SerialConnection {
                         long val = bytes.get(0) + bytes.get(1) + bytes.get(2) + bytes.get(3) + bytes.get(4)
                                 + bytes.get(5) + bytes.get(6);
                         if (val % 256 == 0) {
-                            response = ResponseUtil.createResponse(bytes.get(3), bytes.get(4), bytes.get(5));
+                            Response r = ResponseUtil.createResponse(bytes.get(3), bytes.get(4), bytes.get(5));
+                            if (r.isResponseFor(lastSentPacket)) {
+                                response = r;
+                            } else {
+                                logger.warn("response does not match command channels. Skipping response.");
+                            }
                         } else {
                             logger.warn("invalid response checksum. Skipping response.");
                         }
@@ -203,5 +219,4 @@ public class SerialConnection {
             }
         }
     }
-
 }

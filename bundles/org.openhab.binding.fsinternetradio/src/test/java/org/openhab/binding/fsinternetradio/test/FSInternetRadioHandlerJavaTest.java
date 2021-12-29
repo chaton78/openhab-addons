@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,7 +13,8 @@
 package org.openhab.binding.fsinternetradio.test;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.*;
 import static org.openhab.binding.fsinternetradio.internal.FSInternetRadioBindingConstants.*;
@@ -22,48 +23,49 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.eclipse.smarthome.config.core.Configuration;
-import org.eclipse.smarthome.core.items.Item;
-import org.eclipse.smarthome.core.library.items.DimmerItem;
-import org.eclipse.smarthome.core.library.items.NumberItem;
-import org.eclipse.smarthome.core.library.items.StringItem;
-import org.eclipse.smarthome.core.library.items.SwitchItem;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.IncreaseDecreaseType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.PercentType;
-import org.eclipse.smarthome.core.library.types.UpDownType;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.ThingStatusInfo;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.ThingUID;
-import org.eclipse.smarthome.core.thing.binding.ThingHandlerCallback;
-import org.eclipse.smarthome.core.thing.binding.builder.ChannelBuilder;
-import org.eclipse.smarthome.core.thing.binding.builder.ThingBuilder;
-import org.eclipse.smarthome.core.thing.binding.builder.ThingStatusInfoBuilder;
-import org.eclipse.smarthome.core.types.UnDefType;
-import org.eclipse.smarthome.test.TestPortUtil;
-import org.eclipse.smarthome.test.TestServer;
-import org.eclipse.smarthome.test.java.JavaTest;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openhab.binding.fsinternetradio.internal.FSInternetRadioBindingConstants;
 import org.openhab.binding.fsinternetradio.internal.handler.FSInternetRadioHandler;
 import org.openhab.binding.fsinternetradio.internal.handler.HandlerUtils;
 import org.openhab.binding.fsinternetradio.internal.radio.FrontierSiliconRadio;
+import org.openhab.core.config.core.Configuration;
+import org.openhab.core.items.Item;
+import org.openhab.core.library.items.DimmerItem;
+import org.openhab.core.library.items.NumberItem;
+import org.openhab.core.library.items.StringItem;
+import org.openhab.core.library.items.SwitchItem;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.IncreaseDecreaseType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.UpDownType;
+import org.openhab.core.test.TestPortUtil;
+import org.openhab.core.test.TestServer;
+import org.openhab.core.test.java.JavaTest;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.ThingStatusInfo;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
+import org.openhab.core.thing.binding.ThingHandlerCallback;
+import org.openhab.core.thing.binding.builder.ChannelBuilder;
+import org.openhab.core.thing.binding.builder.ThingBuilder;
+import org.openhab.core.thing.binding.builder.ThingStatusInfoBuilder;
+import org.openhab.core.types.UnDefType;
 
 /**
  * OSGi tests for the {@link FSInternetRadioHandler}.
@@ -101,12 +103,12 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
      * A HashMap which saves all the 'channel-acceppted_item_type' pairs.
      * It is set before all the tests.
      */
-    private static HashMap<String, String> acceptedItemTypes;
+    private static Map<String, String> acceptedItemTypes;
 
     /**
      * ArrayList of channels which is used to initialize a radioThing in the test cases.
      */
-    private final ArrayList<Channel> channels = new ArrayList<Channel>();
+    private final List<Channel> channels = new ArrayList<>();
 
     private FSInternetRadioHandler radioHandler;
     private Thing radioThing;
@@ -122,7 +124,7 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
     private static final String DEFAULT_CONFIG_PROPERTY_REFRESH = "1";
     private static final Configuration DEFAULT_COMPLETE_CONFIGURATION = createDefaultConfiguration();
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpClass() throws Exception {
         ServletHolder holder = new ServletHolder(radioServiceDummy);
         server = new TestServer(DEFAULT_CONFIG_PROPERTY_IP, DEFAULT_CONFIG_PROPERTY_PORT, TIMEOUT, holder);
@@ -132,12 +134,12 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
         httpClient.start();
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         createThePowerChannel();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownClass() throws Exception {
         server.stopServer();
         httpClient.stop();
@@ -145,13 +147,14 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
 
     private static @NonNull Channel getChannel(final @NonNull Thing thing, final @NonNull String channelId) {
         final Channel channel = thing.getChannel(channelId);
-        Assert.assertNotNull(channel);
+        assertNotNull(channel);
+        Objects.requireNonNull(channel);
         return channel;
     }
 
     private static @NonNull ChannelUID getChannelUID(final @NonNull Thing thing, final @NonNull String channelId) {
         final ChannelUID channelUID = getChannel(thing, channelId).getUID();
-        Assert.assertNotNull(channelUID);
+        assertNotNull(channelUID);
         return channelUID;
     }
 
@@ -288,15 +291,15 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
 
         radioHandler.handleCommand(powerChannelUID, OnOffType.ON);
         waitForAssert(() -> {
-            assertTrue("We should be able to turn on the radio",
-                    radioServiceDummy.containsRequestParameter(1, CHANNEL_POWER));
+            assertTrue(radioServiceDummy.containsRequestParameter(1, CHANNEL_POWER),
+                    "We should be able to turn on the radio");
             radioServiceDummy.clearRequestParameters();
         });
 
         radioHandler.handleCommand(powerChannelUID, OnOffType.OFF);
         waitForAssert(() -> {
-            assertTrue("We should be able to turn off the radio",
-                    radioServiceDummy.containsRequestParameter(0, CHANNEL_POWER));
+            assertTrue(radioServiceDummy.containsRequestParameter(0, CHANNEL_POWER),
+                    "We should be able to turn off the radio");
             radioServiceDummy.clearRequestParameters();
         });
 
@@ -306,8 +309,8 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
          */
         radioHandler.handleCommand(powerChannelUID, OnOffType.ON);
         waitForAssert(() -> {
-            assertTrue("We should be able to turn on the radio",
-                    radioServiceDummy.containsRequestParameter(1, CHANNEL_POWER));
+            assertTrue(radioServiceDummy.containsRequestParameter(1, CHANNEL_POWER),
+                    "We should be able to turn on the radio");
             radioServiceDummy.clearRequestParameters();
         });
     }
@@ -331,15 +334,15 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
 
         radioHandler.handleCommand(muteChannelUID, OnOffType.ON);
         waitForAssert(() -> {
-            assertTrue("We should be able to mute the radio",
-                    radioServiceDummy.containsRequestParameter(1, CHANNEL_MUTE));
+            assertTrue(radioServiceDummy.containsRequestParameter(1, CHANNEL_MUTE),
+                    "We should be able to mute the radio");
             radioServiceDummy.clearRequestParameters();
         });
 
         radioHandler.handleCommand(muteChannelUID, OnOffType.OFF);
         waitForAssert(() -> {
-            assertTrue("We should be able to unmute the radio",
-                    radioServiceDummy.containsRequestParameter(0, CHANNEL_MUTE));
+            assertTrue(radioServiceDummy.containsRequestParameter(0, CHANNEL_MUTE),
+                    "We should be able to unmute the radio");
             radioServiceDummy.clearRequestParameters();
         });
 
@@ -368,8 +371,8 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
 
         radioHandler.handleCommand(modeChannelUID, DecimalType.valueOf("1"));
         waitForAssert(() -> {
-            assertTrue("We should be able to update the mode channel correctly",
-                    radioServiceDummy.containsRequestParameter(1, CHANNEL_MODE));
+            assertTrue(radioServiceDummy.containsRequestParameter(1, CHANNEL_MODE),
+                    "We should be able to update the mode channel correctly");
             radioServiceDummy.clearRequestParameters();
         });
 
@@ -379,8 +382,8 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
          */
         radioHandler.handleCommand(modeChannelUID, DecimalType.valueOf("3"));
         waitForAssert(() -> {
-            assertTrue("We should be able to update the mode channel correctly",
-                    radioServiceDummy.containsRequestParameter(3, CHANNEL_MODE));
+            assertTrue(radioServiceDummy.containsRequestParameter(3, CHANNEL_MODE),
+                    "We should be able to update the mode channel correctly");
             radioServiceDummy.clearRequestParameters();
         });
     }
@@ -448,8 +451,8 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
         radioHandler.handleCommand(absoluteVolumeChannelUID, DecimalType.valueOf("36"));
 
         waitForAssert(() -> {
-            assertTrue("The volume should not exceed the maximum value",
-                    radioServiceDummy.containsRequestParameter(32, VOLUME));
+            assertTrue(radioServiceDummy.containsRequestParameter(32, VOLUME),
+                    "The volume should not exceed the maximum value");
             radioServiceDummy.clearRequestParameters();
         });
 
@@ -457,8 +460,8 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
         radioHandler.handleCommand(absoluteVolumeChannelUID, IncreaseDecreaseType.INCREASE);
 
         waitForAssert(() -> {
-            assertTrue("The volume should not be increased above the maximum value",
-                    radioServiceDummy.areRequestParametersEmpty());
+            assertTrue(radioServiceDummy.areRequestParametersEmpty(),
+                    "The volume should not be increased above the maximum value");
             radioServiceDummy.clearRequestParameters();
         });
 
@@ -466,16 +469,16 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
         radioHandler.handleCommand(absoluteVolumeChannelUID, UpDownType.UP);
 
         waitForAssert(() -> {
-            assertTrue("The volume should not be increased above the maximum value",
-                    radioServiceDummy.areRequestParametersEmpty());
+            assertTrue(radioServiceDummy.areRequestParametersEmpty(),
+                    "The volume should not be increased above the maximum value");
             radioServiceDummy.clearRequestParameters();
         });
 
         // Trying to set a value that is lower than the minimum volume value
         radioHandler.handleCommand(absoluteVolumeChannelUID, DecimalType.valueOf("-10"));
         waitForAssert(() -> {
-            assertTrue("The volume should not be decreased below 0",
-                    radioServiceDummy.containsRequestParameter(0, VOLUME));
+            assertTrue(radioServiceDummy.containsRequestParameter(0, VOLUME),
+                    "The volume should not be decreased below 0");
             radioServiceDummy.clearRequestParameters();
         });
 
@@ -487,8 +490,8 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
         // trying to set the volume
         radioHandler.handleCommand(absoluteVolumeChannelUID, DecimalType.valueOf("15"));
         waitForAssert(() -> {
-            assertTrue("We should be able to set the volume correctly",
-                    radioServiceDummy.containsRequestParameter(15, VOLUME));
+            assertTrue(radioServiceDummy.containsRequestParameter(15, VOLUME),
+                    "We should be able to set the volume correctly");
             radioServiceDummy.clearRequestParameters();
         });
     }
@@ -498,7 +501,6 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
      */
     @Test
     public void volumeChannelUpdatedPercIncDec() {
-
         /*
          * The volume is set through the CHANNEL_VOLUME_PERCENT in order to check if
          * the absolute volume will be updated properly.
@@ -530,7 +532,6 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
      */
     @Test
     public void volumeChannelUpdatedPercUpDown() {
-
         /*
          * The volume is set through the CHANNEL_VOLUME_PERCENT in order to check if
          * the absolute volume will be updated properly.
@@ -586,16 +587,16 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
          */
         radioHandler.handleCommand(percentVolumeChannelUID, PercentType.valueOf("50"));
         waitForAssert(() -> {
-            assertTrue("We should be able to set the volume correctly using percentages.",
-                    radioServiceDummy.containsRequestParameter(16, VOLUME));
+            assertTrue(radioServiceDummy.containsRequestParameter(16, VOLUME),
+                    "We should be able to set the volume correctly using percentages.");
             radioServiceDummy.clearRequestParameters();
         });
 
         radioHandler.handleCommand(percentVolumeChannelUID, PercentType.valueOf("15"));
 
         waitForAssert(() -> {
-            assertTrue("We should be able to set the volume correctly using percentages.",
-                    radioServiceDummy.containsRequestParameter(4, VOLUME));
+            assertTrue(radioServiceDummy.containsRequestParameter(4, VOLUME),
+                    "We should be able to set the volume correctly using percentages.");
             radioServiceDummy.clearRequestParameters();
         });
     }
@@ -605,31 +606,31 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
             // First we have to make sure that the item state is 0
             radioHandler.handleCommand(channelUID, DecimalType.valueOf("0"));
             waitForAssert(() -> {
-                assertTrue("We should be able to turn on the radio",
-                        radioServiceDummy.containsRequestParameter(1, CHANNEL_POWER));
+                assertTrue(radioServiceDummy.containsRequestParameter(1, CHANNEL_POWER),
+                        "We should be able to turn on the radio");
                 radioServiceDummy.clearRequestParameters();
             });
 
             radioHandler.handleCommand(channelUID, IncreaseDecreaseType.INCREASE);
 
             waitForAssert(() -> {
-                assertTrue("We should be able to increase the volume correctly",
-                        radioServiceDummy.containsRequestParameter(1, VOLUME));
+                assertTrue(radioServiceDummy.containsRequestParameter(1, VOLUME),
+                        "We should be able to increase the volume correctly");
                 radioServiceDummy.clearRequestParameters();
             });
 
             radioHandler.handleCommand(channelUID, IncreaseDecreaseType.DECREASE);
             waitForAssert(() -> {
-                assertTrue("We should be able to increase the volume correctly",
-                        radioServiceDummy.containsRequestParameter(0, VOLUME));
+                assertTrue(radioServiceDummy.containsRequestParameter(0, VOLUME),
+                        "We should be able to increase the volume correctly");
                 radioServiceDummy.clearRequestParameters();
             });
 
             // Trying to decrease one more time
             radioHandler.handleCommand(channelUID, IncreaseDecreaseType.DECREASE);
             waitForAssert(() -> {
-                assertFalse("We should be able to decrease the volume correctly",
-                        radioServiceDummy.containsRequestParameter(0, VOLUME));
+                assertFalse(radioServiceDummy.containsRequestParameter(0, VOLUME),
+                        "We should be able to decrease the volume correctly");
                 radioServiceDummy.clearRequestParameters();
             });
         }
@@ -640,30 +641,30 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
             // First we have to make sure that the item state is 0
             radioHandler.handleCommand(channelUID, DecimalType.valueOf("0"));
             waitForAssert(() -> {
-                assertTrue("We should be able to turn on the radio",
-                        radioServiceDummy.containsRequestParameter(1, CHANNEL_POWER));
+                assertTrue(radioServiceDummy.containsRequestParameter(1, CHANNEL_POWER),
+                        "We should be able to turn on the radio");
                 radioServiceDummy.clearRequestParameters();
             });
 
             radioHandler.handleCommand(channelUID, UpDownType.UP);
             waitForAssert(() -> {
-                assertTrue("We should be able to increase the volume correctly",
-                        radioServiceDummy.containsRequestParameter(1, VOLUME));
+                assertTrue(radioServiceDummy.containsRequestParameter(1, VOLUME),
+                        "We should be able to increase the volume correctly");
                 radioServiceDummy.clearRequestParameters();
             });
 
             radioHandler.handleCommand(channelUID, UpDownType.DOWN);
             waitForAssert(() -> {
-                assertTrue("We should be able to decrease the volume correctly",
-                        radioServiceDummy.containsRequestParameter(0, VOLUME));
+                assertTrue(radioServiceDummy.containsRequestParameter(0, VOLUME),
+                        "We should be able to decrease the volume correctly");
                 radioServiceDummy.clearRequestParameters();
             });
 
             // Trying to decrease one more time
             radioHandler.handleCommand(channelUID, UpDownType.DOWN);
             waitForAssert(() -> {
-                assertTrue("We shouldn't be able to decrease the volume below 0",
-                        radioServiceDummy.areRequestParametersEmpty());
+                assertTrue(radioServiceDummy.areRequestParametersEmpty(),
+                        "We shouldn't be able to decrease the volume below 0");
                 radioServiceDummy.clearRequestParameters();
             });
         }
@@ -687,8 +688,8 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
 
         radioHandler.handleCommand(presetChannelUID, DecimalType.valueOf("100"));
         waitForAssert(() -> {
-            assertTrue("We should be able to set value to the preset",
-                    radioServiceDummy.containsRequestParameter(100, PRESET));
+            assertTrue(radioServiceDummy.containsRequestParameter(100, PRESET),
+                    "We should be able to set value to the preset");
             radioServiceDummy.clearRequestParameters();
         });
     }
@@ -753,7 +754,7 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
     }
 
     private static void setTheChannelsMap() {
-        acceptedItemTypes = new HashMap<String, String>();
+        acceptedItemTypes = new HashMap<>();
         acceptedItemTypes.put(FSInternetRadioBindingConstants.CHANNEL_POWER, "Switch");
         acceptedItemTypes.put(FSInternetRadioBindingConstants.CHANNEL_MODE, "Number");
         acceptedItemTypes.put(FSInternetRadioBindingConstants.CHANNEL_MUTE, "Switch");
@@ -771,7 +772,6 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
     }
 
     private Item initializeItem(ChannelUID channelUID, String itemName, String acceptedItemType) {
-
         Item item = null;
 
         switch (acceptedItemType) {
@@ -821,7 +821,7 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
         BigDecimal port = (BigDecimal) config.get(FSInternetRadioBindingConstants.CONFIG_PROPERTY_PORT.toString());
         String pin = (String) config.get(FSInternetRadioBindingConstants.CONFIG_PROPERTY_PIN.toString());
 
-        if (ip == null || port.compareTo(BigDecimal.ZERO) == 0 || StringUtils.isEmpty(pin)) {
+        if (ip == null || port.compareTo(BigDecimal.ZERO) == 0 || pin == null || pin.isEmpty()) {
             return false;
         }
         return true;
@@ -893,6 +893,5 @@ public class FSInternetRadioHandlerJavaTest extends JavaTest {
         assertThat(status.getStatus(), is(ThingStatus.OFFLINE));
         assertThat(status.getStatusDetail(), is(ThingStatusDetail.COMMUNICATION_ERROR));
         assertThat(status.getDescription().contains(exceptionMessage), is(true));
-
     }
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -22,23 +22,24 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.binding.builder.ChannelBuilder;
-import org.eclipse.smarthome.core.thing.type.ChannelTypeUID;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.StateDescriptionFragment;
-import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.loxone.internal.LxServerHandlerApi;
 import org.openhab.binding.loxone.internal.types.LxCategory;
 import org.openhab.binding.loxone.internal.types.LxConfig;
 import org.openhab.binding.loxone.internal.types.LxContainer;
 import org.openhab.binding.loxone.internal.types.LxState;
 import org.openhab.binding.loxone.internal.types.LxUuid;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.binding.builder.ChannelBuilder;
+import org.openhab.core.thing.type.ChannelTypeUID;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.State;
+import org.openhab.core.types.StateDescriptionFragment;
+import org.openhab.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -130,6 +131,8 @@ public class LxControl {
         Map<String, String> outputs;
         Boolean presenceConnected;
         Integer connectedInputs;
+        Boolean hasVaporizer;
+        Boolean hasDoorSensor;
     }
 
     /**
@@ -264,6 +267,8 @@ public class LxControl {
         Callbacks c = callbacks.get(channelId);
         if (c != null && c.commandCallback != null) {
             c.commandCallback.handleCommand(command);
+        } else {
+            logger.debug("Control UUID={} has no command handler", getUuid());
         }
     }
 
@@ -585,6 +590,24 @@ public class LxControl {
     }
 
     /**
+     * Gets value of a state object of given name, if exists, and converts it to percent type value.
+     * Assumes the state value is between 0.0-100.0 which corresponds directly to 0-100 percent.
+     *
+     * @param name state name
+     * @return state value
+     */
+    State getStatePercentValue(String name) {
+        Double value = getStateDoubleValue(name);
+        if (value == null) {
+            return null;
+        }
+        if (value >= 0.0 && value <= 100.0) {
+            return new PercentType(value.intValue());
+        }
+        return UnDefType.UNDEF;
+    }
+
+    /**
      * Gets text value of a state object of given name, if exists
      *
      * @param name name of state object
@@ -736,5 +759,4 @@ public class LxControl {
         }
         return new ChannelUID(config.thingHandler.getThingId(), controlId);
     }
-
 }

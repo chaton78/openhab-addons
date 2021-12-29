@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,21 +16,22 @@ import static org.openhab.binding.pentair.internal.PentairBindingConstants.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.pentair.internal.PentairBindingConstants;
 import org.openhab.binding.pentair.internal.PentairPacket;
 import org.openhab.binding.pentair.internal.PentairPacketHeatSetPoint;
 import org.openhab.binding.pentair.internal.PentairPacketStatus;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -454,7 +455,7 @@ public class PentairEasyTouchHandler extends PentairBaseThingHandler {
                 }
                 break;
             case EASYTOUCH_SPAHEATMODESTR:
-                if (phsp == null || (phsp.spaheatmodestr != phspcur.spaheatmodestr)) {
+                if (phsp == null || (!Objects.equals(phsp.spaheatmodestr, phspcur.spaheatmodestr))) {
                     if (phspcur.spaheatmodestr != null) {
                         updateState(channel, new StringType(phspcur.spaheatmodestr));
                     }
@@ -466,7 +467,7 @@ public class PentairEasyTouchHandler extends PentairBaseThingHandler {
                 }
                 break;
             case EASYTOUCH_POOLHEATMODESTR:
-                if (phsp == null || (phsp.poolheatmodestr != phspcur.poolheatmodestr)) {
+                if (phsp == null || (!Objects.equals(phsp.poolheatmodestr, phspcur.poolheatmodestr))) {
                     if (phspcur.poolheatmodestr != null) {
                         updateState(channel, new StringType(phspcur.poolheatmodestr));
                     }

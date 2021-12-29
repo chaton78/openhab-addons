@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -15,7 +15,9 @@ package org.openhab.binding.lutron.internal.radiora.protocol;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.smarthome.core.library.types.OnOffType;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.library.types.OnOffType;
 
 /**
  * Set Switch Level (SSL)
@@ -24,15 +26,18 @@ import org.eclipse.smarthome.core.library.types.OnOffType;
  * @author Jeff Lauterbach - Initial Contribution
  *
  */
+@NonNullByDefault
 public class SetSwitchLevelCommand extends RadioRACommand {
 
     private int zoneNumber; // 1 to 32
     private OnOffType state; // ON/OFF
-    private Integer delaySec; // 0 to 240 (optional)
+    private @Nullable Integer delaySec; // 0 to 240 (optional)
+    private int system; // 1 or 2, or 0 for none
 
-    public SetSwitchLevelCommand(int zoneNumber, OnOffType state) {
+    public SetSwitchLevelCommand(int zoneNumber, OnOffType state, int system) {
         this.zoneNumber = zoneNumber;
         this.state = state;
+        this.system = system;
     }
 
     public void setDelaySeconds(int seconds) {
@@ -54,7 +59,10 @@ public class SetSwitchLevelCommand extends RadioRACommand {
             args.add(String.valueOf(delaySec));
         }
 
+        if (system == 1 || system == 2) {
+            args.add("S" + String.valueOf(system));
+        }
+
         return args;
     }
-
 }

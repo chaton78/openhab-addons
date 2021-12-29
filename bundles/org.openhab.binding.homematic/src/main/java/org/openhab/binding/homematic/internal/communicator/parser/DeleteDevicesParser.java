@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,7 +16,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.lang.StringUtils;
+import org.openhab.binding.homematic.internal.misc.MiscUtils;
 
 /**
  * Parses a delete device event received from a Homematic gateway.
@@ -26,20 +26,16 @@ import org.apache.commons.lang.StringUtils;
 public class DeleteDevicesParser extends CommonRpcParser<Object[], List<String>> {
     @Override
     public List<String> parse(Object[] message) throws IOException {
-        List<String> adresses = new ArrayList<String>();
+        List<String> adresses = new ArrayList<>();
         if (message != null && message.length > 1) {
             Object[] data = (Object[]) message[1];
             for (int i = 0; i < message.length; i++) {
                 String address = getSanitizedAddress(data[i]);
-                boolean isDevice = !StringUtils.contains(address, ":")
-                        && !StringUtils.startsWithIgnoreCase(address, "BidCos");
-                if (isDevice) {
+                if (MiscUtils.isDevice(address)) {
                     adresses.add(address);
                 }
-
             }
         }
         return adresses;
     }
-
 }

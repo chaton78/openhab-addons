@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,10 +13,12 @@
 package org.openhab.binding.mihome.internal.socket;
 
 import java.io.IOException;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.net.NetworkInterface;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,34 +28,45 @@ import org.slf4j.LoggerFactory;
  * @author Dieter Schmidt - Initial contribution
  *
  */
+@NonNullByDefault
 public class XiaomiBridgeSocket extends XiaomiSocket {
 
     private final Logger logger = LoggerFactory.getLogger(XiaomiBridgeSocket.class);
+    private @Nullable final String netIf;
 
-    public XiaomiBridgeSocket(int port) {
-        super(port);
+    public XiaomiBridgeSocket(int port, String netIf, String owner) {
+        super(port, owner);
+        this.netIf = netIf;
     }
 
     /**
      * Sets up the {@link XiaomiBridgeSocket}.
      *
      * Connects the socket to the specific multicast address and port.
-     * Starts the {@link ReceiverThread} for the socket.
      */
     @Override
-    synchronized DatagramSocket setupSocket() {
-        if (getOpenSockets().contains(getPort())) {
-            return getOpenSockets().get(getPort());
+    protected synchronized void setupSocket() {
+        MulticastSocket socket = (MulticastSocket) getSocket();
+        if (socket != null) {
+            logger.debug("Socket already setup");
+            return;
         }
+
         try {
             logger.debug("Setup socket");
-            setSocket(new MulticastSocket(getPort())); // must bind receive side
-            ((MulticastSocket) getSocket()).joinGroup(InetAddress.getByName(MCAST_ADDR));
-            logger.debug("Initialized socket to {}:{} on {}:{}", getSocket().getRemoteSocketAddress(),
-                    getSocket().getPort(), getSocket().getLocalAddress(), getSocket().getLocalPort());
+            socket = new MulticastSocket(getPort());
+
+            if (netIf != null) {
+                socket.setNetworkInterface(NetworkInterface.getByName(netIf));
+            }
+
+            setSocket(socket); // must bind receive side
+            socket.joinGroup(InetAddress.getByName(MCAST_ADDR));
+            logger.debug("Initialized socket to {}:{} on {}:{} bound to {} network interface",
+                    socket.getRemoteSocketAddress(), socket.getPort(), socket.getLocalAddress(), socket.getLocalPort(),
+                    socket.getNetworkInterface());
         } catch (IOException e) {
             logger.error("Setup socket error", e);
         }
-        return getSocket();
     }
 }

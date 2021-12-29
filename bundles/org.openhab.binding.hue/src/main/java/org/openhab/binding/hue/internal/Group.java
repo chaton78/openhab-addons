@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,27 +12,31 @@
  */
 package org.openhab.binding.hue.internal;
 
-import java.lang.reflect.Type;
-import java.util.Map;
-
-import com.google.gson.reflect.TypeToken;
-
 /**
  * Basic group information.
  *
  * @author Q42 - Initial contribution
  * @author Denis Dudnik - moved Jue library source code inside the smarthome Hue binding
+ * @author Laurent Garnier - field type added
  */
 public class Group {
-    public static final Type GSON_TYPE = new TypeToken<Map<String, Group>>() {
-    }.getType();
-
     private String id;
     private String name;
+    private String type;
 
     Group() {
         this.id = "0";
         this.name = "Lightset 0";
+        this.type = "LightGroup";
+    }
+
+    /**
+     * Test constructor
+     */
+    Group(String id, String name, String type) {
+        this.id = id;
+        this.name = name;
+        this.type = type;
     }
 
     void setName(String name) {
@@ -43,6 +47,10 @@ public class Group {
         this.id = id;
     }
 
+    void setType(String type) {
+        this.type = type;
+    }
+
     /**
      * Returns if the group can be modified.
      * Currently only returns false for the all lights pseudo group.
@@ -50,7 +58,7 @@ public class Group {
      * @return modifiability of group
      */
     public boolean isModifiable() {
-        return !id.equals("0");
+        return !"0".equals(id);
     }
 
     /**
@@ -69,5 +77,14 @@ public class Group {
      */
     public String getName() {
         return name;
+    }
+
+    /**
+     * Returns the tyoe of the group.
+     *
+     * @return type
+     */
+    public String getType() {
+        return type;
     }
 }

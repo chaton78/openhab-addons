@@ -3,10 +3,10 @@
 		"id": [
 			"philips.light.bulb",
 			"philips.light.downlight",
-			"philips.light.mono1",
 			"philips.light.virtual",
 			"philips.light.zysread",
-			"philips.light.zystrip"
+			"philips.light.zystrip",
+			"philips.light.hbulb"
 		],
 		"channels": [
 			{
@@ -15,33 +15,51 @@
 				"channel": "power",
 				"type": "Switch",
 				"refresh": true,
-				"ChannelGroup": "",
 				"actions": [
 					{
 						"command": "set_power",
 						"parameterType": "ONOFF"
 					}
+				],
+				"category": "switch",
+				"tags": [
+					"Switch"
 				]
 			},
 			{
 				"property": "bright",
 				"friendlyName": "Brightness",
 				"channel": "brightness",
-				"type": "Number",
+				"type": "Dimmer",
 				"refresh": true,
 				"ChannelGroup": "actions",
 				"actions": [
 					{
 						"command": "set_bright",
-						"parameterType": "NUMBER"
+						"parameterType": "NUMBER",
+						"condition": {
+							"name": "BrightnessExisting"
+						}
+					},
+					{
+						"command": "set_power",
+						"parameterType": "ONOFF",
+						"condition": {
+							"name": "BrightnessOnOff"
+						}
 					}
+				],
+				"category": "light",
+				"tags": [
+					"Control",
+					"Light"
 				]
 			},
 			{
 				"property": "cct",
 				"friendlyName": "Correlated Color Temperature",
 				"channel": "cct",
-				"type": "Number",
+				"type": "Dimmer",
 				"refresh": true,
 				"ChannelGroup": "actions",
 				"actions": [
@@ -74,7 +92,7 @@
 				"ChannelGroup": "actions",
 				"actions": [
 					{
-						
+						"parameterType": "EMPTY"
 					}
 				]
 			},
@@ -103,20 +121,6 @@
 					{
 						"command": "delay_off",
 						"parameterType": "NUMBER"
-					}
-				]
-			},
-			{
-				"property": "",
-				"friendlyName": "Toggle",
-				"channel": "toggle",
-				"type": "Switch",
-				"refresh": false,
-				"ChannelGroup": "actions",
-				"actions": [
-					{
-						"command": "toggle",
-						"parameterType": "EMPTY"
 					}
 				]
 			}

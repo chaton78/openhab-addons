@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -15,7 +15,7 @@ package org.openhab.binding.dsmr.internal.device.cosem;
 import java.text.ParseException;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.library.types.StringType;
+import org.openhab.core.library.types.StringType;
 
 /**
  * {@link CosemHexString} represents a string value stored as Hexadecimal values.
@@ -39,7 +39,7 @@ class CosemHexString extends CosemValueDescriptor<StringType> {
      */
     @Override
     protected StringType getStateValue(String cosemValue) throws ParseException {
-        final String cosemHexValue = cosemValue.replaceAll("\\r\\n", "");
+        final String cosemHexValue = cosemValue.replaceAll("\\r\\n", "").trim();
 
         if (cosemHexValue.length() % 2 != 0) {
             throw new ParseException(cosemHexValue + " is not a valid hexadecimal string", 0);

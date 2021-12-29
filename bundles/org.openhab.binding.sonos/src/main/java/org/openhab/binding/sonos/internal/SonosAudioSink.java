@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -19,22 +19,23 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.apache.commons.io.IOUtils;
-import org.eclipse.smarthome.core.audio.AudioFormat;
-import org.eclipse.smarthome.core.audio.AudioHTTPServer;
-import org.eclipse.smarthome.core.audio.AudioSink;
-import org.eclipse.smarthome.core.audio.AudioStream;
-import org.eclipse.smarthome.core.audio.FileAudioStream;
-import org.eclipse.smarthome.core.audio.FixedLengthAudioStream;
-import org.eclipse.smarthome.core.audio.URLAudioStream;
-import org.eclipse.smarthome.core.audio.UnsupportedAudioFormatException;
-import org.eclipse.smarthome.core.audio.UnsupportedAudioStreamException;
-import org.eclipse.smarthome.core.audio.utils.AudioStreamUtils;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.PercentType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.util.ThingHandlerHelper;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.sonos.internal.handler.ZonePlayerHandler;
+import org.openhab.core.audio.AudioFormat;
+import org.openhab.core.audio.AudioHTTPServer;
+import org.openhab.core.audio.AudioSink;
+import org.openhab.core.audio.AudioStream;
+import org.openhab.core.audio.FileAudioStream;
+import org.openhab.core.audio.FixedLengthAudioStream;
+import org.openhab.core.audio.URLAudioStream;
+import org.openhab.core.audio.UnsupportedAudioFormatException;
+import org.openhab.core.audio.UnsupportedAudioStreamException;
+import org.openhab.core.audio.utils.AudioStreamUtils;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.util.ThingHandlerHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +46,7 @@ import org.slf4j.LoggerFactory;
  * @author Christoph Weitkamp - Added getSupportedStreams() and UnsupportedAudioStreamException
  *
  */
+@NonNullByDefault
 public class SonosAudioSink implements AudioSink {
 
     private final Logger logger = LoggerFactory.getLogger(SonosAudioSink.class);
@@ -56,9 +58,9 @@ public class SonosAudioSink implements AudioSink {
 
     private AudioHTTPServer audioHTTPServer;
     private ZonePlayerHandler handler;
-    private String callbackUrl;
+    private @Nullable String callbackUrl;
 
-    public SonosAudioSink(ZonePlayerHandler handler, AudioHTTPServer audioHTTPServer, String callbackUrl) {
+    public SonosAudioSink(ZonePlayerHandler handler, AudioHTTPServer audioHTTPServer, @Nullable String callbackUrl) {
         this.handler = handler;
         this.audioHTTPServer = audioHTTPServer;
         this.callbackUrl = callbackUrl;
@@ -70,12 +72,12 @@ public class SonosAudioSink implements AudioSink {
     }
 
     @Override
-    public String getLabel(Locale locale) {
+    public @Nullable String getLabel(@Nullable Locale locale) {
         return handler.getThing().getLabel();
     }
 
     @Override
-    public void process(AudioStream audioStream)
+    public void process(@Nullable AudioStream audioStream)
             throws UnsupportedAudioFormatException, UnsupportedAudioStreamException {
         if (audioStream == null) {
             // in case the audioStream is null, this should be interpreted as a request to end any currently playing
@@ -115,7 +117,10 @@ public class SonosAudioSink implements AudioSink {
                 logger.warn("We do not have any callback url, so Sonos cannot play the audio stream!");
             }
         } else {
-            IOUtils.closeQuietly(audioStream);
+            try {
+                audioStream.close();
+            } catch (IOException e) {
+            }
             throw new UnsupportedAudioStreamException(
                     "Sonos can only handle FixedLengthAudioStreams and URLAudioStreams.", audioStream.getClass());
             // Instead of throwing an exception, we could ourselves try to wrap it into a
@@ -144,5 +149,4 @@ public class SonosAudioSink implements AudioSink {
     public void setVolume(PercentType volume) {
         handler.setVolume(volume);
     }
-
 }

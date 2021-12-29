@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,20 +14,19 @@ package org.openhab.binding.homematic.internal.type;
 
 import static org.openhab.binding.homematic.internal.HomematicBindingConstants.BINDING_ID;
 
-import org.apache.commons.lang.math.NumberUtils;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.ThingUID;
-import org.eclipse.smarthome.core.thing.type.ChannelGroupTypeUID;
-import org.eclipse.smarthome.core.thing.type.ChannelTypeUID;
 import org.openhab.binding.homematic.internal.model.HmChannel;
 import org.openhab.binding.homematic.internal.model.HmDatapoint;
 import org.openhab.binding.homematic.internal.model.HmDatapointInfo;
 import org.openhab.binding.homematic.internal.model.HmDevice;
 import org.openhab.binding.homematic.internal.model.HmGatewayInfo;
 import org.openhab.binding.homematic.internal.model.HmParamsetType;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
+import org.openhab.core.thing.type.ChannelGroupTypeUID;
+import org.openhab.core.thing.type.ChannelTypeUID;
 
 /**
  * Utility class for generating some UIDs.
@@ -83,8 +82,15 @@ public class UidUtils {
      * Generates the HmDatapointInfo for the given thing and channelUID.
      */
     public static HmDatapointInfo createHmDatapointInfo(ChannelUID channelUID) {
-        return new HmDatapointInfo(channelUID.getThingUID().getId(), HmParamsetType.VALUES,
-                NumberUtils.toInt(channelUID.getGroupId()), channelUID.getIdWithoutGroup());
+        int value;
+        try {
+            String groupID = channelUID.getGroupId();
+            value = groupID == null ? 0 : Integer.parseInt(groupID);
+        } catch (NumberFormatException e) {
+            value = 0;
+        }
+        return new HmDatapointInfo(channelUID.getThingUID().getId(), HmParamsetType.VALUES, value,
+                channelUID.getIdWithoutGroup());
     }
 
     /**
@@ -93,5 +99,4 @@ public class UidUtils {
     public static String getHomematicAddress(Thing thing) {
         return thing.getUID().getId();
     }
-
 }

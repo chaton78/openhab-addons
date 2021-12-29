@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,9 +14,9 @@ package org.openhab.binding.lutron.internal.handler;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.thing.Thing;
 import org.openhab.binding.lutron.internal.discovery.project.ComponentType;
 import org.openhab.binding.lutron.internal.keypadconfig.KeypadConfigPico;
+import org.openhab.core.thing.Thing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,10 +42,20 @@ public class PicoKeypadHandler extends BaseKeypadHandler {
 
         switch (mod) {
             case "2B":
+                buttonList = kp.getComponents(mod, ComponentType.BUTTON);
+                leapButtonMap = KeypadConfigPico.LEAPBUTTONS_2B;
+                break;
             case "2BRL":
+                buttonList = kp.getComponents(mod, ComponentType.BUTTON);
+                leapButtonMap = KeypadConfigPico.LEAPBUTTONS_2BRL;
+                break;
             case "3B":
+                buttonList = kp.getComponents(mod, ComponentType.BUTTON);
+                leapButtonMap = KeypadConfigPico.LEAPBUTTONS_3B;
+                break;
             case "4B":
                 buttonList = kp.getComponents(mod, ComponentType.BUTTON);
+                leapButtonMap = KeypadConfigPico.LEAPBUTTONS_4B;
                 break;
             default:
                 logger.warn("No valid keypad model defined ({}). Assuming model 3BRL.", mod);
@@ -53,8 +63,8 @@ public class PicoKeypadHandler extends BaseKeypadHandler {
             case "Generic":
             case "3BRL":
                 buttonList = kp.getComponents("3BRL", ComponentType.BUTTON);
+                leapButtonMap = KeypadConfigPico.LEAPBUTTONS_3BRL;
                 break;
         }
     }
-
 }

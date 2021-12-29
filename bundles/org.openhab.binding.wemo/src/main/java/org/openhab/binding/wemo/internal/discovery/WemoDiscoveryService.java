@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,10 +12,12 @@
  */
 package org.openhab.binding.wemo.internal.discovery;
 
-import org.eclipse.smarthome.config.discovery.AbstractDiscoveryService;
-import org.eclipse.smarthome.config.discovery.DiscoveryService;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.jupnp.UpnpService;
 import org.jupnp.model.message.header.RootDeviceHeader;
+import org.openhab.core.config.discovery.AbstractDiscoveryService;
+import org.openhab.core.config.discovery.DiscoveryService;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -28,7 +30,8 @@ import org.slf4j.LoggerFactory;
  * @author Hans-Jörg Merk - Initial contribution
  *
  */
-@Component(service = DiscoveryService.class, immediate = true, configurationPid = "discovery.wemo")
+@NonNullByDefault
+@Component(service = DiscoveryService.class, configurationPid = "discovery.wemo")
 public class WemoDiscoveryService extends AbstractDiscoveryService {
 
     private Logger logger = LoggerFactory.getLogger(WemoDiscoveryService.class);
@@ -37,7 +40,7 @@ public class WemoDiscoveryService extends AbstractDiscoveryService {
         super(5);
     }
 
-    private UpnpService upnpService;
+    private @Nullable UpnpService upnpService;
 
     @Reference
     protected void setUpnpService(UpnpService upnpService) {
@@ -74,5 +77,4 @@ public class WemoDiscoveryService extends AbstractDiscoveryService {
         removeOlderResults(getTimestampOfLastScan());
         super.stopScan();
     }
-
 }

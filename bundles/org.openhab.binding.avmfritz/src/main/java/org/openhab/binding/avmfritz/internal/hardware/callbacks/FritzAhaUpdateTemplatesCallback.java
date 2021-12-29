@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,9 +17,13 @@ import static org.eclipse.jetty.http.HttpMethod.GET;
 import java.io.StringReader;
 
 import javax.xml.bind.JAXBException;
+import javax.xml.bind.UnmarshalException;
 import javax.xml.bind.Unmarshaller;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 
-import org.openhab.binding.avmfritz.internal.ahamodel.templates.TemplateListModel;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.binding.avmfritz.internal.dto.templates.TemplateListModel;
 import org.openhab.binding.avmfritz.internal.handler.AVMFritzBaseBridgeHandler;
 import org.openhab.binding.avmfritz.internal.hardware.FritzAhaWebInterface;
 import org.openhab.binding.avmfritz.internal.util.JAXBUtils;
@@ -31,6 +35,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Christoph Weitkamp - Initial contribution
  */
+@NonNullByDefault
 public class FritzAhaUpdateTemplatesCallback extends FritzAhaReauthCallback {
 
     private final Logger logger = LoggerFactory.getLogger(FritzAhaUpdateTemplatesCallback.class);
@@ -50,20 +55,24 @@ public class FritzAhaUpdateTemplatesCallback extends FritzAhaReauthCallback {
         this.handler = handler;
     }
 
+    @SuppressWarnings({ "null", "unused" })
     @Override
     public void execute(int status, String response) {
         super.execute(status, response);
         logger.trace("Received response '{}'", response);
         if (isValidRequest()) {
             try {
+                XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(response));
                 Unmarshaller unmarshaller = JAXBUtils.JAXBCONTEXT_TEMPLATES.createUnmarshaller();
-                TemplateListModel model = (TemplateListModel) unmarshaller.unmarshal(new StringReader(response));
+                TemplateListModel model = unmarshaller.unmarshal(xsr, TemplateListModel.class).getValue();
                 if (model != null) {
                     handler.addTemplateList(model.getTemplates());
                 } else {
                     logger.debug("no template in response");
                 }
-            } catch (JAXBException e) {
+            } catch (UnmarshalException e) {
+                logger.debug("Failed to unmarshal XML document: {}", e.getMessage());
+            } catch (JAXBException | XMLStreamException e) {
                 logger.error("Exception creating Unmarshaller: {}", e.getLocalizedMessage(), e);
             }
         } else {

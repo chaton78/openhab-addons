@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,7 +14,6 @@ package org.openhab.binding.digitalstrom.internal.lib.manager.impl;
 
 import java.net.HttpURLConnection;
 
-import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.digitalstrom.internal.lib.config.Config;
 import org.openhab.binding.digitalstrom.internal.lib.listener.ConnectionListener;
 import org.openhab.binding.digitalstrom.internal.lib.manager.ConnectionManager;
@@ -286,8 +285,9 @@ public class ConnectionManagerImpl implements ConnectionManager {
     @Override
     public String getNewSessionToken() {
         if (this.genAppToken) {
-            if (StringUtils.isNotBlank(config.getAppToken())) {
-                sessionToken = this.digitalSTROMClient.loginApplication(config.getAppToken());
+            String token = config.getAppToken();
+            if (token != null && !token.isBlank()) {
+                sessionToken = this.digitalSTROMClient.loginApplication(token);
             } else if (codeIsAuthentificationFaild()) {
                 onNotAuthenticated();
             }
@@ -314,7 +314,6 @@ public class ConnectionManagerImpl implements ConnectionManager {
             case HttpURLConnection.HTTP_INTERNAL_ERROR:
             case HttpURLConnection.HTTP_OK:
                 if (!connectionEstablished) {
-                    connectionEstablished = true;
                     onConnectionResumed();
                 }
                 break;
@@ -326,7 +325,6 @@ public class ConnectionManagerImpl implements ConnectionManager {
                 if (sessionToken != null) {
                     if (!connectionEstablished) {
                         onConnectionResumed();
-                        connectionEstablished = true;
                     }
                 } else {
                     if (this.genAppToken) {
@@ -337,22 +335,19 @@ public class ConnectionManagerImpl implements ConnectionManager {
                 break;
             case ConnectionManager.MALFORMED_URL_EXCEPTION:
                 onConnectionLost(ConnectionListener.INVALID_URL);
-                connectionEstablished = false;
                 break;
             case ConnectionManager.CONNECTION_EXCEPTION:
             case ConnectionManager.SOCKET_TIMEOUT_EXCEPTION:
                 onConnectionLost(ConnectionListener.CONNECTON_TIMEOUT);
-                connectionEstablished = false;
+                break;
+            case ConnectionManager.SSL_HANDSHAKE_EXCEPTION:
+                onConnectionLost(ConnectionListener.SSL_HANDSHAKE_ERROR);
                 break;
             case ConnectionManager.GENERAL_EXCEPTION:
-                if (connListener != null) {
-                    connListener.onConnectionStateChange(ConnectionListener.CONNECTION_LOST);
-                }
+                onConnectionLost(ConnectionListener.CONNECTION_LOST);
                 break;
             case ConnectionManager.UNKNOWN_HOST_EXCEPTION:
-                if (connListener != null) {
-                    onConnectionLost(ConnectionListener.UNKNOWN_HOST);
-                }
+                onConnectionLost(ConnectionListener.UNKNOWN_HOST);
                 break;
             case ConnectionManager.AUTHENTIFICATION_PROBLEM:
                 if (connListener != null) {
@@ -367,7 +362,6 @@ public class ConnectionManagerImpl implements ConnectionManager {
                 break;
             case HttpURLConnection.HTTP_NOT_FOUND:
                 onConnectionLost(ConnectionListener.HOST_NOT_FOUND);
-                connectionEstablished = false;
                 break;
         }
         return connectionEstablished;
@@ -385,8 +379,9 @@ public class ConnectionManagerImpl implements ConnectionManager {
     private void onNotAuthenticated() {
         String applicationToken = null;
         boolean isAuthenticated = false;
-        if (StringUtils.isNotBlank(config.getAppToken())) {
-            sessionToken = digitalSTROMClient.loginApplication(config.getAppToken());
+        String token = config.getAppToken();
+        if (token != null && !token.isBlank()) {
+            sessionToken = digitalSTROMClient.loginApplication(token);
             if (sessionToken != null) {
                 isAuthenticated = true;
             } else {
@@ -431,7 +426,7 @@ public class ConnectionManagerImpl implements ConnectionManager {
                             logger.debug(
                                     "no application-token for application {} found, generate a application-token {}",
                                     config.getApplicationName(), applicationToken);
-                            if (StringUtils.isNotBlank(applicationToken)) {
+                            if (applicationToken != null && !applicationToken.isBlank()) {
                                 // enable applicationToken
                                 if (!digitalSTROMClient.enableApplicationToken(applicationToken,
                                         digitalSTROMClient.login(config.getUserName(), config.getPassword()))) {
@@ -470,10 +465,9 @@ public class ConnectionManagerImpl implements ConnectionManager {
     }
 
     private boolean checkUserPassword() {
-        if (StringUtils.isNotBlank(config.getUserName()) && StringUtils.isNotBlank(config.getPassword())) {
-            return true;
-        }
-        return false;
+        String userName = config.getUserName();
+        String password = config.getPassword();
+        return userName != null && !userName.isBlank() && password != null && !password.isBlank();
     }
 
     /**
@@ -485,6 +479,7 @@ public class ConnectionManagerImpl implements ConnectionManager {
         if (connListener != null) {
             connListener.onConnectionStateChange(ConnectionListener.CONNECTION_LOST, reason);
         }
+        connectionEstablished = false;
     }
 
     /**
@@ -494,6 +489,7 @@ public class ConnectionManagerImpl implements ConnectionManager {
         if (connListener != null) {
             connListener.onConnectionStateChange(ConnectionListener.CONNECTION_RESUMED);
         }
+        connectionEstablished = true;
     }
 
     @Override
@@ -513,8 +509,9 @@ public class ConnectionManagerImpl implements ConnectionManager {
 
     @Override
     public boolean removeApplicationToken() {
-        if (StringUtils.isNotBlank(config.getAppToken())) {
-            return digitalSTROMClient.revokeToken(config.getAppToken(), null);
+        String token = config.getAppToken();
+        if (token != null && !token.isBlank()) {
+            return digitalSTROMClient.revokeToken(token, null);
         }
         return true;
     }

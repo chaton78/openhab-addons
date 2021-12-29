@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,10 +13,12 @@
 package org.openhab.binding.mail;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.junit.Assert.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.util.Map;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.AddressException;
@@ -26,7 +28,7 @@ import org.apache.commons.mail.EmailException;
 import org.apache.commons.mail.HtmlEmail;
 import org.apache.commons.mail.MultiPartEmail;
 import org.apache.commons.mail.SimpleEmail;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.openhab.binding.mail.internal.MailBuilder;
 
 /**
@@ -40,19 +42,25 @@ public class MailBuilderTest {
     private static final String TEST_STRING = "test";
     private static final String TEST_EMAIL = "foo@bar.zinga";
 
-    @Test(expected = AddressException.class)
-    public void illegalToAddressThrowsException() throws AddressException {
-        MailBuilder builder = new MailBuilder("foo bar.zinga");
+    private static final String HEADER_1_KEY = "key_one";
+    private static final String HEADER_1_VAL = "value_one";
+    private static final String HEADER_2_KEY = "key_two";
+    private static final String HEADER_2_VAL = "value_two";
+
+    @Test
+    public void illegalToAddressThrowsException() {
+        assertThrows(AddressException.class, () -> new MailBuilder("foo bar.zinga"));
     }
 
-    @Test(expected = EmailException.class)
-    public void illegalFromAddressThrowsException() throws AddressException, EmailException {
-        Email mail = new MailBuilder("TEST_EMAIL").withSender("foo bar.zinga").build();
+    @Test
+    public void illegalFromAddressThrowsException() {
+        assertThrows(EmailException.class, () -> new MailBuilder("TEST_EMAIL").withSender("foo bar.zinga").build());
     }
 
-    @Test(expected = MalformedURLException.class)
-    public void illegalURLThrowsException() throws AddressException, MalformedURLException {
-        MailBuilder builder = new MailBuilder("TEST_EMAIL").withURLAttachment("foo bar.zinga");
+    @Test
+    public void illegalURLThrowsException() {
+        assertThrows(MalformedURLException.class,
+                () -> new MailBuilder("TEST_EMAIL").withURLAttachment("foo bar.zinga"));
     }
 
     @Test
@@ -90,4 +98,15 @@ public class MailBuilderTest {
         assertEquals(2, builder.withRecipients(TEST_EMAIL).build().getToAddresses().size());
     }
 
+    @Test
+    public void withHeaders() throws EmailException, MessagingException, IOException {
+        MailBuilder builder = new MailBuilder(TEST_EMAIL);
+        Email mail = builder.withHeader(HEADER_1_KEY, HEADER_1_VAL).withHeader(HEADER_2_KEY, HEADER_2_VAL).build();
+
+        Map<String, String> headers = mail.getHeaders();
+
+        assertEquals(2, headers.size());
+        assertEquals(HEADER_2_VAL, headers.get(HEADER_2_KEY));
+        assertEquals(HEADER_1_VAL, headers.get(HEADER_1_KEY));
+    }
 }

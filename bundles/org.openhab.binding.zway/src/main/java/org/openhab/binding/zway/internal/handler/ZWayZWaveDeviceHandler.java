@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -21,12 +21,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.ThingStatusInfo;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.openhab.binding.zway.internal.config.ZWayZWaveDeviceConfiguration;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.ThingStatusInfo;
+import org.openhab.core.thing.ThingTypeUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -211,7 +211,8 @@ public class ZWayZWaveDeviceHandler extends ZWayDeviceHandler {
         }
 
         Calendar lastUpdateOfDevice = Calendar.getInstance();
-        lastUpdateOfDevice.setTimeInMillis(new Long(zwaveDevice.getData().getLastReceived().getUpdateTime()) * 1000);
+        lastUpdateOfDevice
+                .setTimeInMillis(Long.valueOf(zwaveDevice.getData().getLastReceived().getUpdateTime()) * 1000);
 
         if (lastUpdate == null || lastUpdateOfDevice.after(lastUpdate)) {
             lastUpdate = lastUpdateOfDevice;

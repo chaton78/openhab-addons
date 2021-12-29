@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,13 +12,15 @@
  */
 package org.openhab.binding.lutron.internal.radiora.handler;
 
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.lutron.internal.radiora.protocol.RadioRAFeedback;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.thing.binding.ThingHandler;
 
 /**
  * Base class for non bridge handlers for Lutron RadioRA devices
@@ -26,13 +28,14 @@ import org.openhab.binding.lutron.internal.radiora.protocol.RadioRAFeedback;
  * @author Jeff Lauterbach - Initial Contribution
  *
  */
+@NonNullByDefault
 public abstract class LutronHandler extends BaseThingHandler {
 
     public LutronHandler(Thing thing) {
         super(thing);
     }
 
-    public RS232Handler getRS232Handler() {
+    public @Nullable RS232Handler getRS232Handler() {
         Bridge bridge = getBridge();
         if (bridge == null) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_UNINITIALIZED, "Unable to get bridge");
@@ -47,5 +50,17 @@ public abstract class LutronHandler extends BaseThingHandler {
         }
     }
 
+    /**
+     * Returns true if system numbers match, meaning that either both are 2 or both are 1 or 0 (n/a).
+     */
+    public static boolean systemsMatch(int a, int b) {
+        return ((a == 2 && b == 2) || ((a == 0 || a == 1) && (b == 0 || b == 1)));
+    }
+
     public abstract void handleFeedback(RadioRAFeedback feedback);
+
+    @Override
+    public void initialize() {
+        updateStatus(ThingStatus.ONLINE);
+    }
 }

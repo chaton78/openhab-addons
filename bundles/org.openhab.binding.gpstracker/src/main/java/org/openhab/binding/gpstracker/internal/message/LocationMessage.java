@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -19,13 +19,13 @@ import java.util.Date;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.library.types.DateTimeType;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.PointType;
-import org.eclipse.smarthome.core.library.types.QuantityType;
-import org.eclipse.smarthome.core.library.unit.SIUnits;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.UnDefType;
+import org.openhab.core.library.types.DateTimeType;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.PointType;
+import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.library.unit.SIUnits;
+import org.openhab.core.types.State;
+import org.openhab.core.types.UnDefType;
 
 import com.google.gson.annotations.SerializedName;
 
@@ -103,7 +103,7 @@ public class LocationMessage {
      * @return Conversion result
      */
     public State getTrackerLocation() {
-        if (latitude != BigDecimal.ZERO && longitude != BigDecimal.ZERO) {
+        if (!BigDecimal.ZERO.equals(latitude) && !BigDecimal.ZERO.equals(longitude)) {
             return new PointType(new DecimalType(latitude), new DecimalType(longitude));
         }
         return UnDefType.UNDEF;

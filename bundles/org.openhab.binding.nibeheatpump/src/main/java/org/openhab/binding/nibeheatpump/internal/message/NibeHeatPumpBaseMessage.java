@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,10 +12,9 @@
  */
 package org.openhab.binding.nibeheatpump.internal.message;
 
-import org.eclipse.smarthome.core.util.HexUtils;
-
 import org.openhab.binding.nibeheatpump.internal.NibeHeatPumpException;
 import org.openhab.binding.nibeheatpump.internal.protocol.NibeHeatPumpProtocol;
+import org.openhab.core.util.HexUtils;
 
 /**
  * The {@link NibeHeatPumpBaseMessage} define abstract class for Nibe messages. All message implementations should
@@ -53,15 +52,12 @@ public abstract class NibeHeatPumpBaseMessage implements NibeHeatPumpMessage {
         public byte toByte() {
             return (byte) msgType;
         }
-
     }
 
     public byte[] rawMessage;
     public MessageType msgType = MessageType.UNKNOWN;
-    public byte msgId;
 
     public NibeHeatPumpBaseMessage() {
-
     }
 
     public NibeHeatPumpBaseMessage(byte[] data) throws NibeHeatPumpException {
@@ -70,12 +66,15 @@ public abstract class NibeHeatPumpBaseMessage implements NibeHeatPumpMessage {
 
     @Override
     public void encodeMessage(byte[] data) throws NibeHeatPumpException {
-        data = NibeHeatPumpProtocol.checkMessageChecksumAndRemoveDoubles(data);
-        rawMessage = data;
-        msgId = data[1];
+        if (data.length >= NibeHeatPumpProtocol.PDU_MIN_LEN) {
+            byte[] d = NibeHeatPumpProtocol.checkMessageChecksumAndRemoveDoubles(data);
+            rawMessage = d.clone();
 
-        byte messageTypeByte = NibeHeatPumpProtocol.getMessageType(data);
-        msgType = NibeHeatPumpBaseMessage.getMessageType(messageTypeByte);
+            byte messageTypeByte = NibeHeatPumpProtocol.getMessageType(d);
+            msgType = NibeHeatPumpBaseMessage.getMessageType(messageTypeByte);
+        } else {
+            throw new NibeHeatPumpException("Too short message");
+        }
     }
 
     @Override
@@ -91,5 +90,4 @@ public abstract class NibeHeatPumpBaseMessage implements NibeHeatPumpMessage {
             return HexUtils.bytesToHex(rawMessage);
         }
     }
-
 }

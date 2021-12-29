@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,9 +12,13 @@
  */
 package org.openhab.binding.miele.internal.handler;
 
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.types.Command;
+import static org.openhab.binding.miele.internal.MieleBindingConstants.MIELE_DEVICE_CLASS_HOB;
+
+import org.openhab.core.i18n.LocaleProvider;
+import org.openhab.core.i18n.TranslationProvider;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.types.Command;
 
 /**
  * The {@link HobHandler} is responsible for handling commands,
@@ -25,13 +29,12 @@ import org.eclipse.smarthome.core.types.Command;
  */
 public class HobHandler extends MieleApplianceHandler<HobChannelSelector> {
 
-    public HobHandler(Thing thing) {
-        super(thing, HobChannelSelector.class, "Hob");
+    public HobHandler(Thing thing, TranslationProvider i18nProvider, LocaleProvider localeProvider) {
+        super(thing, i18nProvider, localeProvider, HobChannelSelector.class, MIELE_DEVICE_CLASS_HOB);
     }
 
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
         super.handleCommand(channelUID, command);
     }
-
 }

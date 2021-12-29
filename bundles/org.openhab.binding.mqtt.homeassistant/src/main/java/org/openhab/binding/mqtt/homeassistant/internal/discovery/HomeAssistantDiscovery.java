@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,33 +17,33 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.config.discovery.DiscoveryResult;
-import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
-import org.eclipse.smarthome.config.discovery.DiscoveryService;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.ThingUID;
-import org.eclipse.smarthome.core.thing.type.ThingType;
-import org.eclipse.smarthome.io.transport.mqtt.MqttBrokerConnection;
 import org.openhab.binding.mqtt.discovery.AbstractMQTTDiscovery;
 import org.openhab.binding.mqtt.discovery.MQTTTopicDiscoveryService;
 import org.openhab.binding.mqtt.generic.MqttChannelTypeProvider;
 import org.openhab.binding.mqtt.homeassistant.generic.internal.MqttBindingConstants;
-import org.openhab.binding.mqtt.homeassistant.internal.BaseChannelConfiguration;
-import org.openhab.binding.mqtt.homeassistant.internal.ChannelConfigurationTypeAdapterFactory;
 import org.openhab.binding.mqtt.homeassistant.internal.HaID;
 import org.openhab.binding.mqtt.homeassistant.internal.HandlerConfiguration;
+import org.openhab.binding.mqtt.homeassistant.internal.config.ChannelConfigurationTypeAdapterFactory;
+import org.openhab.binding.mqtt.homeassistant.internal.config.dto.AbstractChannelConfiguration;
+import org.openhab.binding.mqtt.homeassistant.internal.exception.ConfigurationException;
+import org.openhab.core.config.discovery.DiscoveryResult;
+import org.openhab.core.config.discovery.DiscoveryResultBuilder;
+import org.openhab.core.config.discovery.DiscoveryService;
+import org.openhab.core.io.transport.mqtt.MqttBrokerConnection;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
+import org.openhab.core.thing.type.ThingType;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -58,14 +58,14 @@ import com.google.gson.GsonBuilder;
  *
  * @author David Graeff - Initial contribution
  */
-@Component(immediate = true, service = DiscoveryService.class, configurationPid = "discovery.mqttha")
+@Component(service = DiscoveryService.class, configurationPid = "discovery.mqttha")
 @NonNullByDefault
 public class HomeAssistantDiscovery extends AbstractMQTTDiscovery {
     @SuppressWarnings("unused")
     private final Logger logger = LoggerFactory.getLogger(HomeAssistantDiscovery.class);
     protected final Map<String, Set<HaID>> componentsPerThingID = new TreeMap<>();
     protected final Map<String, ThingUID> thingIDPerTopic = new TreeMap<>();
-    protected final Map<String, DiscoveryResult> results = new TreeMap<>();
+    protected final Map<String, DiscoveryResult> results = new ConcurrentHashMap<>();
 
     private @Nullable ScheduledFuture<?> future;
     private final Gson gson;
@@ -122,13 +122,15 @@ public class HomeAssistantDiscovery extends AbstractMQTTDiscovery {
     }
 
     @Override
-    public Set<@NonNull ThingTypeUID> getSupportedThingTypes() {
+    public Set<ThingTypeUID> getSupportedThingTypes() {
         return typeProvider.getThingTypeUIDs();
     }
 
     @Override
     public void receivedMessage(ThingUID connectionBridge, MqttBrokerConnection connection, String topic,
             byte[] payload) {
+        resetTimeout();
+
         // For HomeAssistant we need to subscribe to a wildcard topic, because topics can either be:
         // homeassistant/<component>/<node_id>/<object_id>/config OR
         // homeassistant/<component>/<object_id>/config.
@@ -145,54 +147,58 @@ public class HomeAssistantDiscovery extends AbstractMQTTDiscovery {
         }
         this.future = scheduler.schedule(this::publishResults, 2, TimeUnit.SECONDS);
 
-        BaseChannelConfiguration config = BaseChannelConfiguration
-                .fromString(new String(payload, StandardCharsets.UTF_8), gson);
-
         // We will of course find multiple of the same unique Thing IDs, for each different component another one.
         // Therefore the components are assembled into a list and given to the DiscoveryResult label for the user to
         // easily recognize object capabilities.
-
         HaID haID = new HaID(topic);
-        final String thingID = config.getThingId(haID.objectID);
 
-        final ThingTypeUID typeID = new ThingTypeUID(MqttBindingConstants.BINDING_ID,
-                MqttBindingConstants.HOMEASSISTANT_MQTT_THING.getId() + "_" + thingID);
+        try {
+            AbstractChannelConfiguration config = AbstractChannelConfiguration
+                    .fromString(new String(payload, StandardCharsets.UTF_8), gson);
 
-        final ThingUID thingUID = new ThingUID(typeID, connectionBridge, thingID);
+            final String thingID = config.getThingId(haID.objectID);
 
-        thingIDPerTopic.put(topic, thingUID);
+            final ThingTypeUID typeID = new ThingTypeUID(MqttBindingConstants.BINDING_ID,
+                    MqttBindingConstants.HOMEASSISTANT_MQTT_THING.getId() + "_" + thingID);
 
-        // We need to keep track of already found component topics for a specific thing
-        Set<HaID> components = componentsPerThingID.computeIfAbsent(thingID, key -> new HashSet<>());
-        components.add(haID);
+            final ThingUID thingUID = new ThingUID(typeID, connectionBridge, thingID);
 
-        final String componentNames = components.stream().map(id -> id.component)
-                .map(c -> HA_COMP_TO_NAME.getOrDefault(c, c)).collect(Collectors.joining(", "));
+            thingIDPerTopic.put(topic, thingUID);
 
-        final List<String> topics = components.stream().map(id -> id.toShortTopic()).collect(Collectors.toList());
+            // We need to keep track of already found component topics for a specific thing
+            Set<HaID> components = componentsPerThingID.computeIfAbsent(thingID, key -> ConcurrentHashMap.newKeySet());
+            components.add(haID);
 
-        Map<String, Object> properties = new HashMap<>();
-        HandlerConfiguration handlerConfig = new HandlerConfiguration(haID.baseTopic, topics);
-        properties = handlerConfig.appendToProperties(properties);
-        properties = config.appendToProperties(properties);
+            final String componentNames = components.stream().map(id -> id.component)
+                    .map(c -> HA_COMP_TO_NAME.getOrDefault(c, c)).collect(Collectors.joining(", "));
 
-        synchronized (results) {
+            final List<String> topics = components.stream().map(HaID::toShortTopic).collect(Collectors.toList());
+
+            Map<String, Object> properties = new HashMap<>();
+            HandlerConfiguration handlerConfig = new HandlerConfiguration(haID.baseTopic, topics);
+            properties = handlerConfig.appendToProperties(properties);
+            properties = config.appendToProperties(properties);
+            properties.put("deviceId", thingID);
+
             // Because we need the new properties map with the updated "components" list
             results.put(thingUID.getAsString(),
                     DiscoveryResultBuilder.create(thingUID).withProperties(properties)
-                            .withRepresentationProperty("objectid").withBridge(connectionBridge)
+                            .withRepresentationProperty("deviceId").withBridge(connectionBridge)
                             .withLabel(config.getThingName() + " (" + componentNames + ")").build());
+        } catch (ConfigurationException e) {
+            logger.warn("HomeAssistant discover error: invalid configuration of thing {} component {}: {}",
+                    haID.objectID, haID.component, e.getMessage());
+        } catch (Exception e) {
+            logger.warn("HomeAssistant discover error: {}", e.getMessage());
         }
     }
 
     protected void publishResults() {
         Collection<DiscoveryResult> localResults;
 
-        synchronized (results) {
-            localResults = new ArrayList<>(results.values());
-            results.clear();
-            componentsPerThingID.clear();
-        }
+        localResults = new ArrayList<>(results.values());
+        results.clear();
+        componentsPerThingID.clear();
         for (DiscoveryResult result : localResults) {
             final ThingTypeUID typeID = result.getThingTypeUID();
             ThingType type = typeProvider.derive(typeID, MqttBindingConstants.HOMEASSISTANT_MQTT_THING).build();
@@ -220,5 +226,4 @@ public class HomeAssistantDiscovery extends AbstractMQTTDiscovery {
             }
         }
     }
-
 }

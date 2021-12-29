@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -19,9 +19,8 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.Arrays;
 
-import org.apache.commons.io.IOUtils;
 import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.smarthome.core.util.HexUtils;
+import org.openhab.core.util.HexUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -182,11 +181,8 @@ public class OnkyoAlbumArt {
         try {
             URL url = new URL(albumArtUrl);
             URLConnection connection = url.openConnection();
-            InputStream inputStream = connection.getInputStream();
-            try {
-                return IOUtils.toByteArray(inputStream);
-            } finally {
-                IOUtils.closeQuietly(inputStream);
+            try (InputStream inputStream = connection.getInputStream()) {
+                return inputStream.readAllBytes();
             }
         } catch (MalformedURLException e) {
             logger.warn("Album Art download failed from url '{}', reason {}", albumArtUrl, e.getMessage());

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -158,8 +158,19 @@ public abstract class NhcAction {
     protected void updateState(int state) {
         NhcActionEvent eventHandler = this.eventHandler;
         if (eventHandler != null) {
-            logger.debug("Niko Home Control: update channel state for {} with {}", id, state);
+            logger.debug("update channel state for {} with {}", id, state);
             eventHandler.actionEvent(state);
+        }
+    }
+
+    /**
+     * Method called when action is removed from the Niko Home Control Controller.
+     */
+    public void actionRemoved() {
+        logger.debug("action removed {}, {}", id, name);
+        NhcActionEvent eventHandler = this.eventHandler;
+        if (eventHandler != null) {
+            eventHandler.actionRemoved();
         }
     }
 
@@ -167,9 +178,9 @@ public abstract class NhcAction {
      * Sets state of action. This method is implemented in {@link NhcAction1} and {@link NhcAction2}.
      *
      * @param state - The allowed values depend on the action type.
-     *                  switch action: 0 or 100
-     *                  dimmer action: between 0 and 100
-     *                  rollershutter action: between 0 and 100
+     *            switch action: 0 or 100
+     *            dimmer action: between 0 and 100
+     *            rollershutter action: between 0 and 100
      */
     public abstract void setState(int state);
 
@@ -177,9 +188,9 @@ public abstract class NhcAction {
      * Sends action to Niko Home Control. This method is implemented in {@link NhcAction1} and {@link NhcAction2}.
      *
      * @param command - The allowed values depend on the action type.
-     *                    switch action: On or Off
-     *                    dimmer action: between 0 and 100, On or Off
-     *                    rollershutter action: between 0 and 100, Up, Down or Stop
+     *            switch action: On or Off
+     *            dimmer action: between 0 and 100, On or Off
+     *            rollershutter action: between 0 and 100, Up, Down or Stop
      */
     public abstract void execute(String command);
 }

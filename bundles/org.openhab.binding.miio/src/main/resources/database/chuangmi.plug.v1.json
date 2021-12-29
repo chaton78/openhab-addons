@@ -10,12 +10,15 @@
 				"channel": "power",
 				"type": "Switch",
 				"refresh": true,
-				"channelGroup": "actions",
 				"actions": [
 					{
 						"command": "set_*",
 						"parameterType": "ONOFFPARA"
 					}
+				],
+				"category": "switch",
+				"tags": [
+					"Switch"
 				]
 			},
 			{
@@ -30,6 +33,20 @@
 						"command": "set_usb_*",
 						"parameterType": "ONOFFPARA"
 					}
+				]
+			},
+			{
+				"property": "temperature",
+				"friendlyName": "Temperature",
+				"channel": "temperature",
+				"type": "Number:Temperature",
+				"unit": "CELSIUS",
+				"refresh": true,
+				"actions": [],
+				"category": "temperature",
+				"tags": [
+					"Measurement",
+					"Temperature"
 				]
 			}
 		]

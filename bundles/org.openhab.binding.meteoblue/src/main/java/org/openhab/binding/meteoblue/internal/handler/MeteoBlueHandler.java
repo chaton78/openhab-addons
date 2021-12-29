@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,44 +12,42 @@
  */
 package org.openhab.binding.meteoblue.internal.handler;
 
-import static org.eclipse.smarthome.core.library.unit.MetricPrefix.*;
+import static org.openhab.core.library.unit.MetricPrefix.*;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import javax.imageio.ImageIO;
-import javax.measure.quantity.Length;
-import javax.measure.quantity.Pressure;
-import javax.measure.quantity.Speed;
-import javax.measure.quantity.Temperature;
 
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.smarthome.core.library.items.ImageItem;
-import org.eclipse.smarthome.core.library.types.DateTimeType;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.QuantityType;
-import org.eclipse.smarthome.core.library.types.RawType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.library.unit.SIUnits;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.io.net.http.HttpUtil;
 import org.openhab.binding.meteoblue.internal.Forecast;
 import org.openhab.binding.meteoblue.internal.MeteoBlueConfiguration;
 import org.openhab.binding.meteoblue.internal.json.JsonData;
+import org.openhab.core.io.net.http.HttpUtil;
+import org.openhab.core.library.items.ImageItem;
+import org.openhab.core.library.types.DateTimeType;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.library.types.RawType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.library.unit.SIUnits;
+import org.openhab.core.library.unit.Units;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,13 +96,13 @@ public class MeteoBlueHandler extends BaseThingHandler {
 
         MeteoBlueConfiguration config = getConfigAs(MeteoBlueConfiguration.class);
 
-        if (StringUtils.isBlank(config.serviceType)) {
+        if (config.serviceType == null || config.serviceType.isBlank()) {
             config.serviceType = MeteoBlueConfiguration.SERVICETYPE_NONCOMM;
             logger.debug("Using default service type ({}).", config.serviceType);
             return;
         }
 
-        if (StringUtils.isBlank(config.location)) {
+        if (config.location == null || config.location.isBlank()) {
             flagBadConfig("The location was not configured.");
             return;
         }
@@ -233,7 +231,8 @@ public class MeteoBlueHandler extends BaseThingHandler {
         // Build a State from this value
         State state = null;
         if (datapoint instanceof Calendar) {
-            state = new DateTimeType((Calendar) datapoint);
+            state = new DateTimeType(
+                    ZonedDateTime.ofInstant(((Calendar) datapoint).toInstant(), ZoneId.systemDefault()));
         } else if (datapoint instanceof Integer) {
             state = getStateForType(channel.getAcceptedItemType(), (Integer) datapoint);
         } else if (datapoint instanceof Number) {
@@ -265,13 +264,13 @@ public class MeteoBlueHandler extends BaseThingHandler {
         State state = new DecimalType(value);
 
         if (type.equals("Number:Temperature")) {
-            state = new QuantityType<Temperature>(value, SIUnits.CELSIUS);
+            state = new QuantityType<>(value, SIUnits.CELSIUS);
         } else if (type.equals("Number:Length")) {
-            state = new QuantityType<Length>(value, MILLI(SIUnits.METRE));
+            state = new QuantityType<>(value, MILLI(SIUnits.METRE));
         } else if (type.equals("Number:Pressure")) {
-            state = new QuantityType<Pressure>(value, HECTO(SIUnits.PASCAL));
+            state = new QuantityType<>(value, HECTO(SIUnits.PASCAL));
         } else if (type.equals("Number:Speed")) {
-            state = new QuantityType<Speed>(value, SIUnits.KILOMETRE_PER_HOUR);
+            state = new QuantityType<>(value, Units.METRE_PER_SECOND);
         }
 
         return state;
@@ -315,7 +314,7 @@ public class MeteoBlueHandler extends BaseThingHandler {
         if (config.altitude != null) {
             builder.append("&asl=" + config.altitude);
         }
-        if (StringUtils.isNotBlank(config.timeZone)) {
+        if (config.timeZone != null && !config.timeZone.isBlank()) {
             builder.append("&tz=" + config.timeZone);
         }
         url = url.replace("#FORMAT_PARAMS#", builder.toString());
@@ -369,7 +368,7 @@ public class MeteoBlueHandler extends BaseThingHandler {
 
     // Convert a json string response into a json data object
     private JsonData translateJson(String stringData, String serviceType) {
-        JsonData weatherData = null;
+        // JsonData weatherData = null;
 
         // For now, no distinction is made between commercial and non-commercial data;
         // This may need to be changed later based on user feedback.
@@ -417,8 +416,8 @@ public class MeteoBlueHandler extends BaseThingHandler {
             out.close();
         } catch (IOException ioe) {
             logger.debug("I/O exception occurred converting image data", ioe);
-        } finally {
-            return data;
         }
+
+        return data;
     }
 }

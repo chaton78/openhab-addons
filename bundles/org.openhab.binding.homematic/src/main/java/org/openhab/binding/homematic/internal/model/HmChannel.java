@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -18,8 +18,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
 import org.openhab.binding.homematic.internal.misc.HomematicConstants;
 
 /**
@@ -41,7 +39,7 @@ public class HmChannel {
     private HmDevice device;
     private boolean initialized;
     private Integer lastFunction;
-    private Map<HmDatapointInfo, HmDatapoint> datapoints = new HashMap<HmDatapointInfo, HmDatapoint>();
+    private Map<HmDatapointInfo, HmDatapoint> datapoints = new HashMap<>();
 
     public HmChannel(String type, Integer number) {
         this.type = type;
@@ -216,8 +214,6 @@ public class HmChannel {
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("number", number).append("type", type)
-                .append("initialized", initialized).toString();
+        return String.format("%s[number=%d,initialized=%b]", getClass().getSimpleName(), number, initialized);
     }
-
 }

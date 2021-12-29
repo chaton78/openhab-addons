@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -21,15 +21,13 @@ import java.util.function.BiConsumer;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.apache.commons.codec.DecoderException;
-import org.apache.commons.codec.binary.Hex;
-import org.eclipse.smarthome.core.util.HexUtils;
 import org.openhab.binding.loxone.internal.LxServerHandler;
 import org.openhab.binding.loxone.internal.LxServerHandlerApi;
 import org.openhab.binding.loxone.internal.LxWebSocket;
 import org.openhab.binding.loxone.internal.types.LxErrorCode;
 import org.openhab.binding.loxone.internal.types.LxResponse;
 import org.openhab.binding.loxone.internal.types.LxWsSecurityType;
+import org.openhab.core.util.HexUtils;
 
 /**
  * Security abstract class providing authentication and encryption services.
@@ -128,20 +126,22 @@ public abstract class LxWsSecurity {
      *
      * @param string string to be hashed
      * @param hashKeyHex hash key received from the Miniserver in hex format
+     * @param sha256 if SHA-256 algorithm should be used (SHA-1 otherwise)
      * @return hashed string or null if failed
      */
-    String hashString(String string, String hashKeyHex) {
+    String hashString(String string, String hashKeyHex, boolean sha256) {
         if (string == null || hashKeyHex == null) {
             return null;
         }
         try {
-            byte[] hashKeyBytes = Hex.decodeHex(hashKeyHex.toCharArray());
-            SecretKeySpec signKey = new SecretKeySpec(hashKeyBytes, "HmacSHA1");
-            Mac mac = Mac.getInstance("HmacSHA1");
+            String alg = sha256 ? "HmacSHA256" : "HmacSHA1";
+            byte[] hashKeyBytes = HexUtils.hexToBytes(hashKeyHex);
+            SecretKeySpec signKey = new SecretKeySpec(hashKeyBytes, alg);
+            Mac mac = Mac.getInstance(alg);
             mac.init(signKey);
             byte[] rawData = mac.doFinal(string.getBytes());
             return HexUtils.bytesToHex(rawData);
-        } catch (DecoderException | NoSuchAlgorithmException | InvalidKeyException e) {
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             return null;
         }
     }
@@ -217,5 +217,4 @@ public abstract class LxWsSecurity {
             return new LxWsSecurityToken(debugId, thingHandler, socket, user, password);
         }
     }
-
 }

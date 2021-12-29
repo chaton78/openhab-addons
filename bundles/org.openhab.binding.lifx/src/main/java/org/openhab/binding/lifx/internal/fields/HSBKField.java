@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,7 +17,7 @@ import java.nio.ByteBuffer;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 /**
- * @author Wouter Born - Add support for MultiZone light control
+ * @author Wouter Born - Initial contribution
  */
 @NonNullByDefault
 public class HSBKField extends Field<HSBK> {
@@ -48,5 +48,4 @@ public class HSBKField extends Field<HSBK> {
                 .put(FIELD_SATURATION.bytes(value.getSaturation())).put(FIELD_BRIGHTNESS.bytes(value.getBrightness()))
                 .put(FIELD_KELVIN.bytes(value.getKelvin()));
     }
-
 }

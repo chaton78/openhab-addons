@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,15 +14,17 @@ package org.openhab.binding.ihc.internal.ws.projectfile;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
-import org.apache.commons.io.FileUtils;
 import org.openhab.binding.ihc.internal.ws.datatypes.WSProjectInfo;
 import org.openhab.binding.ihc.internal.ws.exeptions.IhcExecption;
 import org.slf4j.Logger;
@@ -51,6 +53,12 @@ public class ProjectFileUtils {
         File fXmlFile = new File(filePath);
         DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
         try {
+            // see https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html
+            dbFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            dbFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            dbFactory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+            dbFactory.setXIncludeAware(false);
+            dbFactory.setExpandEntityReferences(false);
             DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
             Document doc = dBuilder.parse(fXmlFile);
             return doc;
@@ -68,7 +76,10 @@ public class ProjectFileUtils {
      */
     public static void saveToFile(String filePath, byte[] data) throws IhcExecption {
         try {
-            FileUtils.writeByteArrayToFile(new File(filePath), data);
+            try (FileOutputStream stream = new FileOutputStream(filePath)) {
+                stream.write(data);
+                stream.flush();
+            }
         } catch (IOException e) {
             throw new IhcExecption(e);
         }
@@ -138,8 +149,8 @@ public class ProjectFileUtils {
      * @param doc IHC project file in XML format.
      * @return enum dictionary.
      */
-    public static HashMap<Integer, ArrayList<IhcEnumValue>> parseEnums(Document doc) {
-        HashMap<Integer, ArrayList<IhcEnumValue>> enumDictionary = new HashMap<>();
+    public static Map<Integer, List<IhcEnumValue>> parseEnums(Document doc) {
+        Map<Integer, List<IhcEnumValue>> enumDictionary = new HashMap<>();
         if (doc != null) {
             NodeList nodes = doc.getElementsByTagName("enum_definition");
 
@@ -150,7 +161,7 @@ public class ProjectFileUtils {
                 int typedefId = Integer.parseInt(element.getAttribute("id").replace("_0x", ""), 16);
                 String enumName = element.getAttribute("name");
 
-                ArrayList<IhcEnumValue> enumValues = new ArrayList<IhcEnumValue>();
+                List<IhcEnumValue> enumValues = new ArrayList<>();
 
                 NodeList name = element.getElementsByTagName("enum_value");
 

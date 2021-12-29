@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -15,10 +15,11 @@ package org.openhab.binding.amazonechocontrol.internal.channelhandler;
 import java.io.IOException;
 import java.net.URISyntaxException;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.amazonechocontrol.internal.Connection;
 import org.openhab.binding.amazonechocontrol.internal.jsons.JsonDevices.Device;
+import org.openhab.core.types.Command;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,9 +31,11 @@ import com.google.gson.JsonSyntaxException;
  *
  * @author Michael Geramb - Initial contribution
  */
+@NonNullByDefault
 public abstract class ChannelHandler {
+
     public abstract boolean tryHandleCommand(Device device, Connection connection, String channelId, Command command)
-            throws IOException, URISyntaxException;
+            throws IOException, URISyntaxException, InterruptedException;
 
     protected final IAmazonThingHandler thingHandler;
     protected final Gson gson;
@@ -55,6 +58,5 @@ public abstract class ChannelHandler {
 
     protected <T> @Nullable T parseJson(String json, Class<T> type) throws JsonSyntaxException {
         return gson.fromJson(json, type);
-
     }
 }

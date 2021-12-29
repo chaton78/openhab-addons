@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,10 +12,9 @@
  */
 package org.openhab.binding.networkupstools.internal.nut;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.MockitoAnnotations.initMocks;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,24 +26,25 @@ import java.nio.file.Paths;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNull;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Unit test to test the {@link NutApi} using a mock Socket connection.
  *
  * @author Hilbrand Bouwkamp - Initial contribution
  */
+@ExtendWith(MockitoExtension.class)
 public class NutApiTest {
 
-    @Mock
-    private Socket socket;
+    private @Mock Socket socket;
     private NutConnector connector;
 
-    @Before
+    @BeforeEach
     public void setUp() throws IOException {
-        initMocks(this);
         connector = new NutConnector("localhost", 0, "test", "pwd") {
             @Override
             protected Socket newSocket() {
@@ -102,5 +102,4 @@ public class NutApiTest {
             assertThat("Should send commands correctly", actualCommands.toString(), is(expectedCommands));
         }
     }
-
 }

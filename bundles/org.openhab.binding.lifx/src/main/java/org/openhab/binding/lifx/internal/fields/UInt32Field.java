@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,7 +17,7 @@ import java.nio.ByteBuffer;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 /**
- * @author Tim Buckley
+ * @author Tim Buckley - Initial contribution
  */
 @NonNullByDefault
 public class UInt32Field extends Field<Long> {
@@ -36,5 +36,4 @@ public class UInt32Field extends Field<Long> {
     public ByteBuffer bytesInternal(Long value) {
         return ByteBuffer.allocate(4).putInt((int) (value & 0xFFFFFFFFL));
     }
-
 }

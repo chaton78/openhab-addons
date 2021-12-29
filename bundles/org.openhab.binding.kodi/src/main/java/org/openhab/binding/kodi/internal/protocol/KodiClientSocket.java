@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -15,6 +15,7 @@ package org.openhab.binding.kodi.internal.protocol;
 import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -53,11 +54,11 @@ public class KodiClientSocket {
 
     private boolean connected = false;
 
-    private final JsonParser parser = new JsonParser();
     private final Gson mapper = new Gson();
     private final URI uri;
     private final WebSocketClient client;
     private Session session;
+    private Future<?> sessionFuture;
 
     private final KodiClientSocketEventListener eventHandler;
 
@@ -81,7 +82,7 @@ public class KodiClientSocket {
         KodiWebSocketListener socket = new KodiWebSocketListener();
         ClientUpgradeRequest request = new ClientUpgradeRequest();
 
-        client.connect(socket, uri, request);
+        sessionFuture = client.connect(socket, uri, request);
     }
 
     /***
@@ -92,6 +93,10 @@ public class KodiClientSocket {
         if (session != null) {
             session.close();
             session = null;
+        }
+
+        if (sessionFuture != null && !sessionFuture.isDone()) {
+            sessionFuture.cancel(true);
         }
     }
 
@@ -124,7 +129,7 @@ public class KodiClientSocket {
         @OnWebSocketMessage
         public void onMessage(String message) {
             logger.trace("Message received from server: {}", message);
-            final JsonObject json = parser.parse(message).getAsJsonObject();
+            final JsonObject json = JsonParser.parseString(message).getAsJsonObject();
             if (json.has("id")) {
                 int messageId = json.get("id").getAsInt();
                 if (messageId == nextMessageId - 1) {
@@ -167,7 +172,6 @@ public class KodiClientSocket {
             logger.trace("Error occured: {}", error.getMessage());
             onClose(0, error.getMessage());
         }
-
     }
 
     private void sendMessage(String str) throws IOException {

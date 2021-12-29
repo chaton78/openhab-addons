@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -20,18 +20,18 @@ import java.util.Date;
 import java.util.EventObject;
 import java.util.List;
 
-import org.eclipse.smarthome.core.library.types.DateTimeType;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
 import org.openhab.binding.dscalarm.internal.DSCAlarmCode;
 import org.openhab.binding.dscalarm.internal.DSCAlarmEvent;
 import org.openhab.binding.dscalarm.internal.DSCAlarmMessage;
 import org.openhab.binding.dscalarm.internal.DSCAlarmMessage.DSCAlarmMessageInfoType;
+import org.openhab.core.library.types.DateTimeType;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +41,13 @@ import org.slf4j.LoggerFactory;
  * @author Russell Stephens - Initial Contribution
  */
 public class PanelThingHandler extends DSCAlarmBaseThingHandler {
+
+    private static final int PANEL_COMMAND_POLL = 0;
+    private static final int PANEL_COMMAND_STATUS_REPORT = 1;
+    private static final int PANEL_COMMAND_LABELS_REQUEST = 2;
+    private static final int PANEL_COMMAND_DUMP_ZONE_TIMERS = 8;
+    private static final int PANEL_COMMAND_SET_TIME_DATE = 10;
+    private static final int PANEL_COMMAND_CODE_SEND = 200;
 
     private final Logger logger = LoggerFactory.getLogger(PanelThingHandler.class);
 
@@ -53,13 +60,6 @@ public class PanelThingHandler extends DSCAlarmBaseThingHandler {
         super(thing);
         setDSCAlarmThingType(DSCAlarmThingType.PANEL);
     }
-
-    private static final int PANEL_COMMAND_POLL = 0;
-    private static final int PANEL_COMMAND_STATUS_REPORT = 1;
-    private static final int PANEL_COMMAND_LABELS_REQUEST = 2;
-    private static final int PANEL_COMMAND_DUMP_ZONE_TIMERS = 8;
-    private static final int PANEL_COMMAND_SET_TIME_DATE = 10;
-    private static final int PANEL_COMMAND_CODE_SEND = 200;
 
     @Override
     public void updateChannel(ChannelUID channelUID, int state, String description) {
@@ -257,19 +257,11 @@ public class PanelThingHandler extends DSCAlarmBaseThingHandler {
      * @param timeStamp
      */
     private void setTimeStampState(String timeStamp) {
-        int state = 0;
-        ChannelUID channelUID = new ChannelUID(getThing().getUID(), PANEL_TIME_STAMP);
-
-        boolean isTimeStamp = timeStamp != "";
-
-        if ((timeStamp == "" && isTimeStamp == false) || (timeStamp != "" && isTimeStamp == true)) {
-            logger.debug("setTimeStampState(): Already Set: {}", timeStamp);
-            return;
-        } else if (timeStamp != "") {
-            state = 1;
+        if (timeStamp != null) {
+            ChannelUID channelUID = new ChannelUID(getThing().getUID(), PANEL_TIME_STAMP);
+            int state = timeStamp.isEmpty() ? 0 : 1;
+            updateChannel(channelUID, state, "");
         }
-
-        updateChannel(channelUID, state, "");
     }
 
     /**
@@ -391,19 +383,15 @@ public class PanelThingHandler extends DSCAlarmBaseThingHandler {
         String channel;
         ChannelUID channelUID = null;
 
+        int bitCount = 8;
         int bitField = Integer.decode("0x" + dscAlarmMessage.getMessageInfo(DSCAlarmMessageInfoType.DATA));
         int[] masks = { 1, 2, 4, 8, 16, 32, 64, 128 };
-        int[] bits = new int[8];
+        int[] bits = new int[bitCount];
 
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < bitCount; i++) {
+            channelUID = new ChannelUID(getThing().getUID(), channelTypes[i]);
             bits[i] = bitField & masks[i];
-
-            channel = channelTypes[i];
-
-            if (channel != "") {
-                channelUID = new ChannelUID(getThing().getUID(), channel);
-                updateChannel(channelUID, bits[i] != 0 ? 1 : 0, "");
-            }
+            updateChannel(channelUID, bits[i] != 0 ? 1 : 0, "");
         }
     }
 
@@ -413,7 +401,6 @@ public class PanelThingHandler extends DSCAlarmBaseThingHandler {
      * @param dscAlarmCode
      */
     private void restorePartitionsInAlarm(DSCAlarmCode dscAlarmCode) {
-
         logger.debug("restorePartitionsInAlarm(): DSC Alarm Code: {}!", dscAlarmCode.toString());
 
         ChannelUID channelUID = null;
@@ -437,6 +424,7 @@ public class PanelThingHandler extends DSCAlarmBaseThingHandler {
     }
 
     @Override
+    @SuppressWarnings("PMD.CompareObjectsWithEquals")
     public void dscAlarmEventReceived(EventObject event, Thing thing) {
         if (thing != null) {
             DSCAlarmEvent dscAlarmEvent = (DSCAlarmEvent) event;

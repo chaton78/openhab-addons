@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -47,6 +47,9 @@ public class XmlRpcResponse implements RpcResponse {
             throws SAXException, ParserConfigurationException, IOException {
         SAXParserFactory factory = SAXParserFactory.newInstance();
         SAXParser saxParser = factory.newSAXParser();
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        saxParser.getXMLReader().setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
         InputSource inputSource = new InputSource(is);
         inputSource.setEncoding(encoding);
         saxParser.parse(inputSource, new XmlRpcHandler());
@@ -73,14 +76,14 @@ public class XmlRpcResponse implements RpcResponse {
      * @author Gerhard Riegler
      */
     private class XmlRpcHandler extends DefaultHandler {
-        private List<Object> result = new ArrayList<Object>();
-        private LinkedList<List<Object>> currentDataObject = new LinkedList<List<Object>>();
+        private List<Object> result = new ArrayList<>();
+        private LinkedList<List<Object>> currentDataObject = new LinkedList<>();
         private StringBuilder tagValue;
         private boolean isValueTag;
 
         @Override
         public void startDocument() throws SAXException {
-            currentDataObject.addLast(new ArrayList<Object>());
+            currentDataObject.addLast(new ArrayList<>());
         }
 
         @Override
@@ -94,7 +97,7 @@ public class XmlRpcResponse implements RpcResponse {
                 throws SAXException {
             String tag = qName.toLowerCase();
             if (tag.equals("array") || tag.equals("struct")) {
-                currentDataObject.addLast(new ArrayList<Object>());
+                currentDataObject.addLast(new ArrayList<>());
             }
             isValueTag = tag.equals("value");
             tagValue = new StringBuilder();
@@ -112,10 +115,10 @@ public class XmlRpcResponse implements RpcResponse {
                     break;
                 case "int":
                 case "i4":
-                    data.add(new Integer(currentValue));
+                    data.add(Integer.valueOf(currentValue));
                     break;
                 case "double":
-                    data.add(new Double(currentValue));
+                    data.add(Double.valueOf(currentValue));
                     break;
                 case "string":
                 case "name":
@@ -133,7 +136,7 @@ public class XmlRpcResponse implements RpcResponse {
                     break;
                 case "struct":
                     List<Object> mapData = currentDataObject.removeLast();
-                    Map<Object, Object> resultMap = new HashMap<Object, Object>();
+                    Map<Object, Object> resultMap = new HashMap<>();
 
                     for (int i = 0; i < mapData.size(); i += 2) {
                         resultMap.put(mapData.get(i), mapData.get(i + 1));
@@ -170,6 +173,5 @@ public class XmlRpcResponse implements RpcResponse {
         public void characters(char[] ch, int start, int length) throws SAXException {
             tagValue.append(new String(ch, start, length));
         }
-
     }
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,13 +12,13 @@
  */
 package org.openhab.binding.nibeheatpump.internal.message;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 
-import org.eclipse.smarthome.core.util.HexUtils;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.openhab.binding.nibeheatpump.internal.NibeHeatPumpException;
+import org.openhab.core.util.HexUtils;
 
 /**
  * Tests cases for {@link ModbusDataReadOutMessage}.
@@ -64,7 +64,6 @@ public class ModbusDataReadOutMessageTest {
 
     @Test
     public void parseModbusDataReadOutMessageTest() throws NibeHeatPumpException {
-
         final String message = "5C0020685001A81F0100A86400FDA7D003449C1E004F9CA000509C7800519C0301529C1B01879C14014E9CC601479C010115B9B0FF3AB94B00C9AF0000489C0D014C9CE7004B9C0000FFFF0000FFFF0000FFFF000045";
 
         @SuppressWarnings("serial")
@@ -87,6 +86,37 @@ public class ModbusDataReadOutMessageTest {
                 add(new ModbusValue(40008, 269));
                 add(new ModbusValue(40012, 231));
                 add(new ModbusValue(40011, 0));
+            }
+        };
+
+        checkRegisters(message, expectedValues);
+    }
+
+    @Test
+    public void parseHeavilyEscapedModbusDataReadOutMessageTest() throws NibeHeatPumpException {
+        final String message = "5C0020685401A81F0100A86400FDA7D003449C1E004F9CA000509C7800519C0301529C1B01879C14014E9CC601479C010115B9B0FF3AB94B00C9AF0000489C0D014C9CE7004B9C0000FFFF0000FFFF00005C5C5C5C5C5C5C5C41";
+
+        @SuppressWarnings("serial")
+        final ArrayList<ModbusValue> expectedValues = new ArrayList<ModbusValue>() {
+            {
+                add(new ModbusValue(43009, 287));
+                add(new ModbusValue(43008, 100));
+                add(new ModbusValue(43005, 976));
+                add(new ModbusValue(40004, 30));
+                add(new ModbusValue(40015, 160));
+                add(new ModbusValue(40016, 120));
+                add(new ModbusValue(40017, 259));
+                add(new ModbusValue(40018, 283));
+                add(new ModbusValue(40071, 276));
+                add(new ModbusValue(40014, 454));
+                add(new ModbusValue(40007, 257));
+                add(new ModbusValue(47381, 65456));
+                add(new ModbusValue(47418, 75));
+                add(new ModbusValue(45001, 0));
+                add(new ModbusValue(40008, 269));
+                add(new ModbusValue(40012, 231));
+                add(new ModbusValue(40011, 0));
+                add(new ModbusValue(23644, 23644));
             }
         };
 
@@ -183,25 +213,24 @@ public class ModbusDataReadOutMessageTest {
         checkRegisters(message, expectedValues);
     }
 
-    @Test(expected = NibeHeatPumpException.class)
-    public void badCrcTest() throws NibeHeatPumpException {
+    @Test
+    public void badCrcTest() {
         final String message = "5C0020685001A81F0100A86400FDA7D003449C1E004F9CA000509C7800519C0301529C1B01879C14014E9CC601479C010115B9B0FF3AB94B00C9AF0000489C0D014C9CE7004B9C0000FFFF0000FFFF0000FFFF000044";
 
         final byte[] msg = HexUtils.hexToBytes(message);
-        MessageFactory.getMessage(msg);
+        assertThrows(NibeHeatPumpException.class, () -> MessageFactory.getMessage(msg));
     }
 
-    @Test(expected = NibeHeatPumpException.class)
-    public void notModbusDataReadOutMessageTest() throws NibeHeatPumpException {
+    @Test
+    public void notModbusDataReadOutMessageTest() {
         final String message = "519C0301529C1B01879C14014E9CC601479C010115B9B0FF3AB94B00C9AF0000489C0D014C9CE7004B9C0000FFFF0000FFFF0000FFFF000044";
 
         final byte[] msg = HexUtils.hexToBytes(message);
-        new ModbusDataReadOutMessage(msg);
+        assertThrows(NibeHeatPumpException.class, () -> new ModbusDataReadOutMessage(msg));
     }
 
     private void checkRegisters(final String message, final ArrayList<ModbusValue> expectedRegs)
             throws NibeHeatPumpException {
-
         final byte[] msg = HexUtils.hexToBytes(message);
         final ModbusDataReadOutMessage m = (ModbusDataReadOutMessage) MessageFactory.getMessage(msg);
         assertNotNull(m);

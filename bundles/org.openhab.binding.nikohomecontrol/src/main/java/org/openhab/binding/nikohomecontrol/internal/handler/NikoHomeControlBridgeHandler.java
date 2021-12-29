@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -23,16 +23,16 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.config.core.Configuration;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseBridgeHandler;
-import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.nikohomecontrol.internal.discovery.NikoHomeControlDiscoveryService;
 import org.openhab.binding.nikohomecontrol.internal.protocol.NhcControllerEvent;
 import org.openhab.binding.nikohomecontrol.internal.protocol.NikoHomeControlCommunication;
+import org.openhab.core.config.core.Configuration;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseBridgeHandler;
+import org.openhab.core.types.Command;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,6 +77,8 @@ public abstract class NikoHomeControlBridgeHandler extends BaseBridgeHandler imp
             return;
         }
 
+        updateStatus(ThingStatus.UNKNOWN);
+
         scheduler.submit(() -> {
             comm.startCommunication();
             if (!comm.communicationActive()) {
@@ -95,7 +97,7 @@ public abstract class NikoHomeControlBridgeHandler extends BaseBridgeHandler imp
             if (discovery != null) {
                 discovery.discoverDevices();
             } else {
-                logger.debug("Niko Home Control: cannot discover devices, discovery service not started");
+                logger.debug("cannot discover devices, discovery service not started");
             }
         });
     }
@@ -117,9 +119,9 @@ public abstract class NikoHomeControlBridgeHandler extends BaseBridgeHandler imp
         }
 
         // This timer will restart the bridge connection periodically
-        logger.debug("Niko Home Control: restart bridge connection every {} min", refreshInterval);
+        logger.debug("restart bridge connection every {} min", refreshInterval);
         refreshTimer = scheduler.scheduleWithFixedDelay(() -> {
-            logger.debug("Niko Home Control: restart communication at scheduled time");
+            logger.debug("restart communication at scheduled time");
 
             NikoHomeControlCommunication comm = nhcComm;
             if (comm != null) {
@@ -141,7 +143,7 @@ public abstract class NikoHomeControlBridgeHandler extends BaseBridgeHandler imp
      */
     protected void bridgeOffline() {
         updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.COMMUNICATION_ERROR,
-                "Niko Home Control: error starting bridge connection");
+                "@text/offline.communication-error");
     }
 
     /**
@@ -153,9 +155,8 @@ public abstract class NikoHomeControlBridgeHandler extends BaseBridgeHandler imp
     }
 
     @Override
-    public void controllerOffline() {
-        bridgeOffline();
-
+    public void controllerOffline(String message) {
+        updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.COMMUNICATION_ERROR, message);
     }
 
     @Override
@@ -169,8 +170,7 @@ public abstract class NikoHomeControlBridgeHandler extends BaseBridgeHandler imp
     }
 
     /**
-     * Update bridge properties with properties returned from Niko Home Control Controller, so they can be made visible
-     * in PaperUI.
+     * Update bridge properties with properties returned from Niko Home Control Controller.
      */
     protected abstract void updateProperties();
 
@@ -231,28 +231,23 @@ public abstract class NikoHomeControlBridgeHandler extends BaseBridgeHandler imp
         this.nhcDiscovery = nhcDiscovery;
     }
 
-    /**
-     * Send a trigger from an alarm received from Niko Home Control.
-     *
-     * @param Niko Home Control alarm message
-     */
     @Override
     public void alarmEvent(String alarmText) {
-        logger.debug("Niko Home Control: triggering alarm channel with {}", alarmText);
+        logger.debug("triggering alarm channel with {}", alarmText);
         triggerChannel(CHANNEL_ALARM, alarmText);
         updateStatus(ThingStatus.ONLINE);
     }
 
-    /**
-     * Send a trigger from a notice received from Niko Home Control.
-     *
-     * @param Niko Home Control alarm message
-     */
     @Override
     public void noticeEvent(String alarmText) {
-        logger.debug("Niko Home Control: triggering notice channel with {}", alarmText);
+        logger.debug("triggering notice channel with {}", alarmText);
         triggerChannel(CHANNEL_NOTICE, alarmText);
         updateStatus(ThingStatus.ONLINE);
+    }
+
+    @Override
+    public void updatePropertiesEvent() {
+        updateProperties();
     }
 
     /**
@@ -270,7 +265,7 @@ public abstract class NikoHomeControlBridgeHandler extends BaseBridgeHandler imp
         try {
             addr = InetAddress.getByName(config.addr);
         } catch (UnknownHostException e) {
-            logger.debug("Niko Home Control: Cannot resolve hostname {} to IP adress", config.addr);
+            logger.debug("Cannot resolve hostname {} to IP adress", config.addr);
         }
         return addr;
     }

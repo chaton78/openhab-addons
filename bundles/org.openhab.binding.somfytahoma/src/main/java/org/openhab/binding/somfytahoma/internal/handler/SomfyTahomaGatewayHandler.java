@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,17 +12,26 @@
  */
 package org.openhab.binding.somfytahoma.internal.handler;
 
-import static org.eclipse.smarthome.core.thing.Thing.PROPERTY_FIRMWARE_VERSION;
-import static org.openhab.binding.somfytahoma.internal.SomfyTahomaBindingConstants.STATUS;
+import static org.openhab.binding.somfytahoma.internal.SomfyTahomaBindingConstants.*;
+import static org.openhab.core.thing.Thing.PROPERTY_FIRMWARE_VERSION;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.binding.somfytahoma.internal.SomfyTahomaStateDescriptionOptionProvider;
+import org.openhab.binding.somfytahoma.internal.model.SomfyTahomaActionGroup;
+import org.openhab.binding.somfytahoma.internal.model.SomfyTahomaStatus;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.StateOption;
 
 /**
  * The {@link SomfyTahomaGatewayHandler} is responsible for handling commands,
@@ -33,36 +42,69 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class SomfyTahomaGatewayHandler extends SomfyTahomaBaseThingHandler {
 
-    private final Logger logger = LoggerFactory.getLogger(SomfyTahomaGatewayHandler.class);
+    private final SomfyTahomaStateDescriptionOptionProvider stateDescriptionProvider;
 
-    public SomfyTahomaGatewayHandler(Thing thing) {
+    public SomfyTahomaGatewayHandler(Thing thing, SomfyTahomaStateDescriptionOptionProvider stateDescriptionProvider) {
         super(thing);
+        this.stateDescriptionProvider = stateDescriptionProvider;
     }
 
     @Override
-    public void initialize() {
-        updateStatus(getBridge().getStatus());
-    }
-
-    @Override
-    public void handleCommand(ChannelUID channelUID, Command command) {
-        logger.debug("Received command {} for channel {}", command, channelUID);
-        if (RefreshType.REFRESH.equals(command)) {
-            updateChannelState(channelUID);
+    public void initializeThing(@Nullable ThingStatus bridgeStatus) {
+        if (bridgeStatus != null) {
+            if (bridgeStatus == ThingStatus.ONLINE) {
+                refresh(STATUS);
+                refresh(SCENARIOS);
+            } else {
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_OFFLINE);
+            }
+        } else {
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_UNINITIALIZED);
         }
     }
 
     @Override
-    public void updateChannelState(ChannelUID channelUID) {
-        if (STATUS.equals(channelUID.getId())) {
-            String id = getThing().getConfiguration().get("id").toString();
-            updateState(channelUID, new StringType(getTahomaStatus(id)));
-            //update the firmware property
-            String fw = getTahomaVersion(id);
-            if (fw != null) {
-                updateProperty(PROPERTY_FIRMWARE_VERSION, fw);
+    public void refresh(String channel) {
+        if (channel.equals(STATUS)) {
+            String id = getGateWayId();
+            SomfyTahomaStatus status = getTahomaStatus(id);
+            String tahomaStatus = status.getStatus();
+            Channel ch = thing.getChannel(channel);
+            if (ch != null) {
+                updateState(ch.getUID(), new StringType(tahomaStatus));
+            }
+            // update the firmware property
+            String fw = status.getProtocolVersion();
+            updateProperty(PROPERTY_FIRMWARE_VERSION, fw);
+
+            updateStatus("DISCONNECTED".equals(tahomaStatus) ? ThingStatus.OFFLINE : ThingStatus.ONLINE);
+        } else if (channel.equals(SCENARIOS)) {
+            SomfyTahomaBridgeHandler handler = getBridgeHandler();
+            if (handler != null) {
+                List<StateOption> options = new ArrayList<>();
+                for (SomfyTahomaActionGroup actionGroup : handler.listActionGroups()) {
+                    options.add(new StateOption(actionGroup.getOid(), actionGroup.getLabel()));
+                }
+                stateDescriptionProvider.setStateOptions(new ChannelUID(getThing().getUID(), channel), options);
             }
         }
     }
 
+    public String getGateWayId() {
+        return getThing().getConfiguration().get("id").toString();
+    }
+
+    @Override
+    public void handleCommand(ChannelUID channelUID, Command command) {
+        super.handleCommand(channelUID, command);
+        if (command instanceof RefreshType) {
+            return;
+        }
+        if (channelUID.getId().equals(SCENARIOS)) {
+            SomfyTahomaBridgeHandler handler = getBridgeHandler();
+            if (handler != null && command instanceof StringType) {
+                handler.executeActionGroup(command.toString());
+            }
+        }
+    }
 }

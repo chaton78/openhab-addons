@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,13 +12,14 @@
  */
 package org.openhab.binding.logreader.internal.filereader.api;
 
-import java.util.concurrent.ScheduledExecutorService;
+import org.eclipse.jdt.annotation.NonNullByDefault;
 
 /**
  * Interface for log file readers.
  *
  * @author Pauli Anttila - Initial contribution
  */
+@NonNullByDefault
 public interface LogFileReader {
 
     /**
@@ -42,10 +43,9 @@ public interface LogFileReader {
      *
      * @param filePath file to read.
      * @param refreshRate how often file is read.
-     * @param scheduler executor service to use.
      * @throws FileReaderException
      */
-    void start(String filePath, long refreshRate, ScheduledExecutorService scheduler) throws FileReaderException;
+    void start(String filePath, long refreshRate) throws FileReaderException;
 
     /**
      * Stop log file reader.

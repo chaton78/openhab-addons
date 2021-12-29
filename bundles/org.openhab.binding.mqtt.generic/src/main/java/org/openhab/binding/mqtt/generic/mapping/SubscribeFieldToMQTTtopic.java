@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -22,9 +22,9 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.io.transport.mqtt.MqttBrokerConnection;
-import org.eclipse.smarthome.io.transport.mqtt.MqttException;
-import org.eclipse.smarthome.io.transport.mqtt.MqttMessageSubscriber;
+import org.openhab.core.io.transport.mqtt.MqttBrokerConnection;
+import org.openhab.core.io.transport.mqtt.MqttException;
+import org.openhab.core.io.transport.mqtt.MqttMessageSubscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,7 +127,7 @@ public class SubscribeFieldToMQTTtopic implements MqttMessageSubscriber {
      */
     @SuppressWarnings({ "null", "unused" })
     @Override
-    public void processMessage(String topic, byte [] payload) {
+    public void processMessage(String topic, byte[] payload) {
         final ScheduledFuture<?> scheduledFuture = this.scheduledFuture;
         if (scheduledFuture != null) { // Cancel timeout
             scheduledFuture.cancel(false);

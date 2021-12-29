@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,12 +14,11 @@ package org.openhab.binding.denonmarantz.internal;
 
 import java.math.BigDecimal;
 
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.PercentType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.types.State;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.types.State;
 
 /**
  * Represents the state of the handled DenonMarantz AVR
@@ -53,6 +52,12 @@ public class DenonMarantzState {
     private State zone3VolumeDB;
     private State zone3Mute;
     private State zone3Input;
+
+    private State zone4Power;
+    private State zone4Volume;
+    private State zone4VolumeDB;
+    private State zone4Mute;
+    private State zone4Input;
 
     private DenonMarantzStateChangedListener handler;
 
@@ -109,6 +114,17 @@ public class DenonMarantzState {
                 return zone3Mute;
             case DenonMarantzBindingConstants.CHANNEL_ZONE3_INPUT:
                 return zone3Input;
+
+            case DenonMarantzBindingConstants.CHANNEL_ZONE4_POWER:
+                return zone4Power;
+            case DenonMarantzBindingConstants.CHANNEL_ZONE4_VOLUME:
+                return zone4Volume;
+            case DenonMarantzBindingConstants.CHANNEL_ZONE4_VOLUME_DB:
+                return zone4VolumeDB;
+            case DenonMarantzBindingConstants.CHANNEL_ZONE4_MUTE:
+                return zone4Mute;
+            case DenonMarantzBindingConstants.CHANNEL_ZONE4_INPUT:
+                return zone4Input;
 
             default:
                 return null;
@@ -167,7 +183,7 @@ public class DenonMarantzState {
     }
 
     public void setNowPlayingArtist(String artist) {
-        StringType newVal = StringUtils.isBlank(artist) ? StringType.EMPTY : StringType.valueOf(artist);
+        StringType newVal = artist == null || artist.isBlank() ? StringType.EMPTY : StringType.valueOf(artist);
         if (!newVal.equals(this.artist)) {
             this.artist = newVal;
             handler.stateChanged(DenonMarantzBindingConstants.CHANNEL_NOW_PLAYING_ARTIST, this.artist);
@@ -175,7 +191,7 @@ public class DenonMarantzState {
     }
 
     public void setNowPlayingAlbum(String album) {
-        StringType newVal = StringUtils.isBlank(album) ? StringType.EMPTY : StringType.valueOf(album);
+        StringType newVal = album == null || album.isBlank() ? StringType.EMPTY : StringType.valueOf(album);
         if (!newVal.equals(this.album)) {
             this.album = newVal;
             handler.stateChanged(DenonMarantzBindingConstants.CHANNEL_NOW_PLAYING_ALBUM, this.album);
@@ -183,7 +199,7 @@ public class DenonMarantzState {
     }
 
     public void setNowPlayingTrack(String track) {
-        StringType newVal = StringUtils.isBlank(track) ? StringType.EMPTY : StringType.valueOf(track);
+        StringType newVal = track == null || track.isBlank() ? StringType.EMPTY : StringType.valueOf(track);
         if (!newVal.equals(this.track)) {
             this.track = newVal;
             handler.stateChanged(DenonMarantzBindingConstants.CHANNEL_NOW_PLAYING_TRACK, this.track);
@@ -244,7 +260,6 @@ public class DenonMarantzState {
                     .valueOf(volume.subtract(DenonMarantzBindingConstants.DB_OFFSET).toString());
             handler.stateChanged(DenonMarantzBindingConstants.CHANNEL_ZONE3_VOLUME_DB, this.zone3VolumeDB);
         }
-
     }
 
     public void setZone3Mute(boolean mute) {
@@ -260,6 +275,42 @@ public class DenonMarantzState {
         if (!newVal.equals(this.zone3Input)) {
             this.zone3Input = newVal;
             handler.stateChanged(DenonMarantzBindingConstants.CHANNEL_ZONE2_INPUT, this.zone3Input);
+        }
+    }
+
+    public void setZone4Power(boolean power) {
+        OnOffType newVal = power ? OnOffType.ON : OnOffType.OFF;
+        if (newVal != this.zone4Power) {
+            this.zone4Power = newVal;
+            handler.stateChanged(DenonMarantzBindingConstants.CHANNEL_ZONE4_POWER, this.zone4Power);
+        }
+    }
+
+    public void setZone4Volume(BigDecimal volume) {
+        PercentType newVal = new PercentType(volume);
+        if (!newVal.equals(this.zone4Volume)) {
+            this.zone4Volume = newVal;
+            handler.stateChanged(DenonMarantzBindingConstants.CHANNEL_ZONE4_VOLUME, this.zone4Volume);
+            // update the volume in dB too
+            this.zone4VolumeDB = DecimalType
+                    .valueOf(volume.subtract(DenonMarantzBindingConstants.DB_OFFSET).toString());
+            handler.stateChanged(DenonMarantzBindingConstants.CHANNEL_ZONE4_VOLUME_DB, this.zone4VolumeDB);
+        }
+    }
+
+    public void setZone4Mute(boolean mute) {
+        OnOffType newVal = mute ? OnOffType.ON : OnOffType.OFF;
+        if (newVal != this.zone4Mute) {
+            this.zone4Mute = newVal;
+            handler.stateChanged(DenonMarantzBindingConstants.CHANNEL_ZONE4_MUTE, this.zone4Mute);
+        }
+    }
+
+    public void setZone4Input(String zone4Input) {
+        StringType newVal = StringType.valueOf(zone4Input);
+        if (!newVal.equals(this.zone4Input)) {
+            this.zone4Input = newVal;
+            handler.stateChanged(DenonMarantzBindingConstants.CHANNEL_ZONE4_INPUT, this.zone4Input);
         }
     }
 }

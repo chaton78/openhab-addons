@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,18 +14,20 @@ package org.openhab.binding.rfxcom.internal.messages;
 
 import static org.openhab.binding.rfxcom.internal.RFXComBindingConstants.*;
 
-import org.eclipse.smarthome.core.library.types.IncreaseDecreaseType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.OpenClosedType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.Type;
-import org.eclipse.smarthome.core.types.UnDefType;
+import org.openhab.binding.rfxcom.internal.config.RFXComDeviceConfiguration;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComException;
+import org.openhab.binding.rfxcom.internal.exceptions.RFXComInvalidStateException;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComUnsupportedChannelException;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComUnsupportedValueException;
 import org.openhab.binding.rfxcom.internal.handler.DeviceState;
+import org.openhab.core.library.types.IncreaseDecreaseType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.OpenClosedType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.State;
+import org.openhab.core.types.Type;
+import org.openhab.core.types.UnDefType;
 
 /**
  * RFXCOM data class for lighting1 message. See X10, ARC, etc..
@@ -126,11 +128,11 @@ public class RFXComLighting1Message extends RFXComDeviceMessageImpl<RFXComLighti
             // the message unless the last X<n> ON they saw was for them. So we
             // redirect an incoming broadcast DIM/BRIGHT to the correct item
             // based on the last X<n> we saw or sent.
-            unitCode = lastUnit[(int) houseCode - (int) 'A'];
+            unitCode = lastUnit[houseCode - 'A'];
         } else {
             unitCode = data[5];
             if (command == Commands.ON) {
-                lastUnit[(int) houseCode - (int) 'A'] = unitCode;
+                lastUnit[houseCode - 'A'] = unitCode;
             }
         }
 
@@ -162,8 +164,8 @@ public class RFXComLighting1Message extends RFXComDeviceMessageImpl<RFXComLighti
     }
 
     @Override
-    public Command convertToCommand(String channelId, DeviceState deviceState)
-            throws RFXComUnsupportedChannelException {
+    public Command convertToCommand(String channelId, RFXComDeviceConfiguration config, DeviceState deviceState)
+            throws RFXComUnsupportedChannelException, RFXComInvalidStateException {
         switch (channelId) {
             case CHANNEL_COMMAND:
                 switch (command) {
@@ -190,11 +192,13 @@ public class RFXComLighting1Message extends RFXComDeviceMessageImpl<RFXComLighti
                 }
 
             default:
-                return super.convertToCommand(channelId, deviceState);
+                return super.convertToCommand(channelId, config, deviceState);
         }
     }
 
-    public State convertToState(String channelId, DeviceState deviceState) throws RFXComUnsupportedChannelException {
+    @Override
+    public State convertToState(String channelId, RFXComDeviceConfiguration config, DeviceState deviceState)
+            throws RFXComUnsupportedChannelException {
         switch (channelId) {
             case CHANNEL_COMMAND:
                 switch (command) {
@@ -285,7 +289,6 @@ public class RFXComLighting1Message extends RFXComDeviceMessageImpl<RFXComLighti
             default:
                 throw new RFXComUnsupportedChannelException("Channel " + channelId + " is not relevant here");
         }
-
     }
 
     @Override

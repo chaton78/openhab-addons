@@ -12,6 +12,10 @@ The latest versions have also implemented Z-Wave as transmission protocol which 
 <img src="doc/tellstick_duo.jpg" alt="Tellstick Duo with device" width="300px"/>
 </p>
 
+<p align="center">
+<img src="doc/znet.jpeg" alt="Tellstick Znet lite v2" width="300px"/>
+</p>
+
 ## Supported Things
 
 This binding supports the following thing types:
@@ -24,6 +28,7 @@ Additionally the binding have two types of bridge things which correspond to ava
 
 *   *Telldus Core Bridge* - Oldest API, used by USB devices. `telldus-core`
 *   *Telldus Live Bridge* - Telldus Cloud service, all devices with online access. `telldus-live`
+*   *Telldus Local Bridge* - Telldus Local API, Tellstick Net v2/Tellstick ZNet Lite v1/v2. `telldus-local`
 
 
 ***Switchbased sensors workaround***
@@ -32,11 +37,12 @@ Additionally the binding have two types of bridge things which correspond to ava
 
 ## Discovery
 
-Devices which is added to *Telldus Core* and *Telldus Live* can be discovered by openHAB.
+Devices which is added to *Telldus Core*, *Telldus Live* and *Telldus Local* can be discovered by openHAB.
 
 When you add this binding it will try to discover the *Telldus Core Bridge*.
 If it is installed correct its devices will show up.
-If you want to use the *Telldus Live* its bridge, *Telldus Live bridge* need to be added manually.
+
+If you want to use the *Telldus Live* or *Telldus Local*, their bridges, *Telldus Live bridge* or *Tellstick Local*, needs to be added manually.
 
 ## Binding Configuration
 
@@ -45,8 +51,7 @@ The binding itself requires no configuration.
 ## Thing Configuration
 
 Only the bridges require manual configuration.
-It is preferable that devices and sensors are discovered automatically; let the discovery/inbox initially configure them. 
-You can add them either with karaf: `inbox approve <thingId>` or by using the inbox of the Paper UI.
+It is preferable that devices and sensors are discovered automatically; let the discovery initially configure them. 
 
 ### Dimmers & switches
 
@@ -55,13 +60,13 @@ Use the option `repeat` for that. Default resend count is 2.
 
 ### Bridges
 
-Depending on your tellstick device type there is different ways of using this binding.
-The binding implements two different API:
+Depending on your Tellstick device type there is different ways of using this binding.
+The binding implements three different APIs:
 **1)** *Telldus Core* which is a local only interface supported by USB based device. <br>
-**2)** *Telldus Live* which is a REST based cloud service maintained by Telldus. <br>
+**2)** *Telldus Live* which is a REST based cloud service maintained by Telldus. 
+**3)** *Telldus Local* which is a REST based local service maintained by Telldus.
+<br>
 
-> Not implemented yet but supported by some new devices, contributions are welcome. [API documention.](https://api.telldus.net/localapi/api.html) <br>
-> **3)** *Local Rest API* is a local API which would work similar to Telldus Live but local.
 
 Depending on your Tellstick model, different bridge-types are available:
 
@@ -76,7 +81,7 @@ Depending on your Tellstick model, different bridge-types are available:
 
 #### Telldus Core Bridge
 
-> To enable communication between openhab and tellstick-core service (Telldus center) they must use same architecture, eg. 32-bit or 64-bit. The supplied version from Telldus is compiled against 32-bit architecture. Therefore, it is better to use 32-bit java for openHAB. To check which version of Java is currently in use, run: `java -d32 -version`
+> To enable communication between openHAB and tellstick-core service (Telldus center) they must use same architecture, eg. 32-bit or 64-bit. The supplied version from Telldus is compiled against 32-bit architecture. Therefore, it is better to use 32-bit java for openHAB. To check which version of Java is currently in use, run: `java -d32 -version`
 >
 > *For changing architecture in Linux check out: `dpkg --add-architecture`* 
 
@@ -111,6 +116,36 @@ Optional:
 
 -   **refreshInterval:** How often we should contact *Telldus Live* to check for updates (in ms)
 
+#### Telldus Local Bridge
+
+To configure Telldus Local you need to know the local IP address of your Tellstick device and also request an access token.
+
+Goto this page:
+<https://tellstick-server.readthedocs.io/en/latest/api/authentication.html> 
+and follow steps 1), 2) and 3) to generate an access token.
+
+In step 2) when you authenticate the application in your favorite browser, choose the options '1 year' and 'Auto renew access'.
+
+Copy the 'token' returned in Step 3) and use that as accessToken in the local bridge config.
+
+```
+"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImF1ZCI6IkV4YW1wbGUgYXBwIiwiZXhwIjoxNDUyOTUxNTYyfQ.eyJyZW5ldyI6dHJ1ZSwidHRsIjo4NjQwMH0.HeqoFM6-K5IuQa08Zr9HM9V2TKGRI9VxXlgdsutP7sg"
+```
+
+
+```
+Bridge tellstick:telldus-local:3 "Tellstick Local ZWave" [ipAddress="x.y.z.w" , accesToken= "XYZ...W"]
+```
+
+Required:
+
+-   **ipAddress:** Local IP address of your Tellstick device
+-   **accessToken:** Access Token
+
+Optional:
+
+-   **refreshInterval:** How often we should contact *Telldus Local* to check for updates (in ms)
+
 ## Channels
 
 Actuators (dimmer/switch) support the following channels:
@@ -123,39 +158,39 @@ Actuators (dimmer/switch) support the following channels:
 
 Sensors (sensor) support the following channels:
 
-| Channel Type ID | Item Type | Description                                                 |
-|-----------------|-----------|-------------------------------------------------------------|
-| humidity        | Number    | This channel reports the current humidity in percentage.    |
-| temperature     | Number    | This channel reports the current temperature in celsius.    |
-| timestamp       | DateTime  | This channel reports the last time this sensor was updates. |
+| Channel Type ID | Item Type           | Description                                                 |
+|-----------------|---------------------|-------------------------------------------------------------|
+| humidity        | Number:Dimensionless| This channel reports the current humidity in percentage.    |
+| temperature     | Number:Temperature  | This channel reports the current temperature.               |
+| timestamp       | DateTime            | This channel reports the last time this sensor was updates. |
 
 PowerSensors ([powersensor]) support the following channels:
 
-| Channel Type ID | Item Type | Description                                                 |
-|-----------------|-----------|-------------------------------------------------------------|
-| watt            | Number    | This channel reports the current watt.                      |
-| ampere          | Number    | This channel reports the current ampere.                    |
-| timestamp       | DateTime  | This channel reports the last time this sensor was updates. |
+| Channel Type ID | Item Type              | Description                                                 |
+|-----------------|------------------------|-------------------------------------------------------------|
+| watt            | Number:Power           | This channel reports the current watt.                      |
+| ampere          | Number:ElectricCurrent | This channel reports the current ampere.                    |
+| timestamp       | DateTime               | This channel reports the last time this sensor was updates. |
 
 WindSensors ([windsensor]) support the following channels:
 
-| Channel Type ID | Item Type | Description                  |
-|-----------------|-----------|------------------------------|
-| windgust        | Number    | This current peak wind gust. |
-| winddirection   | Number    | The current wind direction.  |
-| windaverage     | DateTime  | The current wind avarage.    |
+| Channel Type ID | Item Type    | Description                  |
+|-----------------|--------------|------------------------------|
+| windgust        | Number:Speed | The current peak wind gust.  |
+| winddirection   | Number:Angle | The current wind direction.  |
+| windaverage     | Number:Speed | The current wind average.    |
 
 RainSensors ([rainsensor]) support the following channels:
 
-| Channel Type ID | Item Type | Description                |
-|-----------------|-----------|----------------------------|
-| rainrate        | Number    | This current rate of rain. |
-| raintotal       | Number    | The total rain.            |
+| Channel Type ID | Item Type     | Description                |
+|-----------------|---------------|----------------------------|
+| rainrate        | Number:Length | This current rate of rain. |
+| raintotal       | Number:Length | The total rain.            |
 
 ### Switchbased sensor workaround
 
 All switchbased sensors are binary and the goal is to represent them as a `contact` item in openHAB. Eg. a door is open or closed and can't be altered by sending a radio signal.
-To achive that we will create a proxy item which is updated by a rule.
+To achieve that we will create a proxy item which is updated by a rule.
 
 First create another proxy item for every sensor:
 
@@ -194,6 +229,9 @@ Bridge tellstick:telldus-core:1 "Tellstick Duo" [resendInterval=200] {
 }
 Bridge tellstick:telldus-live:2 "Tellstick ZWave" [refreshInterval=10000, publicKey="XXXXXXXX", privateKey="YYYYYY", token= "ZZZZZZZZ", tokenSecret="UUUUUUUUUU"] {
 	sensor OutsideSensor2 [protocol="fineoffset",model="temperaturehumidity",name="temperaturehumidity:120",deviceId="120_temperaturehumidity_fineoffset"]
+}
+Bridge tellstick:telldus-local:3 "Tellstick Local ZWave" [ipAddress="192.168.50.17" , accesToken= "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImF1ZCI6IkV4YW1wbGUgYXBwIiwiZXhwIjoxNDUyOTUxNTYyfQ.eyJyZW5ldyI6dHJ1ZSwidHRsIjo4NjQwMH0.HeqoFM6-K5IuQa08Zr9HM9V2TKGRI9VxXlgdsutP7sg"] {
+    sensor OutsideSensor3 [protocol="fineoffset",model="temperaturehumidity",name="temperaturehumidity:120",deviceId="120_temperaturehumidity_fineoffset"]
 }
 ```
 

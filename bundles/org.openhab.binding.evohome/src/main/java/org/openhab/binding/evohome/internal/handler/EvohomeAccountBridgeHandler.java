@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -22,16 +22,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.jetty.client.HttpClient;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseBridgeHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.evohome.internal.RunnableWithTimeout;
 import org.openhab.binding.evohome.internal.api.EvohomeApiClient;
 import org.openhab.binding.evohome.internal.api.models.v2.response.Gateway;
@@ -45,6 +36,14 @@ import org.openhab.binding.evohome.internal.api.models.v2.response.TemperatureCo
 import org.openhab.binding.evohome.internal.api.models.v2.response.Zone;
 import org.openhab.binding.evohome.internal.api.models.v2.response.ZoneStatus;
 import org.openhab.binding.evohome.internal.configuration.EvohomeAccountConfiguration;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseBridgeHandler;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.types.Command;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +60,7 @@ public class EvohomeAccountBridgeHandler extends BaseBridgeHandler {
     private final HttpClient httpClient;
     private EvohomeAccountConfiguration configuration;
     private EvohomeApiClient apiClient;
-    private List<AccountStatusListener> listeners = new CopyOnWriteArrayList<AccountStatusListener>();
+    private List<AccountStatusListener> listeners = new CopyOnWriteArrayList<>();
 
     protected ScheduledFuture<?> refreshTask;
 
@@ -75,30 +74,22 @@ public class EvohomeAccountBridgeHandler extends BaseBridgeHandler {
         configuration = getConfigAs(EvohomeAccountConfiguration.class);
 
         if (checkConfig()) {
-            try {
-                apiClient = new EvohomeApiClient(configuration, this.httpClient);
-            } catch (Exception e) {
-                logger.error("Could not start API client", e);
-                updateAccountStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                        "Could not create evohome API client");
-            }
+            apiClient = new EvohomeApiClient(configuration, this.httpClient);
 
-            if (apiClient != null) {
-                // Initialization can take a while, so kick it off on a separate thread
-                scheduler.schedule(() -> {
-                    if (apiClient.login()) {
-                        if (checkInstallationInfoHasDuplicateIds(apiClient.getInstallationInfo())) {
-                            startRefreshTask();
-                        } else {
-                            updateAccountStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                                    "System Information Sanity Check failed");
-                        }
+            // Initialization can take a while, so kick it off on a separate thread
+            scheduler.schedule(() -> {
+                if (apiClient.login()) {
+                    if (checkInstallationInfoHasDuplicateIds(apiClient.getInstallationInfo())) {
+                        startRefreshTask();
                     } else {
                         updateAccountStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                                "Authentication failed");
+                                "System Information Sanity Check failed");
                     }
-                }, 0, TimeUnit.SECONDS);
-            }
+                } else {
+                    updateAccountStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
+                            "Authentication failed");
+                }
+            }, 0, TimeUnit.SECONDS);
         }
     }
 
@@ -155,7 +146,7 @@ public class EvohomeAccountBridgeHandler extends BaseBridgeHandler {
         boolean result = true;
 
         // Make sure that there are no duplicate IDs
-        Set<String> ids = new HashSet<String>();
+        Set<String> ids = new HashSet<>();
 
         for (Location location : locations) {
             result &= ids.add(location.getLocationInfo().getLocationId());
@@ -190,9 +181,9 @@ public class EvohomeAccountBridgeHandler extends BaseBridgeHandler {
 
         if (configuration == null) {
             errorMessage = "Configuration is missing or corrupted";
-        } else if (StringUtils.isEmpty(configuration.username)) {
+        } else if (configuration.username == null || configuration.username.isEmpty()) {
             errorMessage = "Username not configured";
-        } else if (StringUtils.isEmpty(configuration.password)) {
+        } else if (configuration.password == null || configuration.password.isEmpty()) {
             errorMessage = "Password not configured";
         } else {
             return true;
@@ -275,5 +266,4 @@ public class EvohomeAccountBridgeHandler extends BaseBridgeHandler {
             }
         }
     }
-
 }

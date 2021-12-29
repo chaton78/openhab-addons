@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -15,7 +15,7 @@ package org.openhab.binding.somfytahoma.internal.handler;
 import static org.openhab.binding.somfytahoma.internal.SomfyTahomaBindingConstants.*;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.thing.Thing;
+import org.openhab.core.thing.Thing;
 
 /**
  * The {@link SomfyTahomaCurtainHandler} is responsible for handling commands,
@@ -42,9 +42,11 @@ public class SomfyTahomaCurtainHandler extends SomfyTahomaRollerShutterHandler {
             case "UP":
             case "OPEN":
                 return COMMAND_OPEN;
+            case "MOVE":
             case "MY":
-            case "STOP":
                 return COMMAND_MY;
+            case "STOP":
+                return COMMAND_STOP;
             default:
                 return COMMAND_SET_CLOSURE;
         }

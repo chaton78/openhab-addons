@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -15,9 +15,9 @@ package org.openhab.binding.ambientweather.internal.processor;
 import static org.openhab.binding.ambientweather.internal.AmbientWeatherBindingConstants.*;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.library.unit.ImperialUnits;
 import org.openhab.binding.ambientweather.internal.handler.AmbientWeatherStationHandler;
 import org.openhab.binding.ambientweather.internal.model.EventDataJson;
+import org.openhab.core.library.unit.ImperialUnits;
 
 /**
  * The {@link Ws0265Processor} is responsible for updating

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,18 +12,22 @@
  */
 package org.openhab.binding.satel.internal.config;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 /**
  * The {@link Ethm1Config} contains configuration values for Satel ETHM-1 bridge.
  *
  * @author Krzysztof Goworek - Initial contribution
  */
+@NonNullByDefault
 public class Ethm1Config extends SatelBridgeConfig {
 
     public static final String HOST = "host";
 
-    private String host;
+    private String host = "";
     private int port;
-    private String encryptionKey;
+    private @Nullable String encryptionKey;
 
     /**
      * @return IP or hostname of the bridge
@@ -43,7 +47,7 @@ public class Ethm1Config extends SatelBridgeConfig {
      * @return key used to encrypt messages
      */
     public String getEncryptionKey() {
-        return encryptionKey;
+        final String encryptionKey = this.encryptionKey;
+        return encryptionKey == null ? "" : encryptionKey;
     }
-
 }

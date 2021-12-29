@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -15,18 +15,17 @@ package org.openhab.binding.rotel.internal.communication;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.io.transport.serial.PortInUseException;
-import org.eclipse.smarthome.io.transport.serial.SerialPort;
-import org.eclipse.smarthome.io.transport.serial.SerialPortIdentifier;
-import org.eclipse.smarthome.io.transport.serial.SerialPortManager;
-import org.eclipse.smarthome.io.transport.serial.UnsupportedCommOperationException;
 import org.openhab.binding.rotel.internal.RotelException;
 import org.openhab.binding.rotel.internal.RotelModel;
+import org.openhab.core.io.transport.serial.PortInUseException;
+import org.openhab.core.io.transport.serial.SerialPort;
+import org.openhab.core.io.transport.serial.SerialPortIdentifier;
+import org.openhab.core.io.transport.serial.SerialPortManager;
+import org.openhab.core.io.transport.serial.UnsupportedCommOperationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,10 +51,11 @@ public class RotelSerialConnector extends RotelConnector {
      * @param serialPortName the serial port name to be used
      * @param model the projector model in use
      * @param protocol the protocol to be used
+     * @param readerThreadName the name of thread to be created
      */
     public RotelSerialConnector(SerialPortManager serialPortManager, String serialPortName, RotelModel model,
-            RotelProtocol protocol, Map<RotelSource, String> sourcesLabels) {
-        super(model, protocol, sourcesLabels, false);
+            RotelProtocol protocol, Map<RotelSource, String> sourcesLabels, String readerThreadName) {
+        super(model, protocol, sourcesLabels, false, readerThreadName);
 
         this.serialPortManager = serialPortManager;
         this.serialPortName = serialPortName;
@@ -68,8 +68,7 @@ public class RotelSerialConnector extends RotelConnector {
             SerialPortIdentifier portIdentifier = serialPortManager.getIdentifier(serialPortName);
             if (portIdentifier == null) {
                 setConnected(false);
-                logger.debug("Opening serial connection failed: No Such Port: {}", serialPortName);
-                throw new RotelException("Opening serial connection failed: No Such Port");
+                throw new RotelException("Opening serial connection failed: no port " + serialPortName);
             }
 
             SerialPort commPort = portIdentifier.open(this.getClass().getName(), 2000);
@@ -93,7 +92,7 @@ public class RotelSerialConnector extends RotelConnector {
                 }
             }
 
-            Thread thread = new RotelReaderThread(this);
+            Thread thread = new RotelReaderThread(this, readerThreadName);
             setReaderThread(thread);
             thread.start();
 
@@ -104,23 +103,9 @@ public class RotelSerialConnector extends RotelConnector {
             setConnected(true);
 
             logger.debug("Serial connection opened");
-        } catch (PortInUseException e) {
+        } catch (PortInUseException | UnsupportedCommOperationException | IOException e) {
             setConnected(false);
-            logger.debug("Opening serial connection failed: Port in Use Exception: {}", e.getMessage(), e);
-            throw new RotelException("Opening serial connection failed: Port in Use Exception");
-        } catch (UnsupportedCommOperationException e) {
-            setConnected(false);
-            logger.debug("Opening serial connection failed: Unsupported Comm Operation Exception: {}", e.getMessage(),
-                    e);
-            throw new RotelException("Opening serial connection failed: Unsupported Comm Operation Exception");
-        } catch (UnsupportedEncodingException e) {
-            setConnected(false);
-            logger.debug("Opening serial connection failed: Unsupported Encoding Exception: {}", e.getMessage(), e);
-            throw new RotelException("Opening serial connection failed: Unsupported Encoding Exception");
-        } catch (IOException e) {
-            setConnected(false);
-            logger.debug("Opening serial connection failed: IO Exception: {}", e.getMessage(), e);
-            throw new RotelException("Opening serial connection failed: IO Exception");
+            throw new RotelException("Opening serial connection failed", e);
         }
     }
 

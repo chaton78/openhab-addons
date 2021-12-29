@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,18 +13,15 @@
 package org.openhab.binding.wemo.internal.discovery.test;
 
 import static org.hamcrest.CoreMatchers.*;
-import static org.junit.Assert.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 
-import org.eclipse.smarthome.config.discovery.DiscoveryResult;
-import org.eclipse.smarthome.config.discovery.upnp.UpnpDiscoveryParticipant;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.ThingUID;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.jupnp.model.ValidationException;
 import org.jupnp.model.meta.DeviceDetails;
 import org.jupnp.model.meta.ManufacturerDetails;
@@ -37,6 +34,10 @@ import org.jupnp.model.types.UDN;
 import org.openhab.binding.wemo.internal.WemoBindingConstants;
 import org.openhab.binding.wemo.internal.discovery.WemoDiscoveryParticipant;
 import org.openhab.binding.wemo.internal.test.GenericWemoOSGiTest;
+import org.openhab.core.config.discovery.DiscoveryResult;
+import org.openhab.core.config.discovery.upnp.UpnpDiscoveryParticipant;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
 
 /**
  * Tests for {@link WemoDiscoveryParticipant}.
@@ -47,8 +48,8 @@ import org.openhab.binding.wemo.internal.test.GenericWemoOSGiTest;
 public class WemoDiscoveryParticipantTest {
     UpnpDiscoveryParticipant participant = new WemoDiscoveryParticipant();
 
-    private final String DEVICE_UDN = GenericWemoOSGiTest.DEVICE_MANUFACTURER + "_3434xxx";
-    private final String DEVICE_FRIENDLY_NAME = "Wemo Test";
+    private static final String DEVICE_UDN = GenericWemoOSGiTest.DEVICE_MANUFACTURER + "_3434xxx";
+    private static final String DEVICE_FRIENDLY_NAME = "Wemo Test";
 
     RemoteDevice createUpnpDevice(String modelName)
             throws MalformedURLException, ValidationException, URISyntaxException {

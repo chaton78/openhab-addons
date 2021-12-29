@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.ftpserver.DataConnectionConfiguration;
 import org.apache.ftpserver.FtpServerConfigurationException;
 import org.apache.ftpserver.FtpServerFactory;
 import org.apache.ftpserver.ftplet.DefaultFtplet;
@@ -48,6 +49,7 @@ public class FtpServer {
     private final Logger logger = LoggerFactory.getLogger(FtpServer.class);
 
     private int port;
+    private DataConnectionConfiguration dataConnectionConfiguration;
     int idleTimeout;
 
     private org.apache.ftpserver.FtpServer server;
@@ -61,10 +63,12 @@ public class FtpServer {
         FTPUserManager = new FTPUserManager();
     }
 
-    public void startServer(int port, int idleTimeout) throws FtpException {
+    public void startServer(int port, int idleTimeout, DataConnectionConfiguration dataConnectionConfiguration)
+            throws FtpException {
         stopServer();
         this.port = port;
         this.idleTimeout = idleTimeout;
+        this.dataConnectionConfiguration = dataConnectionConfiguration;
         FTPUserManager.setIdleTimeout(idleTimeout);
         initServer();
     }
@@ -87,7 +91,6 @@ public class FtpServer {
 
     public synchronized void addAuthenticationCredentials(String username, String password)
             throws IllegalArgumentException {
-
         FTPUserManager.addAuthenticationCredentials(username, password);
     }
 
@@ -128,8 +131,10 @@ public class FtpServer {
     private void initServer() throws FtpException {
         FtpServerFactory serverFactory = new FtpServerFactory();
         ListenerFactory listenerFactory = new ListenerFactory();
+
         listenerFactory.setPort(port);
         listenerFactory.setIdleTimeout(idleTimeout);
+        listenerFactory.setDataConnectionConfiguration(dataConnectionConfiguration);
 
         Listener listener = listenerFactory.createListener();
 
@@ -191,7 +196,6 @@ public class FtpServer {
         @Override
         public FtpletResult onUploadEnd(final FtpSession session, final FtpRequest request)
                 throws FtpException, IOException {
-
             String userRoot = session.getUser().getHomeDirectory();
             String currDir = session.getFileSystemView().getWorkingDirectory().getAbsolutePath();
             String fileName = request.getArgument();

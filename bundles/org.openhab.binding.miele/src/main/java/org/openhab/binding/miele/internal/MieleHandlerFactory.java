@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -21,15 +21,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.eclipse.smarthome.config.core.Configuration;
-import org.eclipse.smarthome.config.discovery.DiscoveryService;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.ThingUID;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandlerFactory;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory;
 import org.openhab.binding.miele.internal.discovery.MieleApplianceDiscoveryService;
 import org.openhab.binding.miele.internal.handler.CoffeeMachineHandler;
 import org.openhab.binding.miele.internal.handler.DishWasherHandler;
@@ -42,8 +33,22 @@ import org.openhab.binding.miele.internal.handler.MieleBridgeHandler;
 import org.openhab.binding.miele.internal.handler.OvenHandler;
 import org.openhab.binding.miele.internal.handler.TumbleDryerHandler;
 import org.openhab.binding.miele.internal.handler.WashingMachineHandler;
+import org.openhab.core.config.core.Configuration;
+import org.openhab.core.config.discovery.DiscoveryService;
+import org.openhab.core.i18n.LocaleProvider;
+import org.openhab.core.i18n.TranslationProvider;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
+import org.openhab.core.thing.binding.BaseThingHandlerFactory;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.thing.binding.ThingHandlerFactory;
 import org.osgi.framework.ServiceRegistration;
+import org.osgi.service.component.ComponentContext;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * The {@link MieleHandlerFactory} is responsible for creating things and thing
@@ -59,7 +64,17 @@ public class MieleHandlerFactory extends BaseThingHandlerFactory {
                     MieleApplianceHandler.SUPPORTED_THING_TYPES.stream())
             .collect(Collectors.toSet());
 
+    private final TranslationProvider i18nProvider;
+    private final LocaleProvider localeProvider;
+
     private Map<ThingUID, ServiceRegistration<?>> discoveryServiceRegs = new HashMap<>();
+
+    @Activate
+    public MieleHandlerFactory(final @Reference TranslationProvider i18nProvider,
+            final @Reference LocaleProvider localeProvider, ComponentContext componentContext) {
+        this.i18nProvider = i18nProvider;
+        this.localeProvider = localeProvider;
+    }
 
     @Override
     public boolean supportsThingType(ThingTypeUID thingTypeUID) {
@@ -89,31 +104,31 @@ public class MieleHandlerFactory extends BaseThingHandlerFactory {
             return handler;
         } else if (MieleApplianceHandler.SUPPORTED_THING_TYPES.contains(thing.getThingTypeUID())) {
             if (thing.getThingTypeUID().equals(THING_TYPE_HOOD)) {
-                return new HoodHandler(thing);
+                return new HoodHandler(thing, i18nProvider, localeProvider);
             }
             if (thing.getThingTypeUID().equals(THING_TYPE_FRIDGEFREEZER)) {
-                return new FridgeFreezerHandler(thing);
+                return new FridgeFreezerHandler(thing, i18nProvider, localeProvider);
             }
             if (thing.getThingTypeUID().equals(THING_TYPE_FRIDGE)) {
-                return new FridgeHandler(thing);
+                return new FridgeHandler(thing, i18nProvider, localeProvider);
             }
             if (thing.getThingTypeUID().equals(THING_TYPE_OVEN)) {
-                return new OvenHandler(thing);
+                return new OvenHandler(thing, i18nProvider, localeProvider);
             }
             if (thing.getThingTypeUID().equals(THING_TYPE_HOB)) {
-                return new HobHandler(thing);
+                return new HobHandler(thing, i18nProvider, localeProvider);
             }
             if (thing.getThingTypeUID().equals(THING_TYPE_WASHINGMACHINE)) {
-                return new WashingMachineHandler(thing);
+                return new WashingMachineHandler(thing, i18nProvider, localeProvider);
             }
             if (thing.getThingTypeUID().equals(THING_TYPE_DRYER)) {
-                return new TumbleDryerHandler(thing);
+                return new TumbleDryerHandler(thing, i18nProvider, localeProvider);
             }
             if (thing.getThingTypeUID().equals(THING_TYPE_DISHWASHER)) {
-                return new DishWasherHandler(thing);
+                return new DishWasherHandler(thing, i18nProvider, localeProvider);
             }
             if (thing.getThingTypeUID().equals(THING_TYPE_COFFEEMACHINE)) {
-                return new CoffeeMachineHandler(thing);
+                return new CoffeeMachineHandler(thing, i18nProvider, localeProvider);
             }
         }
 

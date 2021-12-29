@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,16 +12,17 @@
  */
 package org.openhab.binding.snmp.internal;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
 import java.util.Collections;
 
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.ThingStatus;
 import org.snmp4j.PDU;
 import org.snmp4j.event.ResponseEvent;
 import org.snmp4j.smi.IpAddress;
@@ -75,5 +76,6 @@ public class StringChannelTest extends AbstractSnmpTargetHandlerTest {
         ResponseEvent event = new ResponseEvent("test", null, null, responsePDU, null);
         thingHandler.onResponse(event);
         verify(thingHandlerCallback, atLeast(1)).stateUpdated(eq(CHANNEL_UID), eq(new StringType("aa 11 bb")));
+        verifyStatus(ThingStatus.ONLINE);
     }
 }

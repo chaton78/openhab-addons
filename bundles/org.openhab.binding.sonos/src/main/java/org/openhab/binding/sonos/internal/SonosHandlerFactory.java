@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -20,20 +20,22 @@ import java.util.Hashtable;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.eclipse.smarthome.config.core.Configuration;
-import org.eclipse.smarthome.core.audio.AudioHTTPServer;
-import org.eclipse.smarthome.core.audio.AudioSink;
-import org.eclipse.smarthome.core.net.HttpServiceUtil;
-import org.eclipse.smarthome.core.net.NetworkAddressService;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingRegistry;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.ThingUID;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandlerFactory;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory;
-import org.eclipse.smarthome.io.transport.upnp.UpnpIOService;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.sonos.internal.handler.ZonePlayerHandler;
+import org.openhab.core.audio.AudioHTTPServer;
+import org.openhab.core.audio.AudioSink;
+import org.openhab.core.config.core.Configuration;
+import org.openhab.core.io.transport.upnp.UpnpIOService;
+import org.openhab.core.net.HttpServiceUtil;
+import org.openhab.core.net.NetworkAddressService;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingRegistry;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
+import org.openhab.core.thing.binding.BaseThingHandlerFactory;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.thing.binding.ThingHandlerFactory;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
@@ -48,12 +50,13 @@ import org.slf4j.LoggerFactory;
  *
  * @author Karel Goderis - Initial contribution
  */
+@NonNullByDefault
 @Component(service = ThingHandlerFactory.class, configurationPid = "binding.sonos")
 public class SonosHandlerFactory extends BaseThingHandlerFactory {
 
     private final Logger logger = LoggerFactory.getLogger(SonosHandlerFactory.class);
 
-    // Bindings should not use the ThingRegistry! See https://github.com/openhab/openhab2-addons/pull/6080 and
+    // Bindings should not use the ThingRegistry! See https://github.com/openhab/openhab-addons/pull/6080 and
     // https://github.com/eclipse/smarthome/issues/5182
     private final ThingRegistry thingRegistry;
     private final UpnpIOService upnpIOService;
@@ -64,10 +67,10 @@ public class SonosHandlerFactory extends BaseThingHandlerFactory {
     private final Map<String, ServiceRegistration<AudioSink>> audioSinkRegistrations = new ConcurrentHashMap<>();
 
     // optional OPML URL that can be configured through configuration admin
-    private String opmlUrl = null;
+    private @Nullable String opmlUrl;
 
     // url (scheme+server+port) to use for playing notification sounds
-    private String callbackUrl = null;
+    private @Nullable String callbackUrl;
 
     @Activate
     public SonosHandlerFactory(final @Reference ThingRegistry thingRegistry,
@@ -90,8 +93,8 @@ public class SonosHandlerFactory extends BaseThingHandlerFactory {
     }
 
     @Override
-    public Thing createThing(ThingTypeUID thingTypeUID, Configuration configuration, ThingUID thingUID,
-            ThingUID bridgeUID) {
+    public @Nullable Thing createThing(ThingTypeUID thingTypeUID, Configuration configuration,
+            @Nullable ThingUID thingUID, @Nullable ThingUID bridgeUID) {
         if (SUPPORTED_THING_TYPES_UIDS.contains(thingTypeUID)) {
             ThingUID sonosDeviceUID = getPlayerUID(thingTypeUID, thingUID, configuration);
             logger.debug("Creating a sonos thing with ID '{}'", sonosDeviceUID);
@@ -107,7 +110,7 @@ public class SonosHandlerFactory extends BaseThingHandlerFactory {
     }
 
     @Override
-    protected ThingHandler createHandler(Thing thing) {
+    protected @Nullable ThingHandler createHandler(Thing thing) {
         ThingTypeUID thingTypeUID = thing.getThingTypeUID();
 
         if (SUPPORTED_THING_TYPES_UIDS.contains(thingTypeUID)) {
@@ -122,7 +125,7 @@ public class SonosHandlerFactory extends BaseThingHandlerFactory {
             SonosAudioSink audioSink = new SonosAudioSink(handler, audioHTTPServer, callbackUrl);
             @SuppressWarnings("unchecked")
             ServiceRegistration<AudioSink> reg = (ServiceRegistration<AudioSink>) getBundleContext()
-                    .registerService(AudioSink.class.getName(), audioSink, new Hashtable<String, Object>());
+                    .registerService(AudioSink.class.getName(), audioSink, new Hashtable<>());
             audioSinkRegistrations.put(thing.getUID().toString(), reg);
 
             return handler;
@@ -130,7 +133,7 @@ public class SonosHandlerFactory extends BaseThingHandlerFactory {
         return null;
     }
 
-    private String createCallbackUrl() {
+    private @Nullable String createCallbackUrl() {
         if (callbackUrl != null) {
             return callbackUrl;
         } else {
@@ -160,7 +163,7 @@ public class SonosHandlerFactory extends BaseThingHandlerFactory {
         }
     }
 
-    private ThingUID getPlayerUID(ThingTypeUID thingTypeUID, ThingUID thingUID, Configuration configuration) {
+    private ThingUID getPlayerUID(ThingTypeUID thingTypeUID, @Nullable ThingUID thingUID, Configuration configuration) {
         if (thingUID != null) {
             return thingUID;
         } else {
@@ -168,5 +171,4 @@ public class SonosHandlerFactory extends BaseThingHandlerFactory {
             return new ThingUID(thingTypeUID, udn);
         }
     }
-
 }

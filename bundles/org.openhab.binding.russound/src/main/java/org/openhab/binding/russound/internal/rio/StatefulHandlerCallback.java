@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,14 +13,14 @@
 package org.openhab.binding.russound.internal.rio;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.types.State;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.types.State;
 
 /**
  * Defines an implementation of {@link RioHandlerCallback} that will remember the last state
@@ -78,7 +78,6 @@ public class StatefulHandlerCallback implements RioHandlerCallback {
 
         // If we got this far - call the underlying one
         wrappedCallback.statusChanged(status, detail, msg);
-
     }
 
     /**
@@ -90,26 +89,20 @@ public class StatefulHandlerCallback implements RioHandlerCallback {
      */
     @Override
     public void stateChanged(String channelId, State newState) {
-        if (StringUtils.isEmpty(channelId)) {
+        if (channelId == null || channelId.isEmpty()) {
             return;
         }
 
         final State oldState = state.get(channelId);
 
-        // If both null OR the same value (enums), nothing changed
-        if (oldState == newState) {
-            return;
-        }
-
         // If they are equal - nothing changed
-        if (oldState != null && oldState.equals(newState)) {
+        if (Objects.equals(oldState, newState)) {
             return;
         }
 
         // Something changed - save the new state and call the underlying wrapped
         state.put(channelId, newState);
         wrappedCallback.stateChanged(channelId, newState);
-
     }
 
     /**
@@ -119,7 +112,7 @@ public class StatefulHandlerCallback implements RioHandlerCallback {
      * @param channelId the channel id to remove state
      */
     public void removeState(String channelId) {
-        if (StringUtils.isEmpty(channelId)) {
+        if (channelId == null || channelId.isEmpty()) {
             return;
         }
         state.remove(channelId);
@@ -134,7 +127,6 @@ public class StatefulHandlerCallback implements RioHandlerCallback {
     @Override
     public void setProperty(String propertyName, String propertyValue) {
         wrappedCallback.setProperty(propertyName, propertyValue);
-
     }
 
     /**
@@ -150,7 +142,6 @@ public class StatefulHandlerCallback implements RioHandlerCallback {
     @Override
     public void addListener(String channelId, RioHandlerCallbackListener listener) {
         wrappedCallback.addListener(channelId, listener);
-
     }
 
     @Override

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -20,23 +20,24 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.ThingStatusInfo;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.dsmr.internal.device.cosem.CosemObject;
 import org.openhab.binding.dsmr.internal.device.p1telegram.P1Telegram;
 import org.openhab.binding.dsmr.internal.device.p1telegram.P1TelegramListener;
 import org.openhab.binding.dsmr.internal.meter.DSMRMeter;
 import org.openhab.binding.dsmr.internal.meter.DSMRMeterConfiguration;
+import org.openhab.binding.dsmr.internal.meter.DSMRMeterConstants;
 import org.openhab.binding.dsmr.internal.meter.DSMRMeterDescriptor;
 import org.openhab.binding.dsmr.internal.meter.DSMRMeterType;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.ThingStatusInfo;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.State;
+import org.openhab.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +66,11 @@ public class DSMRMeterHandler extends BaseThingHandler implements P1TelegramList
      * Reference to the meter watchdog.
      */
     private @NonNullByDefault({}) ScheduledFuture<?> meterWatchdog;
+
+    /**
+     * The M-bus channel this meter is on, or if the channel is irrelevant is set to unknown channel
+     */
+    private int channel = DSMRMeterConstants.UNKNOWN_CHANNEL;
 
     /**
      * Creates a new MeterHandler for the given Thing.
@@ -106,7 +112,8 @@ public class DSMRMeterHandler extends BaseThingHandler implements P1TelegramList
             return;
         }
         DSMRMeterConfiguration meterConfig = getConfigAs(DSMRMeterConfiguration.class);
-        DSMRMeterDescriptor meterDescriptor = new DSMRMeterDescriptor(meterType, meterConfig.channel);
+        channel = meterType.meterKind.isChannelRelevant() ? meterConfig.channel : DSMRMeterConstants.UNKNOWN_CHANNEL;
+        DSMRMeterDescriptor meterDescriptor = new DSMRMeterDescriptor(meterType, channel);
         meter = new DSMRMeter(meterDescriptor);
         meterWatchdog = scheduler.scheduleWithFixedDelay(this::updateState, meterConfig.refresh, meterConfig.refresh,
                 TimeUnit.SECONDS);
@@ -163,7 +170,7 @@ public class DSMRMeterHandler extends BaseThingHandler implements P1TelegramList
         if (localMeter == null) {
             return;
         }
-        List<CosemObject> filteredValues = localMeter.filterMeterValues(telegram.getCosemObjects());
+        List<CosemObject> filteredValues = localMeter.filterMeterValues(telegram.getCosemObjects(), channel);
 
         if (filteredValues.isEmpty()) {
             if (getThing().getStatus() == ThingStatus.ONLINE) {

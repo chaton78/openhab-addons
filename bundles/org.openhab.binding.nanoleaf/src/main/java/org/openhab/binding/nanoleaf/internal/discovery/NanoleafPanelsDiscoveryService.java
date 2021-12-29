@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,18 +16,26 @@ import static org.openhab.binding.nanoleaf.internal.NanoleafBindingConstants.CON
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
-import org.eclipse.smarthome.config.discovery.AbstractDiscoveryService;
-import org.eclipse.smarthome.config.discovery.DiscoveryResult;
-import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
-import org.eclipse.smarthome.core.thing.ThingUID;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.nanoleaf.internal.NanoleafBindingConstants;
 import org.openhab.binding.nanoleaf.internal.NanoleafControllerListener;
 import org.openhab.binding.nanoleaf.internal.NanoleafHandlerFactory;
 import org.openhab.binding.nanoleaf.internal.handler.NanoleafControllerHandler;
 import org.openhab.binding.nanoleaf.internal.model.ControllerInfo;
+import org.openhab.binding.nanoleaf.internal.model.Layout;
+import org.openhab.binding.nanoleaf.internal.model.PanelLayout;
 import org.openhab.binding.nanoleaf.internal.model.PositionDatum;
+import org.openhab.core.config.discovery.AbstractDiscoveryService;
+import org.openhab.core.config.discovery.DiscoveryResult;
+import org.openhab.core.config.discovery.DiscoveryResultBuilder;
+import org.openhab.core.thing.ThingUID;
+import org.openhab.core.thing.binding.BridgeHandler;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.thing.binding.ThingHandlerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,69 +44,108 @@ import org.slf4j.LoggerFactory;
  * panels connected to the controller.
  *
  * @author Martin Raepple - Initial contribution
+ * @author Kai Kreuzer - Made it a ThingHandlerService
  */
-public class NanoleafPanelsDiscoveryService extends AbstractDiscoveryService implements NanoleafControllerListener {
+@NonNullByDefault
+public class NanoleafPanelsDiscoveryService extends AbstractDiscoveryService
+        implements NanoleafControllerListener, ThingHandlerService {
 
     private static final int SEARCH_TIMEOUT_SECONDS = 60;
 
     private final Logger logger = LoggerFactory.getLogger(NanoleafPanelsDiscoveryService.class);
-    private final NanoleafControllerHandler bridgeHandler;
+    private @Nullable NanoleafControllerHandler bridgeHandler;
+    private @Nullable ControllerInfo controllerInfo;
 
     /**
-     * Constructs a new {@link NanoleafPanelsDiscoveryService} attached to the given bridge handler.
-     *
-     * @param nanoleafControllerHandler The bridge handler this discovery service is attached to
+     * Constructs a new {@link NanoleafPanelsDiscoveryService}.
      */
-    public NanoleafPanelsDiscoveryService(NanoleafControllerHandler nanoleafControllerHandler) {
+    public NanoleafPanelsDiscoveryService() {
         super(NanoleafHandlerFactory.SUPPORTED_THING_TYPES_UIDS, SEARCH_TIMEOUT_SECONDS, false);
-        this.bridgeHandler = nanoleafControllerHandler;
+    }
+
+    @Override
+    public void deactivate() {
+        NanoleafControllerHandler localBridgeHandler = bridgeHandler;
+        if (localBridgeHandler != null) {
+            Boolean result = localBridgeHandler.unregisterControllerListener(this);
+            logger.debug("unregistration of controller was {}", result ? "successful" : "unsuccessful");
+        }
+        super.deactivate();
     }
 
     @Override
     protected void startScan() {
         logger.debug("Starting Nanoleaf panel discovery");
-        bridgeHandler.registerControllerListener(this);
-    }
-
-    @Override
-    protected synchronized void stopScan() {
-        logger.debug("Stopping Nanoleaf panel discovery");
-        super.stopScan();
-        bridgeHandler.unregisterControllerListener(this);
+        createResultsFromControllerInfo();
     }
 
     /**
      * Called by the controller handler with bridge and panel data
      *
-     * @param bridge         The controller
+     * @param bridge The controller
      * @param controllerInfo Panel data (and more)
      */
     @Override
     public void onControllerInfoFetched(ThingUID bridge, ControllerInfo controllerInfo) {
-        logger.debug("Discover panels connected to controller with id {}", bridge.getAsString());
-        if (controllerInfo.getPanelLayout() != null) {
-            if (controllerInfo.getPanelLayout().getLayout().getNumPanels() > 0) {
-                Iterator<PositionDatum> iterator = controllerInfo.getPanelLayout().getLayout().getPositionData()
-                        .iterator();
-                while (iterator.hasNext()) {
-                    PositionDatum panel = iterator.next();
-                    panel.getPanelId();
-                    ThingUID newPanelThingUID = new ThingUID(NanoleafBindingConstants.THING_TYPE_LIGHT_PANEL, bridge,
-                            Integer.toString(panel.getPanelId()));
+        this.controllerInfo = controllerInfo;
+    }
 
-                    final Map<String, Object> properties = new HashMap<>(1);
-                    properties.put(CONFIG_PANEL_ID, panel.getPanelId());
-
-                    DiscoveryResult newPanel = DiscoveryResultBuilder.create(newPanelThingUID).withBridge(bridge)
-                            .withProperties(properties).withLabel("Light Panel")
-                            .withRepresentationProperty(CONFIG_PANEL_ID).build();
-
-                    logger.debug("Adding panel with id {} to inbox", panel.getPanelId());
-                    thingDiscovered(newPanel);
-                }
-            }
+    private void createResultsFromControllerInfo() {
+        ThingUID bridgeUID;
+        BridgeHandler localBridgeHandler = bridgeHandler;
+        if (localBridgeHandler != null) {
+            bridgeUID = localBridgeHandler.getThing().getUID();
         } else {
-            logger.info("No panels found or connected to controller");
+            return;
         }
+
+        ControllerInfo localControllerInfo = controllerInfo;
+        if (localControllerInfo != null) {
+            final PanelLayout panelLayout = localControllerInfo.getPanelLayout();
+            @Nullable
+            Layout layout = panelLayout.getLayout();
+
+            if (layout != null && layout.getNumPanels() > 0) {
+                @Nullable
+                final List<PositionDatum> positionData = layout.getPositionData();
+                if (positionData != null) {
+                    Iterator<PositionDatum> iterator = positionData.iterator();
+                    while (iterator.hasNext()) {
+                        @Nullable
+                        PositionDatum panel = iterator.next();
+                        ThingUID newPanelThingUID = new ThingUID(NanoleafBindingConstants.THING_TYPE_LIGHT_PANEL,
+                                bridgeUID, Integer.toString(panel.getPanelId()));
+
+                        final Map<String, Object> properties = new HashMap<>(1);
+                        properties.put(CONFIG_PANEL_ID, panel.getPanelId());
+
+                        DiscoveryResult newPanel = DiscoveryResultBuilder.create(newPanelThingUID).withBridge(bridgeUID)
+                                .withProperties(properties).withLabel("Light Panel " + panel.getPanelId())
+                                .withRepresentationProperty(CONFIG_PANEL_ID).build();
+
+                        logger.debug("Adding panel with id {} to inbox", panel.getPanelId());
+                        thingDiscovered(newPanel);
+                    }
+                } else {
+                    logger.debug("Couldn't add panels to inbox as layout position data was null");
+                }
+
+            } else {
+                logger.debug("No panels found or connected to controller");
+            }
+        }
+    }
+
+    @Override
+    public void setThingHandler(ThingHandler handler) {
+        this.bridgeHandler = (NanoleafControllerHandler) handler;
+        NanoleafControllerHandler localBridgeHandler = (NanoleafControllerHandler) handler;
+
+        localBridgeHandler.registerControllerListener(this);
+    }
+
+    @Override
+    public @Nullable ThingHandler getThingHandler() {
+        return bridgeHandler;
     }
 }

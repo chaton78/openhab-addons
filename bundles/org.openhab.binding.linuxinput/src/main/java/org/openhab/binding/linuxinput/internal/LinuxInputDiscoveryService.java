@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,37 +12,41 @@
  */
 package org.openhab.binding.linuxinput.internal;
 
-import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.config.discovery.AbstractDiscoveryService;
-import org.eclipse.smarthome.config.discovery.DiscoveryResult;
-import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
-import org.eclipse.smarthome.config.discovery.DiscoveryService;
-import org.eclipse.smarthome.core.thing.ThingUID;
-import org.openhab.binding.linuxinput.internal.evdev4j.EvdevDevice;
-import org.openhab.binding.linuxinput.internal.evdev4j.LastErrorException;
-import org.openhab.binding.linuxinput.internal.evdev4j.jnr.EvdevLibrary;
-import org.osgi.service.component.annotations.Component;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.openhab.binding.linuxinput.internal.LinuxInputBindingConstants.THING_TYPE_DEVICE;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.WatchKey;
+import java.nio.file.WatchService;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
-import static org.openhab.binding.linuxinput.internal.LinuxInputBindingConstants.THING_TYPE_DEVICE;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.binding.linuxinput.internal.evdev4j.EvdevDevice;
+import org.openhab.binding.linuxinput.internal.evdev4j.LastErrorException;
+import org.openhab.binding.linuxinput.internal.evdev4j.jnr.EvdevLibrary;
+import org.openhab.core.config.discovery.AbstractDiscoveryService;
+import org.openhab.core.config.discovery.DiscoveryResult;
+import org.openhab.core.config.discovery.DiscoveryResultBuilder;
+import org.openhab.core.config.discovery.DiscoveryService;
+import org.openhab.core.thing.ThingUID;
+import org.osgi.service.component.annotations.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Discovery service for LinuxInputHandlers based on the /dev/input directory.
  *
  * @author Thomas Weißschuh - Initial contribution
  */
-@Component(service = DiscoveryService.class, immediate = true, configurationPid = "discovery.linuxinput")
+@Component(service = DiscoveryService.class, configurationPid = "discovery.linuxinput")
 @NonNullByDefault
 public class LinuxInputDiscoveryService extends AbstractDiscoveryService {
 
@@ -96,7 +100,7 @@ public class LinuxInputDiscoveryService extends AbstractDiscoveryService {
             return;
         }
         DiscoveryResultBuilder result = DiscoveryResultBuilder.create(new ThingUID(THING_TYPE_DEVICE, file.getName()))
-                .withProperty("path", file.getAbsolutePath()).withRepresentationProperty(file.getName());
+                .withProperty("path", file.getAbsolutePath()).withRepresentationProperty("path");
         if (ttl != null) {
             result = result.withTTL(ttl.getSeconds());
         }
@@ -118,7 +122,7 @@ public class LinuxInputDiscoveryService extends AbstractDiscoveryService {
                 String labelFromDevice = device.getName();
                 boolean isKeyboard = device.has(EvdevLibrary.Type.KEY);
                 if (labelFromDevice != null) {
-                    label = labelFromDevice;
+                    label = String.format("%s (%s)", labelFromDevice, inputDevice.getName());
                 }
                 return isKeyboard;
             } finally {
@@ -152,7 +156,7 @@ public class LinuxInputDiscoveryService extends AbstractDiscoveryService {
                     waitForNewDevices(watcher);
                     return null;
                 });
-                Thread t = Utils.backgroundThread(job, getClass(), null);
+                Thread t = Utils.backgroundThread(job, "discovery", null);
                 t.start();
                 discoveryJob = job;
             } else {
@@ -164,8 +168,10 @@ public class LinuxInputDiscoveryService extends AbstractDiscoveryService {
 
     private WatchService makeWatcher() throws IOException {
         WatchService watchService = FileSystems.getDefault().newWatchService();
+        // FIXME also trigger on inotify "ATTRIB" events when WatchService supports this.
+        // Triggering on ENTRY_MODIFY will trigger multiple times on each keypress for *any* input device.
         DEVICE_DIRECTORY.register(watchService, StandardWatchEventKinds.ENTRY_CREATE,
-                StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_MODIFY);
+                StandardWatchEventKinds.ENTRY_DELETE);
         return watchService;
     }
 

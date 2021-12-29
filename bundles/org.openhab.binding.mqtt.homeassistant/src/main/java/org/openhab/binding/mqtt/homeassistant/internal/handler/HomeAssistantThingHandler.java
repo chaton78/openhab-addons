@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,43 +17,43 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.ThingUID;
-import org.eclipse.smarthome.core.thing.type.ChannelDefinition;
-import org.eclipse.smarthome.core.thing.type.ChannelGroupDefinition;
-import org.eclipse.smarthome.core.thing.type.ThingType;
-import org.eclipse.smarthome.core.thing.util.ThingHelper;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.io.transport.mqtt.MqttBrokerConnection;
 import org.openhab.binding.mqtt.generic.AbstractMQTTThingHandler;
 import org.openhab.binding.mqtt.generic.ChannelState;
 import org.openhab.binding.mqtt.generic.MqttChannelTypeProvider;
 import org.openhab.binding.mqtt.generic.TransformationServiceProvider;
 import org.openhab.binding.mqtt.generic.tools.DelayedBatchProcessing;
+import org.openhab.binding.mqtt.generic.utils.FutureCollector;
 import org.openhab.binding.mqtt.homeassistant.generic.internal.MqttBindingConstants;
-import org.openhab.binding.mqtt.homeassistant.internal.AbstractComponent;
-import org.openhab.binding.mqtt.homeassistant.internal.CChannel;
-import org.openhab.binding.mqtt.homeassistant.internal.CFactory;
-import org.openhab.binding.mqtt.homeassistant.internal.ChannelConfigurationTypeAdapterFactory;
+import org.openhab.binding.mqtt.homeassistant.internal.ComponentChannel;
 import org.openhab.binding.mqtt.homeassistant.internal.DiscoverComponents;
 import org.openhab.binding.mqtt.homeassistant.internal.DiscoverComponents.ComponentDiscovered;
 import org.openhab.binding.mqtt.homeassistant.internal.HaID;
 import org.openhab.binding.mqtt.homeassistant.internal.HandlerConfiguration;
-import org.openhab.binding.mqtt.homeassistant.internal.util.FutureCollector;
+import org.openhab.binding.mqtt.homeassistant.internal.component.AbstractComponent;
+import org.openhab.binding.mqtt.homeassistant.internal.component.ComponentFactory;
+import org.openhab.binding.mqtt.homeassistant.internal.config.ChannelConfigurationTypeAdapterFactory;
+import org.openhab.binding.mqtt.homeassistant.internal.exception.ConfigurationException;
+import org.openhab.core.io.transport.mqtt.MqttBrokerConnection;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
+import org.openhab.core.thing.type.ChannelDefinition;
+import org.openhab.core.thing.type.ChannelGroupDefinition;
+import org.openhab.core.thing.type.ChannelGroupType;
+import org.openhab.core.thing.type.ThingType;
+import org.openhab.core.thing.util.ThingHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +69,7 @@ import com.google.gson.GsonBuilder;
  * The specification does not cover the case of disappearing Components. This handler doesn't as well therefore.<br>
  * <br>
  *
- * A Component Instance equals an ESH Channel Group and the Component parts equal ESH Channels.<br>
+ * A Component Instance equals a Channel Group and the Component parts equal Channels.<br>
  * <br>
  *
  * If a Components configuration changes, the known ChannelGroupType and ChannelTypes are replaced with the new ones.
@@ -116,7 +116,7 @@ public class HomeAssistantThingHandler extends AbstractMQTTThingHandler
         this.transformationServiceProvider = transformationServiceProvider;
         this.attributeReceiveTimeout = attributeReceiveTimeout;
         this.delayedProcessing = new DelayedBatchProcessing<>(attributeReceiveTimeout, this, scheduler);
-        this.discoverComponents = new DiscoverComponents(thing.getUID(), scheduler, this, gson,
+        this.discoverComponents = new DiscoverComponents(thing.getUID(), scheduler, this, this, gson,
                 this.transformationServiceProvider);
     }
 
@@ -126,7 +126,7 @@ public class HomeAssistantThingHandler extends AbstractMQTTThingHandler
         started = false;
 
         config = getConfigAs(HandlerConfiguration.class);
-        if (CollectionUtils.isEmpty(config.topics)) {
+        if (config.topics == null || config.topics.isEmpty()) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, "Device topics unknown");
             return;
         }
@@ -154,15 +154,14 @@ public class HomeAssistantThingHandler extends AbstractMQTTThingHandler
             if (channelConfigurationJSON == null) {
                 logger.warn("Provided channel does not have a 'config' configuration key!");
             } else {
-                component = CFactory.createComponent(thingUID, haID, channelConfigurationJSON, this, gson,
-                        transformationServiceProvider);
-            }
-
-            if (component != null) {
-                haComponents.put(component.uid().getId(), component);
-                component.addChannelTypes(channelTypeProvider);
-            } else {
-                logger.warn("Could not restore component {}", thing);
+                try {
+                    component = ComponentFactory.createComponent(thingUID, haID, channelConfigurationJSON, this, this,
+                            scheduler, gson, transformationServiceProvider);
+                    haComponents.put(component.getGroupUID().getId(), component);
+                    component.addChannelTypes(channelTypeProvider);
+                } catch (ConfigurationException e) {
+                    logger.error("Cannot not restore component {}: {}", thing, e.getMessage());
+                }
             }
         }
         updateThingType();
@@ -190,10 +189,8 @@ public class HomeAssistantThingHandler extends AbstractMQTTThingHandler
     protected CompletableFuture<@Nullable Void> start(MqttBrokerConnection connection) {
         started = true;
 
-        connection.setRetain(true);
         connection.setQos(1);
-
-        updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.GONE, "No response from the device yet");
+        updateStatus(ThingStatus.UNKNOWN);
 
         // Start all known components and channels within the components and put the Thing offline
         // if any subscribing failed ( == broker connection lost)
@@ -215,12 +212,13 @@ public class HomeAssistantThingHandler extends AbstractMQTTThingHandler
             discoverComponents.stopDiscovery();
             delayedProcessing.join();
             // haComponents does not need to be synchronised -> the discovery thread is disabled
-            haComponents.values().parallelStream().map(e -> e.stop()) //
+            haComponents.values().parallelStream().map(AbstractComponent::stop) //
                     // we need to join all the stops, otherwise they might not be done when start is called
                     .collect(FutureCollector.allOf()).join();
 
             started = false;
         }
+        super.stop();
     }
 
     @SuppressWarnings({ "null", "unused" })
@@ -237,7 +235,7 @@ public class HomeAssistantThingHandler extends AbstractMQTTThingHandler
         if (component == null) {
             return null;
         }
-        CChannel componentChannel = component.channel(channelUID.getIdWithoutGroup());
+        ComponentChannel componentChannel = component.getChannel(channelUID.getIdWithoutGroup());
         if (componentChannel == null) {
             return null;
         }
@@ -266,7 +264,7 @@ public class HomeAssistantThingHandler extends AbstractMQTTThingHandler
 
         synchronized (haComponents) { // sync whenever discoverComponents is started
             for (AbstractComponent<?> discovered : discoveredComponentsList) {
-                AbstractComponent<?> known = haComponents.get(discovered.uid().getId());
+                AbstractComponent<?> known = haComponents.get(discovered.getGroupUID().getId());
                 // Is component already known?
                 if (known != null) {
                     if (discovered.getConfigHash() != known.getConfigHash()) {
@@ -282,31 +280,28 @@ public class HomeAssistantThingHandler extends AbstractMQTTThingHandler
                 // Add channel and group types to the types registry
                 discovered.addChannelTypes(channelTypeProvider);
                 // Add component to the component map
-                haComponents.put(discovered.uid().getId(), discovered);
+                haComponents.put(discovered.getGroupUID().getId(), discovered);
                 // Start component / Subscribe to channel topics
                 discovered.start(connection, scheduler, 0).exceptionally(e -> {
-                    logger.warn("Failed to start component {}", discovered.uid(), e);
+                    logger.warn("Failed to start component {}", discovered.getGroupUID(), e);
                     return null;
                 });
 
-                Collection<Channel> channels = discovered.channelTypes().values().stream().map(c -> c.getChannel())
-                        .collect(Collectors.toList());
+                Collection<Channel> channels = discovered.getChannelMap().values().stream()
+                        .map(ComponentChannel::getChannel).collect(Collectors.toList());
                 ThingHelper.addChannelsToThing(thing, channels);
             }
         }
 
         updateThingType();
-        updateThingStatus();
     }
 
-    private void updateThingStatus() {
-        synchronized (haComponents) { // sync whenever discoverComponents is started
-            boolean allActive = haComponents.values().stream().allMatch(comp -> comp.isActive());
-            if (allActive) {
-                updateStatus(ThingStatus.ONLINE);
-            } else {
-                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.GONE, "At least one component not active");
-            }
+    @Override
+    protected void updateThingStatus(boolean messageReceived, Optional<Boolean> availabilityTopicsSeen) {
+        if (availabilityTopicsSeen.orElse(messageReceived)) {
+            updateStatus(ThingStatus.ONLINE, ThingStatusDetail.NONE);
+        } else {
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.NONE);
         }
     }
 
@@ -314,29 +309,19 @@ public class HomeAssistantThingHandler extends AbstractMQTTThingHandler
         // if this is a dynamic type, then we update the type
         ThingTypeUID typeID = thing.getThingTypeUID();
         if (!MqttBindingConstants.HOMEASSISTANT_MQTT_THING.equals(typeID)) {
-
             List<ChannelGroupDefinition> groupDefs;
             List<ChannelDefinition> channelDefs;
             synchronized (haComponents) { // sync whenever discoverComponents is started
-                groupDefs = haComponents.values().stream().map(c -> c.getGroupDefinition())
+                groupDefs = haComponents.values().stream().map(AbstractComponent::getGroupDefinition)
                         .collect(Collectors.toList());
-                channelDefs = haComponents.values().stream().map(c -> c.type()).map(t -> t.getChannelDefinitions())
-                        .flatMap(List::stream).collect(Collectors.toList());
+                channelDefs = haComponents.values().stream().map(AbstractComponent::getType)
+                        .map(ChannelGroupType::getChannelDefinitions).flatMap(List::stream)
+                        .collect(Collectors.toList());
             }
             ThingType thingType = channelTypeProvider.derive(typeID, MqttBindingConstants.HOMEASSISTANT_MQTT_THING)
                     .withChannelDefinitions(channelDefs).withChannelGroupDefinitions(groupDefs).build();
 
             channelTypeProvider.setThingType(typeID, thingType);
         }
-    }
-
-    @Override
-    public void updateChannelState(ChannelUID channelUID, State value) {
-
-        if (StringUtils.equals(channelUID.getIdWithoutGroup(), AVAILABILITY_CHANNEL)) {
-            updateThingStatus();
-            return;
-        }
-        super.updateChannelState(channelUID, value);
     }
 }

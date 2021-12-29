@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,10 +12,11 @@
  */
 package org.openhab.binding.rfxcom.internal.messages;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openhab.binding.rfxcom.internal.messages.RFXComBaseMessage.PacketType.THERMOSTAT4;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComMessageNotImplementedException;
 
 /**
@@ -25,8 +26,9 @@ import org.openhab.binding.rfxcom.internal.exceptions.RFXComMessageNotImplemente
  */
 @NonNullByDefault
 public class RFXComThermostat4MessageTest {
-    @Test(expected = RFXComMessageNotImplementedException.class)
-    public void checkNotImplemented() throws Exception {
-        RFXComMessageFactory.createMessage(THERMOSTAT4);
+    @Test
+    public void checkNotImplemented() {
+        assertThrows(RFXComMessageNotImplementedException.class,
+                () -> RFXComMessageFactoryImpl.INSTANCE.createMessage(THERMOSTAT4, null, null, null));
     }
 }

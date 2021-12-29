@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -29,11 +29,6 @@ import java.util.logging.Logger;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 
-import org.eclipse.smarthome.core.events.EventPublisher;
-import org.eclipse.smarthome.core.items.MetadataRegistry;
-import org.eclipse.smarthome.core.net.NetworkAddressService;
-import org.eclipse.smarthome.core.storage.Storage;
-import org.eclipse.smarthome.core.storage.StorageService;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.glassfish.jersey.logging.LoggingFeature;
@@ -42,6 +37,11 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.openhab.core.events.EventPublisher;
+import org.openhab.core.items.MetadataRegistry;
+import org.openhab.core.net.NetworkAddressService;
+import org.openhab.core.storage.Storage;
+import org.openhab.core.storage.StorageService;
 import org.openhab.io.hueemulation.internal.ConfigStore;
 import org.openhab.io.hueemulation.internal.rest.mocks.ConfigStoreWithoutMetadata;
 import org.openhab.io.hueemulation.internal.rest.mocks.DummyMetadataRegistry;
@@ -60,12 +60,17 @@ import org.osgi.service.cm.ConfigurationAdmin;
  */
 public class CommonSetup {
 
-    public UserManagement userManagement;
+    public String basePath;
+    public Client client;
+    public ConfigStore cs;
+    public HttpServer server;
+
+    UserManagement userManagement;
+
+    AutoCloseable mocksCloseable;
 
     @Mock
-    public EventPublisher eventPublisher;
-
-    public ConfigStore cs;
+    EventPublisher eventPublisher;
 
     @Mock
     ConfigurationAdmin configAdmin;
@@ -97,12 +102,9 @@ public class CommonSetup {
         }
     };
 
-    public Client client;
-    public HttpServer server;
-    public String basePath;
-
     public CommonSetup(boolean withMetadata) throws IOException {
-        MockitoAnnotations.initMocks(this);
+        mocksCloseable = MockitoAnnotations.openMocks(this);
+
         when(configAdmin.getConfiguration(anyString())).thenReturn(configAdminConfig);
         when(configAdmin.getConfiguration(anyString(), any())).thenReturn(configAdminConfig);
         Dictionary<String, Object> mockProperties = new Hashtable<>();
@@ -151,12 +153,14 @@ public class CommonSetup {
         client = ClientBuilder.newClient();
     }
 
-    public void dispose() {
+    public void dispose() throws Exception {
         if (client != null) {
             client.close();
         }
         if (server != null) {
             server.shutdownNow();
         }
+
+        mocksCloseable.close();
     }
 }

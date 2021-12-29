@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,6 +12,10 @@
  */
 package org.openhab.binding.miio.internal;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
@@ -20,21 +24,33 @@ import com.google.gson.JsonObject;
  *
  * @author Marcel Verpaalen - Initial contribution
  */
+@NonNullByDefault
 public class MiIoSendCommand {
 
     private final int id;
     private final MiIoCommand command;
-    private final String commandString;
-    private JsonObject response;
+    private final JsonObject commandJson;
+    private final String sender;
+    private @Nullable JsonObject response;
+    private String cloudServer = "";
 
     public void setResponse(JsonObject response) {
         this.response = response;
     }
 
-    public MiIoSendCommand(int id, MiIoCommand command, String commandString) {
+    public MiIoSendCommand(int id, MiIoCommand command, JsonObject fullCommand, String sender) {
         this.id = id;
         this.command = command;
-        this.commandString = commandString;
+        this.commandJson = fullCommand;
+        this.sender = sender;
+    }
+
+    public MiIoSendCommand(int id, MiIoCommand command, JsonObject fullCommand, String cloudServer, String sender) {
+        this.id = id;
+        this.command = command;
+        this.commandJson = fullCommand;
+        this.cloudServer = cloudServer;
+        this.sender = sender;
     }
 
     public int getId() {
@@ -45,19 +61,52 @@ public class MiIoSendCommand {
         return command;
     }
 
+    public JsonObject getCommandJson() {
+        return commandJson;
+    }
+
     public String getCommandString() {
-        return commandString;
+        return commandJson.toString();
+    }
+
+    public String getMethod() {
+        return commandJson.has("method") ? commandJson.get("method").getAsString() : "";
+    }
+
+    public JsonElement getParams() {
+        return commandJson.has("params") ? commandJson.get("params") : new JsonArray();
     }
 
     public JsonObject getResponse() {
-        return response;
+        final @Nullable JsonObject response = this.response;
+        return response != null ? response : new JsonObject();
     }
 
     public boolean isError() {
-        return response.get("error") != null;
+        final @Nullable JsonObject response = this.response;
+        if (response != null) {
+            return response.has("error");
+        }
+        return true;
     }
 
     public JsonElement getResult() {
-        return response.get("result");
+        final @Nullable JsonObject response = this.response;
+        if (response != null && response.has("result")) {
+            return response.get("result");
+        }
+        return new JsonObject();
+    }
+
+    public String getCloudServer() {
+        return cloudServer;
+    }
+
+    public void setCloudServer(String cloudServer) {
+        this.cloudServer = cloudServer;
+    }
+
+    public String getSender() {
+        return sender;
     }
 }

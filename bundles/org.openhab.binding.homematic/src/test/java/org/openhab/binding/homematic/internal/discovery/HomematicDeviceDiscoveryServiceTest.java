@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -21,19 +21,19 @@ import static org.openhab.binding.homematic.test.util.DimmerHelper.createDimmerH
 
 import java.io.IOException;
 
-import org.eclipse.smarthome.config.discovery.DiscoveryResult;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.ThingStatusInfo;
-import org.eclipse.smarthome.test.java.JavaTest;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.openhab.binding.homematic.internal.communicator.HomematicGateway;
 import org.openhab.binding.homematic.internal.handler.HomematicBridgeHandler;
 import org.openhab.binding.homematic.internal.model.HmDevice;
 import org.openhab.binding.homematic.internal.type.HomematicTypeGenerator;
 import org.openhab.binding.homematic.test.util.SimpleDiscoveryListener;
+import org.openhab.core.config.discovery.DiscoveryResult;
+import org.openhab.core.test.java.JavaTest;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.ThingStatusInfo;
 
 /**
  * Tests for {@link HomematicDeviceDiscoveryServiceTest}.
@@ -46,7 +46,7 @@ public class HomematicDeviceDiscoveryServiceTest extends JavaTest {
     private HomematicDeviceDiscoveryService homematicDeviceDiscoveryService;
     private HomematicBridgeHandler homematicBridgeHandler;
 
-    @Before
+    @BeforeEach
     public void setup() throws IOException {
         this.homematicBridgeHandler = mockHomematicBridgeHandler();
         this.homematicDeviceDiscoveryService = new HomematicDeviceDiscoveryService();

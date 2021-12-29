@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,22 +17,25 @@ import static org.openhab.binding.rfxcom.internal.messages.ByteEnumUtil.fromByte
 import static org.openhab.binding.rfxcom.internal.messages.RFXComLighting5Message.SubType.*;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Arrays;
 import java.util.List;
 
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.IncreaseDecreaseType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.OpenClosedType;
-import org.eclipse.smarthome.core.library.types.PercentType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.Type;
-import org.eclipse.smarthome.core.types.UnDefType;
+import org.openhab.binding.rfxcom.internal.config.RFXComDeviceConfiguration;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComException;
+import org.openhab.binding.rfxcom.internal.exceptions.RFXComInvalidStateException;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComUnsupportedChannelException;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComUnsupportedValueException;
 import org.openhab.binding.rfxcom.internal.handler.DeviceState;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.IncreaseDecreaseType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.OpenClosedType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.types.State;
+import org.openhab.core.types.Type;
+import org.openhab.core.types.UnDefType;
 
 /**
  * RFXCOM data class for lighting5 message.
@@ -106,7 +109,16 @@ public class RFXComLighting5Message extends RFXComDeviceMessageImpl<RFXComLighti
         SET_LEVEL(0x10, LIGHTWAVERF, IT),
         COLOUR_PALETTE(0x11, LIGHTWAVERF),
         COLOUR_TONE(0x12, LIGHTWAVERF),
-        COLOUR_CYCLE(0x13, LIGHTWAVERF);
+        COLOUR_CYCLE(0x13, LIGHTWAVERF),
+        TOGGLE_1(0x01, LIVOLO_APPLIANCE),
+        TOGGLE_2(0x02, LIVOLO_APPLIANCE),
+        TOGGLE_3(0x03, LIVOLO_APPLIANCE),
+        TOGGLE_4(0x04, LIVOLO_APPLIANCE),
+        TOGGLE_5(0x07, LIVOLO_APPLIANCE),
+        TOGGLE_6(0x0B, LIVOLO_APPLIANCE),
+        TOGGLE_7(0x06, LIVOLO_APPLIANCE),
+        TOGGLE_8(0x0A, LIVOLO_APPLIANCE),
+        TOGGLE_9(0x05, LIVOLO_APPLIANCE);
 
         private final int command;
         private final List<SubType> supportedBySubTypes;
@@ -207,7 +219,7 @@ public class RFXComLighting5Message extends RFXComDeviceMessageImpl<RFXComLighti
      */
     public static int getDimLevelFromPercentType(PercentType pt) {
         return pt.toBigDecimal().multiply(BigDecimal.valueOf(31))
-                .divide(PercentType.HUNDRED.toBigDecimal(), 0, BigDecimal.ROUND_UP).intValue();
+                .divide(PercentType.HUNDRED.toBigDecimal(), 0, RoundingMode.UP).intValue();
     }
 
     /**
@@ -220,11 +232,12 @@ public class RFXComLighting5Message extends RFXComDeviceMessageImpl<RFXComLighti
         value = Math.min(value, 31);
 
         return new PercentType(BigDecimal.valueOf(value).multiply(BigDecimal.valueOf(100))
-                .divide(BigDecimal.valueOf(31), 0, BigDecimal.ROUND_UP).intValue());
+                .divide(BigDecimal.valueOf(31), 0, RoundingMode.UP).intValue());
     }
 
     @Override
-    public State convertToState(String channelId, DeviceState deviceState) throws RFXComUnsupportedChannelException {
+    public State convertToState(String channelId, RFXComDeviceConfiguration config, DeviceState deviceState)
+            throws RFXComUnsupportedChannelException, RFXComInvalidStateException {
         switch (channelId) {
             case CHANNEL_MOOD:
                 switch (command) {
@@ -282,7 +295,7 @@ public class RFXComLighting5Message extends RFXComDeviceMessageImpl<RFXComLighti
                 }
 
             default:
-                return super.convertToState(channelId, deviceState);
+                return super.convertToState(channelId, config, deviceState);
         }
     }
 

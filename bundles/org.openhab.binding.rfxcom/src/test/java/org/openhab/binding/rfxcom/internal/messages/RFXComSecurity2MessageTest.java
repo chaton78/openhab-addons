@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,13 +12,13 @@
  */
 package org.openhab.binding.rfxcom.internal.messages;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.util.HexUtils;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComException;
 import org.openhab.binding.rfxcom.internal.messages.RFXComSecurity2Message.SubType;
+import org.openhab.core.util.HexUtils;
 
 /**
  * Test for RFXCom-binding
@@ -34,15 +34,15 @@ public class RFXComSecurity2MessageTest {
         String hexMessage = "1C21020000000000131211C30000000000000000000000000000000045";
         byte[] message = HexUtils.hexToBytes(hexMessage);
 
-        RFXComSecurity2Message msg = (RFXComSecurity2Message) RFXComMessageFactory.createMessage(message);
-        assertEquals("SubType", SubType.RAW_AES_KEELOQ, msg.subType);
-        assertEquals("Seq Number", 0, msg.seqNbr);
-        assertEquals("Sensor Id", "51450387", msg.getDeviceId());
-        assertEquals("Button Status", 12, msg.buttonStatus);
-        assertEquals("Battery Level", 4, msg.batteryLevel);
-        assertEquals("Signal Level", 5, msg.signalLevel);
+        RFXComSecurity2Message msg = (RFXComSecurity2Message) RFXComMessageFactoryImpl.INSTANCE.createMessage(message);
+        assertEquals(SubType.RAW_AES_KEELOQ, msg.subType, "SubType");
+        assertEquals(0, msg.seqNbr, "Seq Number");
+        assertEquals("51450387", msg.getDeviceId(), "Sensor Id");
+        assertEquals(12, msg.buttonStatus, "Button Status");
+        assertEquals(4, msg.batteryLevel, "Battery Level");
+        assertEquals(5, msg.signalLevel, "Signal Level");
 
         byte[] decoded = msg.decodeMessage();
-        assertEquals("Message converted back", hexMessage, HexUtils.bytesToHex(decoded));
+        assertEquals(hexMessage, HexUtils.bytesToHex(decoded), "Message converted back");
     }
 }

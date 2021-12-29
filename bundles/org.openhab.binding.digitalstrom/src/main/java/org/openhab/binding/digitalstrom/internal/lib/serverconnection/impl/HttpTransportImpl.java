@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,6 +12,7 @@
  */
 package org.openhab.binding.digitalstrom.internal.lib.serverconnection.impl;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -22,6 +23,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -35,13 +37,13 @@ import java.util.Base64;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openhab.binding.digitalstrom.internal.lib.config.Config;
 import org.openhab.binding.digitalstrom.internal.lib.manager.ConnectionManager;
 import org.openhab.binding.digitalstrom.internal.lib.serverconnection.HttpTransport;
@@ -192,13 +194,14 @@ public class HttpTransportImpl implements HttpTransport {
             if (config != null) {
                 cert = config.getCert();
                 logger.debug("generate SSLcontext from config cert");
-                if (StringUtils.isNotBlank(cert)) {
+                if (cert != null && !cert.isBlank()) {
                     sslSocketFactory = generateSSLContextFromPEMCertString(cert);
                 } else {
-                    if (StringUtils.isNotBlank(config.getTrustCertPath())) {
+                    String trustCertPath = config.getTrustCertPath();
+                    if (trustCertPath != null && !trustCertPath.isBlank()) {
                         logger.debug("generate SSLcontext from config cert path");
-                        cert = readPEMCertificateStringFromFile(config.getTrustCertPath());
-                        if (StringUtils.isNotBlank(cert)) {
+                        cert = readPEMCertificateStringFromFile(trustCertPath);
+                        if (cert != null && !cert.isBlank()) {
                             sslSocketFactory = generateSSLContextFromPEMCertString(cert);
                         }
                     } else {
@@ -256,9 +259,9 @@ public class HttpTransportImpl implements HttpTransport {
                 final int responseCode = connection.getResponseCode();
                 if (responseCode != HttpURLConnection.HTTP_FORBIDDEN) {
                     if (responseCode == HttpURLConnection.HTTP_INTERNAL_ERROR) {
-                        response = IOUtils.toString(connection.getErrorStream());
+                        response = new String(connection.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
                     } else {
-                        response = IOUtils.toString(connection.getInputStream());
+                        response = new String(connection.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
                     }
                     if (response != null) {
                         if (!response.contains("Authentication failed")) {
@@ -296,11 +299,11 @@ public class HttpTransportImpl implements HttpTransport {
             informConnectionManager(ConnectionManager.MALFORMED_URL_EXCEPTION);
         } catch (java.net.UnknownHostException e) {
             informConnectionManager(ConnectionManager.UNKNOWN_HOST_EXCEPTION);
+        } catch (SSLHandshakeException e) {
+            informConnectionManager(ConnectionManager.SSL_HANDSHAKE_EXCEPTION);
         } catch (IOException e) {
             logger.error("An IOException occurred: ", e);
-            if (connectionManager != null) {
-                informConnectionManager(ConnectionManager.GENERAL_EXCEPTION);
-            }
+            informConnectionManager(ConnectionManager.GENERAL_EXCEPTION);
         } finally {
             if (connection != null) {
                 connection.disconnect();
@@ -353,7 +356,7 @@ public class HttpTransportImpl implements HttpTransport {
 
     private HttpsURLConnection getConnection(String request, int connectTimeout, int readTimeout) throws IOException {
         String correctedRequest = request;
-        if (StringUtils.isNotBlank(correctedRequest)) {
+        if (correctedRequest != null && !correctedRequest.isBlank()) {
             correctedRequest = fixRequest(correctedRequest);
             URL url = new URL(this.uri + correctedRequest);
             HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
@@ -379,7 +382,8 @@ public class HttpTransportImpl implements HttpTransport {
             if (connection != null) {
                 connection.connect();
                 if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
-                    if (IOUtils.toString(connection.getInputStream()).contains("Authentication failed")) {
+                    if (new String(connection.getInputStream().readAllBytes(), StandardCharsets.UTF_8)
+                            .contains("Authentication failed")) {
                         return ConnectionManager.AUTHENTIFICATION_PROBLEM;
                     }
                 }
@@ -412,19 +416,18 @@ public class HttpTransportImpl implements HttpTransport {
     }
 
     private String readPEMCertificateStringFromFile(String path) {
-        if (StringUtils.isBlank(path)) {
+        if (path == null || path.isBlank()) {
             logger.error("Path is empty.");
         } else {
             File dssCert = new File(path);
             if (dssCert.exists()) {
                 if (path.endsWith(".crt")) {
-                    try {
-                        InputStream certInputStream = new FileInputStream(dssCert);
-                        String cert = IOUtils.toString(certInputStream);
+                    try (InputStream certInputStream = new FileInputStream(dssCert)) {
+                        String cert = new String(certInputStream.readAllBytes(), StandardCharsets.UTF_8);
                         if (cert.startsWith(BEGIN_CERT)) {
                             return cert;
                         } else {
-                            logger.error("File is not a PEM certificate file. PEM-Certificats starts with: {}",
+                            logger.error("File is not a PEM certificate file. PEM-Certificates starts with: {}",
                                     BEGIN_CERT);
                         }
                     } catch (FileNotFoundException e) {
@@ -444,9 +447,9 @@ public class HttpTransportImpl implements HttpTransport {
 
     @Override
     public String writePEMCertFile(String path) {
-        String correctedPath = StringUtils.trimToEmpty(path);
+        String correctedPath = path == null ? "" : path.trim();
         File certFilePath;
-        if (StringUtils.isNotBlank(correctedPath)) {
+        if (!correctedPath.isBlank()) {
             certFilePath = new File(correctedPath);
             boolean pathExists = certFilePath.exists();
             if (!pathExists) {
@@ -456,7 +459,7 @@ public class HttpTransportImpl implements HttpTransport {
                 correctedPath = correctedPath + "/";
             }
         }
-        InputStream certInputStream = IOUtils.toInputStream(cert);
+        InputStream certInputStream = new ByteArrayInputStream(cert.getBytes(StandardCharsets.UTF_8));
         X509Certificate trustedCert;
         try {
             trustedCert = (X509Certificate) CertificateFactory.getInstance("X.509")
@@ -483,9 +486,9 @@ public class HttpTransportImpl implements HttpTransport {
     }
 
     private SSLSocketFactory generateSSLContextFromPEMCertString(String pemCert) {
-        if (StringUtils.isNotBlank(pemCert) && pemCert.startsWith(BEGIN_CERT)) {
+        if (pemCert != null && !pemCert.isBlank() && pemCert.startsWith(BEGIN_CERT)) {
             try {
-                InputStream certInputStream = IOUtils.toInputStream(pemCert);
+                InputStream certInputStream = new ByteArrayInputStream(pemCert.getBytes(StandardCharsets.UTF_8));
                 final X509Certificate trustedCert = (X509Certificate) CertificateFactory.getInstance("X.509")
                         .generateCertificate(certInputStream);
 
@@ -581,12 +584,10 @@ public class HttpTransportImpl implements HttpTransport {
 
             @Override
             public void checkClientTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {
-
             }
 
             @Override
             public void checkServerTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {
-
             }
         } };
 

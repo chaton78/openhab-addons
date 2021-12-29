@@ -1,7 +1,7 @@
 # Nibe Heatpump Binding
 
 The Nibe Heatpump binding is used to get live data from Nibe heat pumps without using an expensive MODBUS40 adapter.
-This binding is compatible with the F750, F1145, F1245, F1155, F1255 and F470 heat pump models.
+This binding is compatible with the F750, F1145, F1245, F1155, F1255, F470 and SMO40 heat pump models.
 
 The binding supports data telegrams (containing a maximum of 20 registers) from the heat pump.
 The binding can also read other registers from the pump.
@@ -30,10 +30,13 @@ This binding supports direct serial port connection (RS-485 adapter needed) to h
 | f470-serial     | Serial port connected F470 Heat Pumps            |
 | f470-udp        | UDP connected Nibe F470 Heat Pumps               |
 | f470-simulator  | Simulator for Nibe F470 Heat Pumps               |
+| smo40-serial    | Serial port connected SMO40 controller           |
+| smo40-udp       | UDP connected Nibe SMO40 controller              |
+| smo40-simulator | Simulator for Nibe SMO40 controller              |
 
 ## Discovery
 
-Discovery is not supported, therefore the binding and things need to be configured via Paper UI or thing files. 
+Discovery is not supported. 
 
 ## Prerequisites
 
@@ -59,7 +62,7 @@ An Arduino-based solution has been tested with Arduino uno + RS485 and Ethernet 
 The [ProDiNo](https://www.kmpelectronics.eu/en-us/products/prodinoethernet.aspx) NetBoards are also supported.
 A ProDiNo has an Ethernet and RS-485 port on the board.
 
-Arduino code is available [here](https://github.com/openhab/openhab2-addons/tree/master/bundles/org.openhab.binding.nibeheatpump/contrib/NibeGW/Arduino/NibeGW).
+Arduino code is available [here](https://github.com/openhab/openhab-addons/tree/main/bundles/org.openhab.binding.nibeheatpump/contrib/NibeGW/Arduino/NibeGW).
 
 Arduino code can be build via Arduino IDE.
 For more details see [www.arduino.cc](https://www.arduino.cc/en/Main/Software). 
@@ -67,7 +70,7 @@ NibeGW configuration (such IP addresses, ports, etc) can be adapted directly by 
 
 ### Raspberry Pi (or other Linux/Unix based boards)
 
-C code is available [here](https://github.com/openhab/openhab2-addons/tree/master/bundles/org.openhab.binding.nibeheatpump/contrib/NibeGW/RasPi).
+C code is available [here](https://github.com/openhab/openhab-addons/tree/main/bundles/org.openhab.binding.nibeheatpump/contrib/NibeGW/RasPi).
 
 To build the C code use: 
 
@@ -111,7 +114,7 @@ No binding configuration required.
 
 ## Thing Configuration
 
-Things can be fully configured via Paper UI.
+Things can be fully configured via the UI.
 The following information is useful when configuring things via thing configuration files.
 
 ### UDP connection
@@ -726,6 +729,7 @@ This binding currently supports following channels for F1x45 pump models:
 | 47134           | Number    | 0           | 180        | Setting | Period HW                                                |                                                                                                                                                                    |
 | 47135           | Number    | 0           | 180        | Setting | Period Heat                                              |                                                                                                                                                                    |
 | 47136           | Number    | 0           | 180        | Setting | Period Pool                                              |                                                                                                                                                                    |
+| 47137           | String    | 0           | 2          | Setting | Operational mode                                         | 0=Auto, 1=Manual, 2=Add. heat only                                                                                                                                 |
 | 47138           | String    | 10          | 40         | Setting | Operational mode heat medium pump                        | 10=Intermittent, 20=Continous, 30=Economy, 40=Auto                                                                                                                 |
 | 47139           | String    | 10          | 30         | Setting | Operational mode brine medium pump                       | 10=Intermittent, 20=Continuous, 30=Economy, 40=Auto                                                                                                                |
 | 47206           | Number    | -1000       | -30        | Setting | DM start heating                                         |                                                                                                                                                                    |
@@ -800,6 +804,10 @@ This binding currently supports following channels for F1x45 pump models:
 | 47370           | Switch    | 0           | 1          | Setting | Allow Additive Heating                                   |                                                                                                                                                                    |
 | 47371           | Switch    | 0           | 1          | Setting | Allow Heating                                            |                                                                                                                                                                    |
 | 47372           | Switch    | 0           | 1          | Setting | Allow Cooling                                            |                                                                                                                                                                    |
+| 47374           | Number    | -200        | 400        | Setting | Start Temperature Cooling                                |                                                                                                                                                       |
+| 47375           | Number    | -200        | 400        | Setting | Stop Temperature Heating                                 |                                                                                                                                                                    |
+| 47376           | Number    | -250        | 400        | Setting | Stop Temperature Additive                                |                                                                                                                                                                    |
+| 47377           | Number    | 0           | 48         | Setting | Outdoor Filter Time                                      |                                                                                                                                             |
 | 47378           | Number    | 10          | 250        | Setting | Max diff. comp.                                          |                                                                                                                                                                    |
 | 47379           | Number    | 10          | 240        | Setting | Max diff. add.                                           |                                                                                                                                                                    |
 | 47380           | Switch    | 0           | 1          | Setting | Low brine out autoreset                                  |                                                                                                                                                                    |
@@ -835,6 +843,9 @@ This binding currently supports following channels for F1x45 pump models:
 | 47540           | Number    | 10          | 2000       | Setting | Heat DM diff                                             |                                                                                                                                                                    |
 | 47543           | Number    | 10          | 150        | Setting | Cooling DM diff                                          |                                                                                                                                                                    |
 | 47570           | String    | 0           | 255        | Setting | Operational mode                                         | 0=Auto, 1=Manual, 2=Add. heat only                                                                                                                                 |
+| 48043           | String    | 0           | 10         | Setting | Holiday - Activated                                      | 0=inactive, 10=active                                                                                                                                              |
+| 48046           | Number    | -10         | 10         | Setting | Heat Offset Holiday                                      | |
+| 48047           | String    | -1          | 2          | Setting | Hot water mode Holiday                                   | -1 = off, 0 = economy, 1 = normal, 2 = luxury                                                                                                                                              |
 | 48053           | Number    | 0           | 100        | Setting | FLM 2 speed 4                                            |                                                                                                                                                                    |
 | 48054           | Number    | 0           | 100        | Setting | FLM 2 speed 3                                            |                                                                                                                                                                    |
 | 48055           | Number    | 0           | 100        | Setting | FLM 2 speed 2                                            |                                                                                                                                                                    |
@@ -903,6 +914,8 @@ This binding currently supports following channels for F1x45 pump models:
 | 48458           | Number    | 50          | 100        | Setting | Max speed circ.pump Heat                                 |                                                                                                                                                                    |
 | 48459           | Number    | 0           | 100        | Setting | Speed brine pump cooling                                 |                                                                                                                                                                    |
 | 48487           | Number    | 1           | 100        | Setting | Speed circ.pump Cooling                                  |                                                                                                                                                                    |
+| 49008           | Number    | 100         | 2000       | Setting | Smart Energy Source, DM Diff Source Prio 2               |                                                                                                                                                                    |
+| 49009           | Number    | -2000       | -10        | Setting | Smart Energy Source, DM Start Source Prio 1              |                                                                                                                                                                    |
 
 ### F1x55
 
@@ -1886,3 +1899,12 @@ This binding currently supports following channels for F1x55 pump models:
 | 49380           | Switch    | 0           | 1          | Setting | External ERS 3 accessory bypass at heat                  |                                                                                                                                                                    |
 | 49381           | Switch    | 0           | 1          | Setting | External ERS 2 accessory bypass at heat                  |                                                                                                                                                                    |
 | 49430           | Number    | 0           | 255        | Setting | AUX ERS Fire Place Guard                                 |                                                                                                                                                                    |
+
+
+### SMO40
+
+To keep this documentation light, all parameters are documented in the NIBE ModbusManager except of:
+| Channel Type ID | Item Type | Min         | Max        | Type    | Description                                              | Values                                                                                                                                                             |
+|-----------------|-----------|-------------|------------|---------|----------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 45780           | Number    | 0           | 120        | Setting | Silent Mode Frequency 1 (defined in the service-menu)    |                                                                                                                                                                    |
+| 49806           | Number    | 0           | 120        | Setting | Silent Mode Frequency 2 (defined in the service-menu)    |                                                                                                                                                                    |

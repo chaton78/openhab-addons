@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -29,23 +30,23 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.config.core.Configuration;
-import org.eclipse.smarthome.core.library.types.DateTimeType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.binding.BaseBridgeHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.openhab.binding.plclogo.internal.PLCLogoClient;
 import org.openhab.binding.plclogo.internal.PLCLogoBindingConstants.Layout;
+import org.openhab.binding.plclogo.internal.PLCLogoClient;
 import org.openhab.binding.plclogo.internal.config.PLCLogoBridgeConfiguration;
+import org.openhab.core.config.core.Configuration;
+import org.openhab.core.library.types.DateTimeType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.binding.BaseBridgeHandler;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +65,7 @@ public class PLCBridgeHandler extends BaseBridgeHandler {
 
     private final Logger logger = LoggerFactory.getLogger(PLCBridgeHandler.class);
 
-    private Map<ChannelUID, @Nullable String> oldValues = new HashMap<>();
+    private Map<ChannelUID, String> oldValues = new HashMap<>();
 
     @Nullable
     private volatile PLCLogoClient client; // S7 client used for communication with Logo!
@@ -94,7 +95,7 @@ public class PLCBridgeHandler extends BaseBridgeHandler {
         @Override
         public void run() {
             PLCLogoClient localClient = client;
-            Map<?, @Nullable Layout> memory = LOGO_MEMORY_BLOCK.get(getLogoFamily());
+            Map<?, Layout> memory = LOGO_MEMORY_BLOCK.get(getLogoFamily());
             Layout layout = (memory != null) ? memory.get(MEMORY_SIZE) : null;
             if ((layout != null) && (localClient != null)) {
                 try {
@@ -172,12 +173,12 @@ public class PLCBridgeHandler extends BaseBridgeHandler {
                     rtc.set(clock);
                     updateState(channelUID, new DateTimeType(clock));
                 } else if (DAIGNOSTICS_CHANNEL.equals(channelId)) {
-                    Map<Integer, @Nullable String> states = LOGO_STATES.get(getLogoFamily());
+                    Map<Integer, String> states = LOGO_STATES.get(getLogoFamily());
                     if (states != null) {
                         for (Integer key : states.keySet()) {
                             String message = states.get(buffer[0] & key.intValue());
                             synchronized (oldValues) {
-                                if ((message != null) && (oldValues.get(channelUID) != message)) {
+                                if (message != null && !Objects.equals(oldValues.get(channelUID), message)) {
                                     updateState(channelUID, new StringType(message));
                                     oldValues.put(channelUID, message);
                                 }
@@ -187,7 +188,7 @@ public class PLCBridgeHandler extends BaseBridgeHandler {
                 } else if (DAY_OF_WEEK_CHANNEL.equals(channelId)) {
                     String value = DAY_OF_WEEK.get(Integer.valueOf(buffer[0]));
                     synchronized (oldValues) {
-                        if ((value != null) && (oldValues.get(channelUID) != value)) {
+                        if (value != null && !Objects.equals(oldValues.get(channelUID), value)) {
                             updateState(channelUID, new StringType(value));
                             oldValues.put(channelUID, value);
                         }
@@ -374,5 +375,4 @@ public class PLCBridgeHandler extends BaseBridgeHandler {
 
         return result;
     }
-
 }

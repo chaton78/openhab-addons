@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -21,29 +21,28 @@ import java.util.Map;
 
 import javax.measure.Unit;
 
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.cache.ExpiringCache;
-import org.eclipse.smarthome.core.library.types.DateTimeType;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.QuantityType;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.foobot.internal.FoobotApiConnector;
 import org.openhab.binding.foobot.internal.FoobotApiException;
 import org.openhab.binding.foobot.internal.FoobotBindingConstants;
 import org.openhab.binding.foobot.internal.json.FoobotDevice;
 import org.openhab.binding.foobot.internal.json.FoobotJsonData;
 import org.openhab.binding.foobot.internal.json.FoobotSensor;
+import org.openhab.core.cache.ExpiringCache;
+import org.openhab.core.library.types.DateTimeType;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.State;
+import org.openhab.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,7 +92,7 @@ public class FoobotDeviceHandler extends BaseThingHandler {
         logger.debug("Initializing Foobot handler.");
         uuid = (String) getConfig().get(FoobotBindingConstants.CONFIG_UUID);
 
-        if (StringUtils.trimToNull(uuid) == null) {
+        if (uuid.isBlank()) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
                     "Parameter 'uuid' is mandatory and must be configured");
             return;
@@ -102,7 +101,7 @@ public class FoobotDeviceHandler extends BaseThingHandler {
         final int refreshInterval = bridgeHandler == null ? FoobotBindingConstants.DEFAULT_REFRESH_PERIOD_MINUTES
                 : bridgeHandler.getRefreshInterval();
 
-        dataCache = new ExpiringCache<FoobotJsonData>(Duration.ofMinutes(refreshInterval), this::retrieveSensorData);
+        dataCache = new ExpiringCache<>(Duration.ofMinutes(refreshInterval), this::retrieveSensorData);
         scheduler.execute(this::refreshSensors);
     }
 
@@ -175,7 +174,6 @@ public class FoobotDeviceHandler extends BaseThingHandler {
         if (lastTime instanceof DecimalType) {
             ((DecimalType) lastTime).intValue();
         }
-
     }
 
     @Override
@@ -218,5 +216,4 @@ public class FoobotDeviceHandler extends BaseThingHandler {
                 ? (FoobotAccountHandler) getBridge().getHandler()
                 : null;
     }
-
 }

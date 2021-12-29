@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,8 +14,8 @@ package org.openhab.binding.darksky.internal.config;
 
 import java.time.Duration;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.slf4j.Logger;
@@ -79,18 +79,21 @@ public class DarkSkyChannelConfiguration {
      * Parses a hh:mm string and returns the minutes.
      */
     private long getMinutesFromTime(@Nullable String configTime) {
-        String time = StringUtils.trimToNull(configTime);
-        if (time != null) {
+        String time = configTime;
+        if (time != null && !(time = time.trim()).isEmpty()) {
             try {
                 if (!HHMM_PATTERN.matcher(time).matches()) {
                     throw new NumberFormatException();
                 } else {
                     String[] splittedConfigTime = time.split(TIME_SEPARATOR);
+                    if (splittedConfigTime.length < 2) {
+                        throw new NumberFormatException();
+                    }
                     int hour = Integer.parseInt(splittedConfigTime[0]);
                     int minutes = Integer.parseInt(splittedConfigTime[1]);
                     return Duration.ofMinutes(minutes).plusHours(hour).toMinutes();
                 }
-            } catch (Exception ex) {
+            } catch (PatternSyntaxException | NumberFormatException | ArithmeticException ex) {
                 logger.warn("Cannot parse channel configuration '{}' to hour and minutes, use pattern hh:mm, ignoring!",
                         time);
             }

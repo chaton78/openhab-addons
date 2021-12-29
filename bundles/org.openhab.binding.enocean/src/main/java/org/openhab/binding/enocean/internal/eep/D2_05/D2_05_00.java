@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,17 +16,17 @@ import static org.openhab.binding.enocean.internal.EnOceanBindingConstants.*;
 
 import java.util.function.Function;
 
-import org.eclipse.smarthome.config.core.Configuration;
-import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
-import org.eclipse.smarthome.core.library.types.PercentType;
-import org.eclipse.smarthome.core.library.types.StopMoveType;
-import org.eclipse.smarthome.core.library.types.UpDownType;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.enocean.internal.eep.Base._VLDMessage;
 import org.openhab.binding.enocean.internal.messages.ERP1Message;
+import org.openhab.core.config.core.Configuration;
+import org.openhab.core.config.discovery.DiscoveryResultBuilder;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.StopMoveType;
+import org.openhab.core.library.types.UpDownType;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.State;
+import org.openhab.core.types.UnDefType;
 
 /**
  *
@@ -62,7 +62,6 @@ public class D2_05_00 extends _VLDMessage {
     }
 
     protected void setPositionData(Command command, byte outputChannel) {
-
         if (command instanceof UpDownType) {
             if (command == UpDownType.DOWN) {
                 setData(DOWN, (byte) 0x00, (byte) 0x00, (byte) (outputChannel + CMD_ACTUATOR_SET_POSITION));
@@ -99,13 +98,13 @@ public class D2_05_00 extends _VLDMessage {
 
     @Override
     public void addConfigPropertiesTo(DiscoveryResultBuilder discoveredThingResultBuilder) {
-        discoveredThingResultBuilder.withProperty(PARAMETER_EEPID, getEEPType().getId());
+        discoveredThingResultBuilder.withProperty(PARAMETER_SENDINGEEPID, getEEPType().getId())
+                .withProperty(PARAMETER_RECEIVINGEEPID, getEEPType().getId());
     }
 
     @Override
     protected void convertFromCommandImpl(String channelId, String channelTypeId, Command command,
             Function<String, State> getCurrentStateFunc, Configuration config) {
-
         if (channelId.equals(CHANNEL_ROLLERSHUTTER)) {
             if (command == RefreshType.REFRESH) {
                 setPositionQueryData(ChannelA_Mask);
@@ -116,9 +115,8 @@ public class D2_05_00 extends _VLDMessage {
     }
 
     @Override
-    protected State convertToStateImpl(String channelId, String channelTypeId, Function<String, State> getCurrentStateFunc,
-            Configuration config) {
-
+    protected State convertToStateImpl(String channelId, String channelTypeId,
+            Function<String, State> getCurrentStateFunc, Configuration config) {
         switch (channelId) {
             case CHANNEL_ROLLERSHUTTER:
                 return getPositionData();
@@ -126,5 +124,4 @@ public class D2_05_00 extends _VLDMessage {
 
         return UnDefType.UNDEF;
     }
-
 }

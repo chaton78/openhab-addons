@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -23,28 +23,27 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.cache.ExpiringCache;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseBridgeHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandlerService;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.foobot.internal.FoobotApiConnector;
 import org.openhab.binding.foobot.internal.FoobotApiException;
 import org.openhab.binding.foobot.internal.FoobotBindingConstants;
 import org.openhab.binding.foobot.internal.config.FoobotAccountConfiguration;
 import org.openhab.binding.foobot.internal.discovery.FoobotAccountDiscoveryService;
 import org.openhab.binding.foobot.internal.json.FoobotDevice;
+import org.openhab.core.cache.ExpiringCache;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseBridgeHandler;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.thing.binding.ThingHandlerService;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,10 +95,12 @@ public class FoobotAccountHandler extends BaseBridgeHandler {
         final FoobotAccountConfiguration accountConfig = getConfigAs(FoobotAccountConfiguration.class);
         final List<String> missingParams = new ArrayList<>();
 
-        if (StringUtils.trimToNull(accountConfig.apiKey) == null) {
+        String apiKey = accountConfig.apiKey;
+        if (apiKey.isBlank()) {
             missingParams.add("'apikey'");
         }
-        if (StringUtils.trimToNull(accountConfig.username) == null) {
+        String username = accountConfig.username;
+        if (username.isBlank()) {
             missingParams.add("'username'");
         }
 
@@ -107,13 +108,13 @@ public class FoobotAccountHandler extends BaseBridgeHandler {
             final boolean oneParam = missingParams.size() == 1;
             final String errorMsg = String.format(
                     "Parameter%s [%s] %s mandatory and must be configured and not be empty", oneParam ? "" : "s",
-                    StringUtils.join(missingParams, ", "), oneParam ? "is" : "are");
+                    String.join(", ", missingParams), oneParam ? "is" : "are");
 
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, errorMsg);
             return;
         }
-        username = accountConfig.username;
-        connector.setApiKey(accountConfig.apiKey);
+        this.username = username;
+        connector.setApiKey(apiKey);
         refreshInterval = accountConfig.refreshInterval;
         if (this.refreshInterval < MINIMUM_REFRESH_PERIOD_MINUTES) {
             logger.warn(
@@ -121,8 +122,7 @@ public class FoobotAccountHandler extends BaseBridgeHandler {
                     accountConfig.refreshInterval, MINIMUM_REFRESH_PERIOD_MINUTES, DEFAULT_REFRESH_PERIOD_MINUTES);
             refreshInterval = DEFAULT_REFRESH_PERIOD_MINUTES;
         }
-        logger.debug("Foobot Account bridge starting... user: {}, refreshInterval: {}", accountConfig.username,
-                refreshInterval);
+        logger.debug("Foobot Account bridge starting... user: {}, refreshInterval: {}", username, refreshInterval);
 
         updateStatus(ThingStatus.UNKNOWN, ThingStatusDetail.NONE, "Wait to get associated devices");
 

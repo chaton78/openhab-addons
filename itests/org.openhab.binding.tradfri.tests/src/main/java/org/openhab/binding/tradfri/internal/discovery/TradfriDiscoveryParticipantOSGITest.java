@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,41 +13,43 @@
 package org.openhab.binding.tradfri.internal.discovery;
 
 import static org.hamcrest.CoreMatchers.*;
-import static org.junit.Assert.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
-import static org.mockito.MockitoAnnotations.initMocks;
 import static org.openhab.binding.tradfri.internal.TradfriBindingConstants.*;
 
 import javax.jmdns.ServiceInfo;
 
-import org.eclipse.smarthome.config.discovery.DiscoveryResult;
-import org.eclipse.smarthome.config.discovery.DiscoveryResultFlag;
-import org.eclipse.smarthome.config.discovery.mdns.MDNSDiscoveryParticipant;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingUID;
-import org.eclipse.smarthome.test.java.JavaOSGiTest;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.openhab.core.config.discovery.DiscoveryResult;
+import org.openhab.core.config.discovery.DiscoveryResultFlag;
+import org.openhab.core.config.discovery.mdns.MDNSDiscoveryParticipant;
+import org.openhab.core.test.java.JavaOSGiTest;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingUID;
 
 /**
  * Tests for {@link TradfriDiscoveryParticipant}.
  *
  * @author Kai Kreuzer - Initial contribution
  */
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.WARN)
 public class TradfriDiscoveryParticipantOSGITest extends JavaOSGiTest {
 
     private MDNSDiscoveryParticipant discoveryParticipant;
 
-    @Mock
-    private ServiceInfo tradfriGateway;
+    private @Mock ServiceInfo tradfriGateway;
+    private @Mock ServiceInfo otherDevice;
 
-    @Mock
-    private ServiceInfo otherDevice;
-
-    @Before
-    public void setUp() {
-        initMocks(this);
+    @BeforeEach
+    public void beforeEach() {
         discoveryParticipant = getService(MDNSDiscoveryParticipant.class, TradfriDiscoveryParticipant.class);
 
         when(tradfriGateway.getType()).thenReturn("_coap._udp.local.");

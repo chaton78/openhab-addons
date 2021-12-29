@@ -4,20 +4,23 @@
 			"chuangmi.plug.v2"
 		],
 		"channels": [
-            {
-                "property": "power",
-                "friendlyName": "Power",
-                "channel": "power",
-                "type": "Switch",
-                "refresh": true,
-                "ChannelGroup": "",
-                "actions": [
-                    {
-                        "command": "set_power",
-                        "parameterType": "ONOFF"
-                    }
-                ]
-            },
+			{
+				"property": "power",
+				"friendlyName": "Power",
+				"channel": "power",
+				"type": "Switch",
+				"refresh": true,
+				"actions": [
+					{
+						"command": "set_power",
+						"parameterType": "ONOFF"
+					}
+				],
+				"category": "switch",
+				"tags": [
+					"Switch"
+				]
+			},
 			{
 				"property": "usb_on",
 				"friendlyName": "USB",

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -24,19 +24,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import org.eclipse.smarthome.config.core.Configuration;
-import org.eclipse.smarthome.core.library.types.IncreaseDecreaseType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseBridgeHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandlerService;
-import org.eclipse.smarthome.core.thing.binding.builder.ThingStatusInfoBuilder;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
 import org.openhab.binding.yamahareceiver.internal.config.YamahaBridgeConfig;
 import org.openhab.binding.yamahareceiver.internal.discovery.ZoneDiscoveryService;
 import org.openhab.binding.yamahareceiver.internal.protocol.AbstractConnection;
@@ -50,6 +37,18 @@ import org.openhab.binding.yamahareceiver.internal.protocol.xml.XMLProtocolFacto
 import org.openhab.binding.yamahareceiver.internal.state.DeviceInformationState;
 import org.openhab.binding.yamahareceiver.internal.state.SystemControlState;
 import org.openhab.binding.yamahareceiver.internal.state.SystemControlStateListener;
+import org.openhab.core.config.core.Configuration;
+import org.openhab.core.library.types.IncreaseDecreaseType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseBridgeHandler;
+import org.openhab.core.thing.binding.ThingHandlerService;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -224,6 +223,7 @@ public class YamahaBridgeHandler extends BaseBridgeHandler
     private void cancelRefreshTimer() {
         if (refreshTimer != null) {
             refreshTimer.cancel(false);
+            refreshTimer = null;
         }
     }
 
@@ -255,13 +255,8 @@ public class YamahaBridgeHandler extends BaseBridgeHandler
                 YamahaZoneThingHandler handler = (YamahaZoneThingHandler) thing.getHandler();
 
                 // Ensure the handler has been already assigned
-                if (handler != null) {
-                    // If thing still thinks that the bridge is offline, update its status.
-                    if (thing.getStatusInfo().getStatusDetail() == ThingStatusDetail.BRIDGE_OFFLINE) {
-                        handler.bridgeStatusChanged(ThingStatusInfoBuilder.create(bridge.getStatus()).build());
-                    } else if (handler.isCorrectlyInitialized()) {
-                        handler.updateZoneInformation();
-                    }
+                if (handler != null && handler.isCorrectlyInitialized()) {
+                    handler.updateZoneInformation();
                 }
             }
         } catch (IOException e) {
@@ -269,7 +264,8 @@ public class YamahaBridgeHandler extends BaseBridgeHandler
             onConnectivityError(e);
             return;
         } catch (ReceivedMessageParseException e) {
-            updateProperty(PROPERTY_MENU_ERROR, e.getMessage());
+            String message = e.getMessage();
+            updateProperty(PROPERTY_MENU_ERROR, message != null ? message : "");
             // Some AVRs send unexpected responses. We log parser exceptions therefore.
             logger.debug("Parse error!", e);
         } finally {
@@ -358,7 +354,8 @@ public class YamahaBridgeHandler extends BaseBridgeHandler
 
     @Override
     public void onConnectionCreated(AbstractConnection connection) {
-        updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_PENDING, "Waiting for connection with Yamaha device");
+        updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_PENDING,
+                "Waiting for connection with Yamaha device");
 
         this.connection = connection;
         this.systemControl = null;
@@ -372,6 +369,7 @@ public class YamahaBridgeHandler extends BaseBridgeHandler
 
     /**
      * Attempts to perform a one-time initialization after a connection is created.
+     *
      * @return true if initialization was successful
      */
     private boolean ensureConnectionInitialized() {
@@ -402,7 +400,9 @@ public class YamahaBridgeHandler extends BaseBridgeHandler
 
     private void onConnectivityError(Exception e) {
         String description = e.getMessage();
-        logger.debug("Communication error. Either the Yamaha thing configuration is invalid or the device is offline. Details: {}", description);
+        logger.debug(
+                "Communication error. Either the Yamaha thing configuration is invalid or the device is offline. Details: {}",
+                description);
         updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, description);
     }
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,8 +12,6 @@
  */
 package org.openhab.binding.hdanywhere.internal.handler;
 
-import static org.apache.commons.lang.StringUtils.isNotBlank;
-
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.concurrent.ScheduledFuture;
@@ -21,15 +19,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.io.net.http.HttpUtil;
 import org.openhab.binding.hdanywhere.internal.HDanywhereBindingConstants.Port;
+import org.openhab.core.io.net.http.HttpUtil;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,24 +67,22 @@ public class MultiroomPlusHandler extends BaseThingHandler {
             String httpMethod = "GET";
             String url = "http://" + host + "/status_show.shtml";
 
-            if (isNotBlank(httpMethod) && isNotBlank(url)) {
-                String response = HttpUtil.executeUrl(httpMethod, url, null, null, null, timeout);
+            String response = HttpUtil.executeUrl(httpMethod, url, null, null, null, timeout);
 
-                if (response != null) {
-                    updateStatus(ThingStatus.ONLINE);
+            if (response != null) {
+                updateStatus(ThingStatus.ONLINE);
 
-                    for (int i = 1; i <= numberOfPorts; i++) {
-                        Pattern p = Pattern.compile("var out" + i + "var = (.*);");
-                        Matcher m = p.matcher(response);
+                for (int i = 1; i <= numberOfPorts; i++) {
+                    Pattern p = Pattern.compile("var out" + i + "var = (.*);");
+                    Matcher m = p.matcher(response);
 
-                        while (m.find()) {
-                            DecimalType decimalType = new DecimalType(m.group(1));
-                            updateState(new ChannelUID(getThing().getUID(), Port.get(i).channelID()), decimalType);
-                        }
+                    while (m.find()) {
+                        DecimalType decimalType = new DecimalType(m.group(1));
+                        updateState(new ChannelUID(getThing().getUID(), Port.get(i).channelID()), decimalType);
                     }
-                } else {
-                    updateStatus(ThingStatus.OFFLINE);
                 }
+            } else {
+                updateStatus(ThingStatus.OFFLINE);
             }
         } catch (Exception e) {
             logger.warn("An exception occurred while polling the HDanwywhere matrix: '{}'", e.getMessage());

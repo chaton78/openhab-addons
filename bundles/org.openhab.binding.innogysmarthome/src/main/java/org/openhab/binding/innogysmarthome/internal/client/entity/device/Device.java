@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,63 +12,41 @@
  */
 package org.openhab.binding.innogysmarthome.internal.client.entity.device;
 
-import java.util.HashMap;
+import static org.openhab.binding.innogysmarthome.internal.InnogyBindingConstants.*;
+
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
-import org.openhab.binding.innogysmarthome.internal.client.entity.ConfigPropertyList;
-import org.openhab.binding.innogysmarthome.internal.client.entity.Location;
-import org.openhab.binding.innogysmarthome.internal.client.entity.Message;
-import org.openhab.binding.innogysmarthome.internal.client.entity.Property;
 import org.openhab.binding.innogysmarthome.internal.client.entity.capability.Capability;
-import org.openhab.binding.innogysmarthome.internal.client.entity.link.CapabilityLink;
-import org.openhab.binding.innogysmarthome.internal.client.entity.link.Link;
-import org.openhab.binding.innogysmarthome.internal.client.entity.state.DeviceState;
+import org.openhab.binding.innogysmarthome.internal.client.entity.location.Location;
+import org.openhab.binding.innogysmarthome.internal.client.entity.message.Message;
 
-import com.google.api.client.util.Key;
+import com.google.gson.annotations.SerializedName;
 
 /**
  * Defines the structure of a {@link Device}.
  *
  * @author Oliver Kuhl - Initial contribution
  */
-public class Device extends ConfigPropertyList {
-
-    public static final String DEVICE_TYPE_SHC = "SHC";
-    public static final String DEVICE_TYPE_ANALOG_METER = "AnalogMeter";
-    public static final String DEVICE_TYPE_BRC8 = "BRC8";
-    public static final String DEVICE_TYPE_GENERATION_METER = "GenerationMeter";
-    public static final String DEVICE_TYPE_ISC2 = "ISC2";
-    public static final String DEVICE_TYPE_ISD2 = "ISD2";
-    public static final String DEVICE_TYPE_ISR2 = "ISR2";
-    public static final String DEVICE_TYPE_ISS2 = "ISS2";
-    public static final String DEVICE_TYPE_PSD = "PSD";
-    public static final String DEVICE_TYPE_PSS = "PSS";
-    public static final String DEVICE_TYPE_PSSO = "PSSO";
-    public static final String DEVICE_TYPE_RST = "RST";
-    public static final String DEVICE_TYPE_SMARTMETER = "SmartMeter";
-    public static final String DEVICE_TYPE_TWO_WAY_METER = "TwoWayMeter";
-    public static final String DEVICE_TYPE_VARIABLE_ACTUATOR = "VariableActuator";
-    public static final String DEVICE_TYPE_WDS = "WDS";
-    public static final String DEVICE_TYPE_WMD = "WMD";
-    public static final String DEVICE_TYPE_WMDO = "WMDO";
-    public static final String DEVICE_TYPE_WRT = "WRT";
-    public static final String DEVICE_TYPE_WSC2 = "WSC2";
-    public static final String DEVICE_TYPE_WSD = "WSD";
-    public static final String DEVICE_TYPE_WSD2 = "WSD2";
+public class Device {
 
     public static final String DEVICE_MANUFACTURER_RWE = "RWE";
     public static final String DEVICE_MANUFACTURER_INNOGY = "innogy";
 
+    protected static final String PROTOCOL_ID_COSIP = "Cosip";
+    protected static final String PROTOCOL_ID_VIRTUAL = "Virtual";
+    protected static final String PROTOCOL_ID_WMBUS = "wMBus";
+
     /**
      * Unique id for the device, always available in model.
      */
-    @Key("id")
     private String id;
 
     /**
      * Identifier of the manufacturer, always available in model
      */
-    @Key("manufacturer")
     private String manufacturer;
 
     /**
@@ -78,7 +56,6 @@ public class Device extends ConfigPropertyList {
      * be increased to indicate that there are new or changed attributes
      * of the device. Always available in model.
      */
-    @Key("version")
     private String version;
 
     /**
@@ -88,31 +65,25 @@ public class Device extends ConfigPropertyList {
      * core.RWE, which supports all RWE hardware devices (also referred to as core devices).
      * Always available in model.
      */
-    @Key("product")
     private String product;
 
     /**
      * Device number or id like SGTIN given by the manufacturer. Optional.
      */
-    @Key("serialnumber")
     private String serialnumber;
-
-    /**
-     * Link to the metadata of that specific device. The link should be complete and can be followed without further
-     * additions. The triple of device type, manufacturer and version define the unique path to the metadata.
-     *
-     * Optional.
-     */
-    @Key("desc")
-    private String desc;
 
     /**
      * Specifies the type of the device, which is defined by the manufacturer. The triple of device type, manufacturer
      * and the version must be unique.
      * Always available in model.
      */
-    @Key("type")
     private String type;
+
+    private DeviceConfig config;
+
+    private List<String> capabilities;
+
+    private Map<String, Capability> capabilityMap;
 
     private DeviceState deviceState;
 
@@ -123,26 +94,16 @@ public class Device extends ConfigPropertyList {
      *
      * Optional.
      */
-    @Key("Tags")
-    private List<Property> tagList;
-
-    /**
-     * Contains a list of the device capabilities.
-     *
-     * Optional.
-     */
-    @Key("Capabilities")
-    private List<CapabilityLink> capabilityLinkList;
-
-    private HashMap<String, Capability> capabilityMap;
+    // @Key("tags")
+    // private List<Property> tagList;
 
     /**
      * The location contains the link to the location of the device. Optional.
      */
-    @Key("Location")
-    private List<Link> locationLinkList;
+    @SerializedName("location")
+    private String locationLink;
 
-    private Location location;
+    private transient Location location;
 
     private List<Message> messageList;
 
@@ -229,25 +190,7 @@ public class Device extends ConfigPropertyList {
      * @return
      */
     public boolean hasSerialNumber() {
-        return (serialnumber != null && serialnumber != "");
-    }
-
-    /**
-     * Returns a relative link to the description.
-     *
-     * @return the desc
-     */
-    public String getDescription() {
-        return desc;
-    }
-
-    /**
-     * Sets the description.
-     *
-     * @param desc the desc to set
-     */
-    public void setDescription(String desc) {
-        this.desc = desc;
+        return serialnumber != null && !serialnumber.isEmpty();
     }
 
     /**
@@ -265,8 +208,22 @@ public class Device extends ConfigPropertyList {
     }
 
     /**
+     * @return the config
+     */
+    public DeviceConfig getConfig() {
+        return config;
+    }
+
+    /**
+     * @param config the config to set
+     */
+    public void setConfig(DeviceConfig config) {
+        this.config = config;
+    }
+
+    /**
      * Returns the {@link DeviceState}. Only available, if device has a state. Better check with
-     * {@link Device#hasState()} first!
+     * {@link Device#hasDeviceState()} first!
      *
      * @return the entityState or null
      */
@@ -286,46 +243,35 @@ public class Device extends ConfigPropertyList {
      *
      * @return
      */
-    public boolean hasState() {
+    public boolean hasDeviceState() {
         return deviceState != null;
-    }
-
-    /**
-     * @return the tagList
-     */
-    public List<Property> getTagList() {
-        return tagList;
-    }
-
-    /**
-     * @param tagList the tagList to set
-     */
-    public void setTagList(List<Property> tagList) {
-        this.tagList = tagList;
     }
 
     /**
      * @return the capabilityList
      */
-    public List<CapabilityLink> getCapabilityLinkList() {
-        return capabilityLinkList;
+    public List<String> getCapabilities() {
+        return Objects.requireNonNullElse(capabilities, Collections.emptyList());
     }
 
     /**
      * @param capabilityList the capabilityList to set
      */
-    public void setCapabilityList(List<CapabilityLink> capabilityList) {
-        this.capabilityLinkList = capabilityList;
+    public void setCapabilities(List<String> capabilityList) {
+        this.capabilities = capabilityList;
     }
 
     /**
      * @param capabilityMap the capabilityMap to set
      */
-    public void setCapabilityMap(HashMap<String, Capability> capabilityMap) {
+    public void setCapabilityMap(Map<String, Capability> capabilityMap) {
         this.capabilityMap = capabilityMap;
     }
 
-    public HashMap<String, Capability> getCapabilityMap() {
+    /**
+     * @return the capabilityMap
+     */
+    public Map<String, Capability> getCapabilityMap() {
         return this.capabilityMap;
     }
 
@@ -340,25 +286,27 @@ public class Device extends ConfigPropertyList {
     }
 
     /**
-     * @return the locationList
+     * @return the locationLink
      */
-    public List<Link> getLocationLinkList() {
-        return locationLinkList;
+    public String getLocationLink() {
+        return locationLink;
     }
 
     /**
-     * @param locationList the locationList to set
+     * @param locationLink the locationList to set
      */
-    public void setLocationList(List<Link> locationList) {
-        this.locationLinkList = locationList;
+    public void setLocation(String locationLink) {
+        this.locationLink = locationLink;
     }
 
+    /**
+     * Returns the id of the {@link Location}
+     *
+     * @return
+     */
     public String getLocationId() {
-        if (locationLinkList != null) {
-            Link locationLink = locationLinkList.get(0);
-            if (locationLink != null) {
-                return locationLink.getValue().replace("/location/", "");
-            }
+        if (locationLink != null) {
+            return locationLink.replace("/location/", "");
         }
         return null;
     }
@@ -401,10 +349,31 @@ public class Device extends ConfigPropertyList {
      */
     public void setMessageList(List<Message> messageList) {
         this.messageList = messageList;
+        applyMessageList(messageList);
+    }
 
-        for (Message m : messageList) {
-            setLowBattery(m.getType().equals(Message.TYPE_DEVICE_LOW_BATTERY));
-            setReachable(!m.getType().equals(Message.TYPE_DEVICE_UNREACHABLE));
+    private void applyMessageList(List<Message> messageList) {
+        if (messageList != null && !messageList.isEmpty()) {
+            boolean isUnreachableMessageFound = false;
+            boolean isLowBatteryMessageFound = false;
+            for (final Message message : messageList) {
+                switch (message.getType()) {
+                    case Message.TYPE_DEVICE_UNREACHABLE:
+                        isUnreachableMessageFound = true;
+                        break;
+                    case Message.TYPE_DEVICE_LOW_BATTERY:
+                        isLowBatteryMessageFound = true;
+                        break;
+                }
+            }
+            if (isUnreachableMessageFound) {
+                setReachable(false); // overwrite only when there is a corresponding message (to keep the state of the
+                                     // API in other cases)
+            }
+            if (isLowBatteryMessageFound) {
+                setLowBattery(true); // overwrite only when there is a corresponding message (to keep the state of the
+                                     // API in other cases)
+            }
         }
     }
 
@@ -413,8 +382,10 @@ public class Device extends ConfigPropertyList {
      *
      * @param isReachable
      */
-    public void setReachable(boolean isReachable) {
-        getDeviceState().setReachable(isReachable);
+    private void setReachable(boolean isReachable) {
+        if (getDeviceState().hasIsReachableState()) {
+            getDeviceState().setReachable(isReachable);
+        }
     }
 
     /**
@@ -423,7 +394,7 @@ public class Device extends ConfigPropertyList {
      * @return
      */
     public boolean isReachable() {
-        return getDeviceState().isReachable();
+        return getDeviceState().getState().getIsReachable().getValue();
     }
 
     /**
@@ -431,7 +402,7 @@ public class Device extends ConfigPropertyList {
      *
      * @param hasLowBattery
      */
-    public void setLowBattery(boolean hasLowBattery) {
+    private void setLowBattery(boolean hasLowBattery) {
         this.lowBattery = hasLowBattery;
     }
 
@@ -460,7 +431,6 @@ public class Device extends ConfigPropertyList {
      */
     public void setIsBatteryPowered(boolean hasBattery) {
         batteryPowered = hasBattery;
-
     }
 
     /**
@@ -478,7 +448,7 @@ public class Device extends ConfigPropertyList {
      * @return
      */
     public boolean isController() {
-        return DEVICE_TYPE_SHC.equals(type);
+        return DEVICE_SHC.equals(type) || DEVICE_SHCA.equals(type);
     }
 
     /**
@@ -505,7 +475,7 @@ public class Device extends ConfigPropertyList {
      * @return
      */
     public boolean isVirtualDevice() {
-        return PROTOCOL_ID_VIRTUAL.equals(getProtocolId());
+        return PROTOCOL_ID_VIRTUAL.equals(getConfig().getProtocolId());
     }
 
     /**
@@ -514,7 +484,8 @@ public class Device extends ConfigPropertyList {
      * @return
      */
     public boolean isRadioDevice() {
-        return PROTOCOL_ID_COSIP.equals(getProtocolId()) || PROTOCOL_ID_WMBUS.equals(getProtocolId());
+        return PROTOCOL_ID_COSIP.equals(getConfig().getProtocolId())
+                || PROTOCOL_ID_WMBUS.equals(getConfig().getProtocolId());
     }
 
     /**
@@ -523,7 +494,7 @@ public class Device extends ConfigPropertyList {
      * @return
      */
     public boolean isCoSipDevice() {
-        return PROTOCOL_ID_COSIP.equals(getProtocolId());
+        return PROTOCOL_ID_COSIP.equals(getConfig().getProtocolId());
     }
 
     /**
@@ -532,15 +503,14 @@ public class Device extends ConfigPropertyList {
      * @return
      */
     public boolean isWMBusDevice() {
-        return PROTOCOL_ID_WMBUS.equals(getProtocolId());
+        return PROTOCOL_ID_WMBUS.equals(getConfig().getProtocolId());
     }
 
     @Override
     public String toString() {
-        String string = "Device [" + "id=" + getId() + " manufacturer=" + getManufacturer() + " version=" + getVersion()
-                + " product=" + getProduct() + " serialnumber=" + getSerialnumber() + " type=" + getType() + " name="
-                + getName() + "]";
+        final String string = "Device [" + "id=" + getId() + " manufacturer=" + getManufacturer() + " version="
+                + getVersion() + " product=" + getProduct() + " serialnumber=" + getSerialnumber() + " type="
+                + getType() + " name=" + getConfig().getName() + "]";
         return string;
     }
-
 }

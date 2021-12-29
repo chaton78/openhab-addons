@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,15 +16,15 @@ import static org.openhab.binding.networkupstools.internal.NUTBindingConstants.B
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.library.CoreItemFactory;
-import org.eclipse.smarthome.core.library.types.QuantityType;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.binding.builder.ChannelBuilder;
-import org.eclipse.smarthome.core.thing.type.ChannelType;
-import org.eclipse.smarthome.core.thing.type.ChannelTypeBuilder;
-import org.eclipse.smarthome.core.thing.type.ChannelTypeUID;
-import org.eclipse.smarthome.core.types.StateDescriptionFragmentBuilder;
+import org.openhab.core.library.CoreItemFactory;
+import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.binding.builder.ChannelBuilder;
+import org.openhab.core.thing.type.ChannelType;
+import org.openhab.core.thing.type.ChannelTypeBuilder;
+import org.openhab.core.thing.type.ChannelTypeUID;
+import org.openhab.core.types.StateDescriptionFragmentBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +42,7 @@ class NUTDynamicChannelFactory {
 
     private final NUTChannelTypeProvider channelTypeProvider;
 
-    public NUTDynamicChannelFactory(final NUTChannelTypeProvider channelTypeProvider) {
+    NUTDynamicChannelFactory(final NUTChannelTypeProvider channelTypeProvider) {
         this.channelTypeProvider = channelTypeProvider;
     }
 
@@ -113,7 +113,7 @@ class NUTDynamicChannelFactory {
         final ChannelTypeUID channelTypeUID = new ChannelTypeUID(BINDING_ID, channel.getUID().getId() + "Type");
         final String label = channel.getLabel();
         final ChannelType channelType = ChannelTypeBuilder.state(channelTypeUID, label == null ? "" : label, itemType)
-                .withStateDescription(sdb.withReadOnly(Boolean.TRUE).build().toStateDescription())
+                .withStateDescriptionFragment(sdb.withReadOnly(Boolean.TRUE).build())
                 .withConfigDescriptionURI(NUTBindingConstants.DYNAMIC_CHANNEL_CONFIG_QUANTITY_TYPE).build();
         channelTypeProvider.addChannelType(channelType);
         return channelTypeUID;

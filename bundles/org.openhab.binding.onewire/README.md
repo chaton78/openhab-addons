@@ -19,26 +19,15 @@ The `owserver` is the bridge that connects to an existing OWFS installation.
 
 ### Things
 
-There are different types of things: the simple one (`basic`), multisensors built around the DS1923/DS2438 chip (`ms-tx`) and more advanced sensors from Elaborated Networks (www.wiregate.de) (`ams`, `bms`), Embedded Data System (www.embeddeddatasystems.com)(`edsenv`) and Brain4Home (www.brain4home.eu) (`bae091x`). 
-
-** Important: Breaking Change with next release **
- 
-The thing types `ms-th` and `ms-tv` have been marked deprecated and will be updated to `ms-tx` automatically. 
-The thing types `counter2`, `digitalio`, `digitalio2`, `digitalio8`, `ibutton`, `temperature` have been marked deprecated and will be updated to `basic` automatically. 
-Please note that auto-upgraded things keep their thing UID _including the deprecated thing type_.
-
-Manually (via textual configuration) defined things need to be changed to `ms-tx` or `basic` respectively.
-The thing UID changes and the item links need to be adjusted to the new UID.
-
-Deprecated thing types will will be removed with the next official release.
+There are different types of things: the simple one (`basic`), multisensors built around the DS1923/DS2438 chip (`ms-tx`) and more advanced sensors from Elaborated Networks (www.wiregate.de) (`ams`, `bms`), Embedded Data System (www.embeddeddatasystems.com)(`edsenv`) and Brain4Home (`bae091x`). 
 
 ## Discovery
 
-Discovery is supported for things. You have to add the bridges manually.  
+Discovery is supported for things. You have to add the bridges manually.
 
 ## Thing Configuration
 
-It is strongly recommended to use discovery and Paper UI for thing configuration.
+It is strongly recommended to add things using discovery and configure them using the UI.
 Please note that:
 
 * All things need a bridge.
@@ -57,7 +46,7 @@ The `address` parameter is used to denote the location of the owserver instance.
 It supports both, a hostname or an IP address. 
 
 The `port` parameter is used to adjust non-standard OWFS installations.
-It defaults to `4304`, which is the default of each OWFS installation.  
+It defaults to `4304`, which is the default of each OWFS installation.
 
 Bridges of type `owserver` are extensible with channels of type `owfs-number` and `owfs-string`. 
   

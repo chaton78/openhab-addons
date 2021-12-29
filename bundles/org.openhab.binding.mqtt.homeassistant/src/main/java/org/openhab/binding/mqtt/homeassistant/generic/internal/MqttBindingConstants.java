@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,7 +13,7 @@
 package org.openhab.binding.mqtt.homeassistant.generic.internal;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingTypeUID;
 
 /**
  * The {@link MqttBindingConstants} class defines common constants, which are
@@ -29,5 +29,5 @@ public class MqttBindingConstants {
     // List of all Thing Type UIDs
     public static final ThingTypeUID HOMEASSISTANT_MQTT_THING = new ThingTypeUID(BINDING_ID, "homeassistant");
 
-    public static final String CONFIG_HA_CHANNEL = "mqtt:ha_channel";
+    public static final String CONFIG_HA_CHANNEL = "channel-type:mqtt:ha-channel";
 }

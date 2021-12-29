@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,22 +12,21 @@
  */
 package org.openhab.io.homekit.internal.accessories;
 
+import static org.openhab.io.homekit.internal.HomekitCharacteristicType.CURRENT_HEATING_COOLING_STATE;
+import static org.openhab.io.homekit.internal.HomekitCharacteristicType.TARGET_HEATING_COOLING_STATE;
+
 import java.math.BigDecimal;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.items.GroupItem;
-import org.eclipse.smarthome.core.items.Item;
-import org.eclipse.smarthome.core.items.ItemRegistry;
-import org.eclipse.smarthome.core.library.items.NumberItem;
-import org.eclipse.smarthome.core.library.items.StringItem;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.types.State;
+import org.openhab.core.library.items.NumberItem;
+import org.openhab.core.library.items.StringItem;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.StringType;
 import org.openhab.io.homekit.internal.HomekitAccessoryUpdater;
 import org.openhab.io.homekit.internal.HomekitCharacteristicType;
 import org.openhab.io.homekit.internal.HomekitSettings;
@@ -35,9 +34,13 @@ import org.openhab.io.homekit.internal.HomekitTaggedItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.beowulfe.hap.HomekitCharacteristicChangeCallback;
-import com.beowulfe.hap.accessories.properties.ThermostatMode;
-import com.beowulfe.hap.accessories.thermostat.BasicThermostat;
+import io.github.hapjava.accessories.ThermostatAccessory;
+import io.github.hapjava.characteristics.HomekitCharacteristicChangeCallback;
+import io.github.hapjava.characteristics.impl.thermostat.CurrentHeatingCoolingStateEnum;
+import io.github.hapjava.characteristics.impl.thermostat.TargetHeatingCoolingStateEnum;
+import io.github.hapjava.characteristics.impl.thermostat.TargetTemperatureCharacteristic;
+import io.github.hapjava.characteristics.impl.thermostat.TemperatureDisplayUnitEnum;
+import io.github.hapjava.services.impl.ThermostatService;
 
 /**
  * Implements Thermostat as a GroupedAccessory made up of multiple items:
@@ -50,219 +53,191 @@ import com.beowulfe.hap.accessories.thermostat.BasicThermostat;
  *
  * @author Andy Lintner - Initial contribution
  */
-class HomekitThermostatImpl extends AbstractTemperatureHomekitAccessoryImpl<GroupItem> implements BasicThermostat {
-    private final HomekitSettings settings;
+class HomekitThermostatImpl extends AbstractHomekitAccessoryImpl implements ThermostatAccessory {
+    private final Logger logger = LoggerFactory.getLogger(HomekitThermostatImpl.class);
+    private final Map<CurrentHeatingCoolingStateEnum, String> currentHeatingCoolingStateMapping;
+    private final Map<TargetHeatingCoolingStateEnum, String> targetHeatingCoolingStateMapping;
+    private final List<CurrentHeatingCoolingStateEnum> customCurrentHeatingCoolingStateList;
+    private final List<TargetHeatingCoolingStateEnum> customTargetHeatingCoolingStateList;
 
-    private @NonNull NumberItem currentTemperatureItem;
-    private @NonNull StringItem targetHeatingCoolingModeItem;
-    private @Nullable StringItem currentHeatingCoolingModeItem;
-    private @NonNull NumberItem targetTemperatureItem;
-
-    private Logger logger = LoggerFactory.getLogger(HomekitThermostatImpl.class);
-
-    @SuppressWarnings("deprecation")
-    public HomekitThermostatImpl(HomekitTaggedItem taggedItem, ItemRegistry itemRegistry,
-            HomekitAccessoryUpdater updater, HomekitSettings settings, Item currentTemperatureItem,
-            Map<HomekitCharacteristicType, Item> origCharacteristicItems) throws IncompleteAccessoryException {
-        super(taggedItem, itemRegistry, updater, settings, GroupItem.class);
-
-        HashMap<HomekitCharacteristicType, Item> characteristicItems = new HashMap<>(origCharacteristicItems);
-        this.settings = settings;
-
-        if (currentTemperatureItem instanceof NumberItem) {
-            this.currentTemperatureItem = (NumberItem) currentTemperatureItem;
-        } else {
-            throw new IncompleteAccessoryException(currentTemperatureItem.getUID()
-                    + "tagged as thermostat currentTemperatureItem has wrong item type (NumberItem needed)");
-        }
-
-        Item targetHeatingCoolingModeItem = getItemWithDeprecation(characteristicItems,
-                HomekitCharacteristicType.TARGET_HEATING_COOLING_MODE,
-                HomekitCharacteristicType.OLD_TARGET_HEATING_COOLING_MODE).orElseThrow(
-                        () -> new IncompleteAccessoryException(HomekitCharacteristicType.TARGET_HEATING_COOLING_MODE));
-        if (targetHeatingCoolingModeItem instanceof StringItem) {
-            this.targetHeatingCoolingModeItem = (StringItem) targetHeatingCoolingModeItem;
-        } else {
-            throw new IncompleteAccessoryException(targetHeatingCoolingModeItem.getUID()
-                    + " tagged as thermostat targetHeatingCoolingMode has wrong item type (String needed)");
-        }
-
-        Item targetTemperatureItem = getItemWithDeprecation(characteristicItems,
-                HomekitCharacteristicType.TARGET_TEMPERATURE, HomekitCharacteristicType.OLD_TARGET_TEMPERATURE)
-                        .orElseThrow(
-                                () -> new IncompleteAccessoryException(HomekitCharacteristicType.TARGET_TEMPERATURE));
-        if (targetTemperatureItem instanceof NumberItem) {
-            this.targetTemperatureItem = (NumberItem) targetTemperatureItem;
-        } else {
-            throw new IncompleteAccessoryException(targetTemperatureItem.getUID()
-                    + " tagged as thermostat targetTemperature has wrong item type (Number needed)");
-        }
-
-        Item currentHeatingCoolingModeItem = characteristicItems
-                .remove(HomekitCharacteristicType.CURRENT_HEATING_COOLING_STATE);
-        if (currentHeatingCoolingModeItem instanceof StringItem || currentHeatingCoolingModeItem == null) {
-            this.currentHeatingCoolingModeItem = (StringItem) currentHeatingCoolingModeItem;
-        } else {
-            throw new IncompleteAccessoryException(currentHeatingCoolingModeItem.getUID()
-                    + " tagged as thermostat currentHeatingCoolingMode has wrong item type (String needed)");
-        }
-
-        characteristicItems.entrySet().stream().forEach(entry -> {
-            logger.warn("Item {} has unrecognized thermostat characteristic: {}", entry.getValue().getUID(),
-                    entry.getKey().getTag());
-        });
-    }
-
-    private Optional<Item> getItemWithDeprecation(HashMap<HomekitCharacteristicType, Item> characteristicItems,
-            HomekitCharacteristicType currentTag, HomekitCharacteristicType deprecatedTag) {
-        Optional<Item> targetTempItem = Optional.ofNullable(characteristicItems.remove(currentTag));
-        if (!targetTempItem.isPresent()) {
-            targetTempItem = Optional.ofNullable(characteristicItems.remove(deprecatedTag));
-            targetTempItem.ifPresent(item -> {
-                logger.warn("The tag {} has been renamed to {}; please update your things, accordingly",
-                        deprecatedTag.getTag(), currentTag.getTag());
-            });
-        }
-        return targetTempItem;
+    public HomekitThermostatImpl(HomekitTaggedItem taggedItem, List<HomekitTaggedItem> mandatoryCharacteristics,
+            HomekitAccessoryUpdater updater, HomekitSettings settings) {
+        super(taggedItem, mandatoryCharacteristics, updater, settings);
+        currentHeatingCoolingStateMapping = new EnumMap<>(CurrentHeatingCoolingStateEnum.class);
+        currentHeatingCoolingStateMapping.put(CurrentHeatingCoolingStateEnum.OFF, settings.thermostatCurrentModeOff);
+        currentHeatingCoolingStateMapping.put(CurrentHeatingCoolingStateEnum.COOL,
+                settings.thermostatCurrentModeCooling);
+        currentHeatingCoolingStateMapping.put(CurrentHeatingCoolingStateEnum.HEAT,
+                settings.thermostatCurrentModeHeating);
+        targetHeatingCoolingStateMapping = new EnumMap<>(TargetHeatingCoolingStateEnum.class);
+        targetHeatingCoolingStateMapping.put(TargetHeatingCoolingStateEnum.OFF, settings.thermostatTargetModeOff);
+        targetHeatingCoolingStateMapping.put(TargetHeatingCoolingStateEnum.COOL, settings.thermostatTargetModeCool);
+        targetHeatingCoolingStateMapping.put(TargetHeatingCoolingStateEnum.HEAT, settings.thermostatTargetModeHeat);
+        targetHeatingCoolingStateMapping.put(TargetHeatingCoolingStateEnum.AUTO, settings.thermostatTargetModeAuto);
+        customCurrentHeatingCoolingStateList = new ArrayList<>();
+        customTargetHeatingCoolingStateList = new ArrayList<>();
+        updateMapping(CURRENT_HEATING_COOLING_STATE, currentHeatingCoolingStateMapping,
+                customCurrentHeatingCoolingStateList);
+        updateMapping(TARGET_HEATING_COOLING_STATE, targetHeatingCoolingStateMapping,
+                customTargetHeatingCoolingStateList);
+        this.getServices().add(new ThermostatService(this));
     }
 
     @Override
-    public CompletableFuture<ThermostatMode> getCurrentMode() {
-        String stringValue = settings.thermostatCurrentModeOff;
-        if (currentHeatingCoolingModeItem != null) {
-            stringValue = currentHeatingCoolingModeItem.getState().toString();
-        }
-        ThermostatMode mode;
+    public CurrentHeatingCoolingStateEnum[] getCurrentHeatingCoolingStateValidValues() {
+        return customCurrentHeatingCoolingStateList.isEmpty()
+                ? currentHeatingCoolingStateMapping.keySet().toArray(new CurrentHeatingCoolingStateEnum[0])
+                : customCurrentHeatingCoolingStateList.toArray(new CurrentHeatingCoolingStateEnum[0]);
+    }
 
-        if (stringValue.equalsIgnoreCase(settings.thermostatCurrentModeCooling)) {
-            mode = ThermostatMode.COOL;
-        } else if (stringValue.equalsIgnoreCase(settings.thermostatCurrentModeHeating)) {
-            mode = ThermostatMode.HEAT;
-        } else if (stringValue.equalsIgnoreCase(settings.thermostatCurrentModeOff)) {
-            mode = ThermostatMode.OFF;
-        } else if (stringValue.equals("UNDEF") || stringValue.equals("NULL")) {
-            logger.debug("Heating cooling target mode not available. Relaying value of OFF to Homekit");
-            mode = ThermostatMode.OFF;
-        } else {
-            logger.error("Unrecognized heatingCoolingCurrentMode: {}. Expected {}, {}, or {} strings in value.",
-                    stringValue, settings.thermostatCurrentModeCooling, settings.thermostatCurrentModeHeating,
-                    settings.thermostatCurrentModeOff);
-            mode = ThermostatMode.OFF;
-        }
-        return CompletableFuture.completedFuture(mode);
+    @Override
+    public TargetHeatingCoolingStateEnum[] getTargetHeatingCoolingStateValidValues() {
+        return customTargetHeatingCoolingStateList.isEmpty()
+                ? targetHeatingCoolingStateMapping.keySet().toArray(new TargetHeatingCoolingStateEnum[0])
+                : customTargetHeatingCoolingStateList.toArray(new TargetHeatingCoolingStateEnum[0]);
+    }
+
+    @Override
+    public CompletableFuture<CurrentHeatingCoolingStateEnum> getCurrentState() {
+        return CompletableFuture.completedFuture(getKeyFromMapping(CURRENT_HEATING_COOLING_STATE,
+                currentHeatingCoolingStateMapping, CurrentHeatingCoolingStateEnum.OFF));
     }
 
     @Override
     public CompletableFuture<Double> getCurrentTemperature() {
-        DecimalType state = currentTemperatureItem.getStateAs(DecimalType.class);
-        if (state == null) {
-            return CompletableFuture.completedFuture(null);
-        }
-        return CompletableFuture.completedFuture(convertToCelsius(state.doubleValue()));
+        DecimalType state = getStateAs(HomekitCharacteristicType.CURRENT_TEMPERATURE, DecimalType.class);
+        return CompletableFuture.completedFuture(state != null ? convertToCelsius(state.doubleValue()) : 0.0);
     }
 
     @Override
-    public CompletableFuture<ThermostatMode> getTargetMode() {
-        State state = targetHeatingCoolingModeItem.getState();
-        ThermostatMode mode;
+    public double getMinCurrentTemperature() {
+        return convertToCelsius(
+                getAccessoryConfiguration(HomekitCharacteristicType.CURRENT_TEMPERATURE, HomekitTaggedItem.MIN_VALUE,
+                        BigDecimal.valueOf(TargetTemperatureCharacteristic.DEFAULT_MIN_VALUE)).doubleValue());
+    }
 
-        String stringValue = state.toString();
-        if (stringValue.equalsIgnoreCase(settings.thermostatTargetModeCool)) {
-            mode = ThermostatMode.COOL;
-        } else if (stringValue.equalsIgnoreCase(settings.thermostatTargetModeHeat)) {
-            mode = ThermostatMode.HEAT;
-        } else if (stringValue.equalsIgnoreCase(settings.thermostatTargetModeAuto)) {
-            mode = ThermostatMode.AUTO;
-        } else if (stringValue.equalsIgnoreCase(settings.thermostatTargetModeOff)) {
-            mode = ThermostatMode.OFF;
-        } else if (stringValue.equals("UNDEF") || stringValue.equals("NULL")) {
-            logger.debug("Heating cooling target mode not available. Relaying value of OFF to Homekit");
-            mode = ThermostatMode.OFF;
-        } else {
-            logger.warn("Unrecognized heating cooling target mode: {}. Expected {}, {}, {}, or {} strings in value.",
-                    stringValue, settings.thermostatTargetModeCool, settings.thermostatTargetModeHeat,
-                    settings.thermostatTargetModeAuto, settings.thermostatTargetModeOff);
-            mode = ThermostatMode.OFF;
-        }
-        return CompletableFuture.completedFuture(mode);
+    @Override
+    public double getMaxCurrentTemperature() {
+        return convertToCelsius(
+                getAccessoryConfiguration(HomekitCharacteristicType.CURRENT_TEMPERATURE, HomekitTaggedItem.MAX_VALUE,
+                        BigDecimal.valueOf(TargetTemperatureCharacteristic.DEFAULT_MAX_VALUE)).doubleValue());
+    }
+
+    @Override
+    public double getMinStepCurrentTemperature() {
+        return getAccessoryConfiguration(HomekitCharacteristicType.CURRENT_TEMPERATURE, HomekitTaggedItem.STEP,
+                BigDecimal.valueOf(TargetTemperatureCharacteristic.DEFAULT_STEP)).doubleValue();
+    }
+
+    @Override
+    public CompletableFuture<TargetHeatingCoolingStateEnum> getTargetState() {
+        return CompletableFuture.completedFuture(getKeyFromMapping(TARGET_HEATING_COOLING_STATE,
+                targetHeatingCoolingStateMapping, TargetHeatingCoolingStateEnum.OFF));
+    }
+
+    @Override
+    public CompletableFuture<TemperatureDisplayUnitEnum> getTemperatureDisplayUnit() {
+        return CompletableFuture
+                .completedFuture(getSettings().useFahrenheitTemperature ? TemperatureDisplayUnitEnum.FAHRENHEIT
+                        : TemperatureDisplayUnitEnum.CELSIUS);
+    }
+
+    @Override
+    public void setTemperatureDisplayUnit(TemperatureDisplayUnitEnum value) {
+        // TODO: add support for display unit change
     }
 
     @Override
     public CompletableFuture<Double> getTargetTemperature() {
-        DecimalType state = targetTemperatureItem.getStateAs(DecimalType.class);
-        if (state == null) {
-            return CompletableFuture.completedFuture(null);
-        }
-        return CompletableFuture.completedFuture(convertToCelsius(state.doubleValue()));
+        DecimalType state = getStateAs(HomekitCharacteristicType.TARGET_TEMPERATURE, DecimalType.class);
+        return CompletableFuture.completedFuture(state != null ? convertToCelsius(state.doubleValue()) : 0.0);
     }
 
     @Override
-    public void setTargetMode(ThermostatMode mode) throws Exception {
-        String modeString = null;
-        switch (mode) {
-            case AUTO:
-                modeString = settings.thermostatTargetModeAuto;
-                break;
-
-            case COOL:
-                modeString = settings.thermostatTargetModeCool;
-                break;
-
-            case HEAT:
-                modeString = settings.thermostatTargetModeHeat;
-                break;
-
-            case OFF:
-                modeString = settings.thermostatTargetModeOff;
-                break;
-        }
-        targetHeatingCoolingModeItem.send(new StringType(modeString));
+    public void setTargetState(TargetHeatingCoolingStateEnum mode) {
+        getItem(TARGET_HEATING_COOLING_STATE, StringItem.class)
+                .ifPresent(item -> item.send(new StringType(targetHeatingCoolingStateMapping.get(mode))));
     }
 
     @Override
-    public void setTargetTemperature(Double value) throws Exception {
-        targetTemperatureItem.send(new DecimalType(BigDecimal.valueOf(convertFromCelsius(value))));
+    public void setTargetTemperature(Double value) {
+        final Optional<HomekitTaggedItem> characteristic = getCharacteristic(
+                HomekitCharacteristicType.TARGET_TEMPERATURE);
+        if (characteristic.isPresent()) {
+            ((NumberItem) characteristic.get().getItem())
+                    .send(new DecimalType(BigDecimal.valueOf(convertFromCelsius(value))));
+        } else {
+            logger.warn("Missing mandatory characteristic {}", HomekitCharacteristicType.TARGET_TEMPERATURE);
+        }
     }
 
     @Override
-    public void subscribeCurrentMode(HomekitCharacteristicChangeCallback callback) {
-        if (currentHeatingCoolingModeItem != null) {
-            getUpdater().subscribe(currentHeatingCoolingModeItem, callback);
-        }
+    public double getMinTargetTemperature() {
+        return convertToCelsius(
+                getAccessoryConfiguration(HomekitCharacteristicType.TARGET_TEMPERATURE, HomekitTaggedItem.MIN_VALUE,
+                        BigDecimal.valueOf(TargetTemperatureCharacteristic.DEFAULT_MIN_VALUE)).doubleValue());
+    }
+
+    @Override
+    public double getMaxTargetTemperature() {
+        return convertToCelsius(
+                getAccessoryConfiguration(HomekitCharacteristicType.TARGET_TEMPERATURE, HomekitTaggedItem.MAX_VALUE,
+                        BigDecimal.valueOf(TargetTemperatureCharacteristic.DEFAULT_MAX_VALUE)).doubleValue());
+    }
+
+    @Override
+    public double getMinStepTargetTemperature() {
+        return getAccessoryConfiguration(HomekitCharacteristicType.TARGET_TEMPERATURE, HomekitTaggedItem.STEP,
+                BigDecimal.valueOf(TargetTemperatureCharacteristic.DEFAULT_STEP)).doubleValue();
+    }
+
+    @Override
+    public void subscribeCurrentState(HomekitCharacteristicChangeCallback callback) {
+        subscribe(CURRENT_HEATING_COOLING_STATE, callback);
     }
 
     @Override
     public void subscribeCurrentTemperature(HomekitCharacteristicChangeCallback callback) {
-        getUpdater().subscribe(currentTemperatureItem, callback);
+        subscribe(HomekitCharacteristicType.CURRENT_TEMPERATURE, callback);
     }
 
     @Override
-    public void subscribeTargetMode(HomekitCharacteristicChangeCallback callback) {
-        getUpdater().subscribe(targetHeatingCoolingModeItem, callback);
+    public void subscribeTargetState(HomekitCharacteristicChangeCallback callback) {
+        subscribe(HomekitCharacteristicType.TARGET_HEATING_COOLING_STATE, callback);
     }
 
     @Override
     public void subscribeTargetTemperature(HomekitCharacteristicChangeCallback callback) {
-        getUpdater().subscribe(targetTemperatureItem, callback);
+        subscribe(HomekitCharacteristicType.TARGET_TEMPERATURE, callback);
     }
 
     @Override
-    public void unsubscribeCurrentMode() {
-        getUpdater().unsubscribe(targetHeatingCoolingModeItem);
+    public void subscribeTemperatureDisplayUnit(HomekitCharacteristicChangeCallback callback) {
+        // TODO: add support for display unit change
+    }
+
+    @Override
+    public void unsubscribeCurrentState() {
+        unsubscribe(CURRENT_HEATING_COOLING_STATE);
     }
 
     @Override
     public void unsubscribeCurrentTemperature() {
-        getUpdater().unsubscribe(currentTemperatureItem);
+        unsubscribe(HomekitCharacteristicType.CURRENT_TEMPERATURE);
     }
 
     @Override
-    public void unsubscribeTargetMode() {
-        getUpdater().unsubscribe(targetHeatingCoolingModeItem);
+    public void unsubscribeTemperatureDisplayUnit() {
+        // TODO: add support for display unit change
+    }
+
+    @Override
+    public void unsubscribeTargetState() {
+        unsubscribe(HomekitCharacteristicType.TARGET_HEATING_COOLING_STATE);
     }
 
     @Override
     public void unsubscribeTargetTemperature() {
-        getUpdater().unsubscribe(targetTemperatureItem);
+        unsubscribe(HomekitCharacteristicType.TARGET_TEMPERATURE);
     }
 }

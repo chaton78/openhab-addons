@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,31 +12,37 @@
  */
 package org.openhab.binding.xmltv.internal.handler;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
-import javax.xml.transform.stream.StreamSource;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseBridgeHandler;
-import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.xmltv.internal.configuration.XmlTVConfiguration;
+import org.openhab.binding.xmltv.internal.discovery.XmlTVDiscoveryService;
 import org.openhab.binding.xmltv.internal.jaxb.Programme;
 import org.openhab.binding.xmltv.internal.jaxb.Tv;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseBridgeHandler;
+import org.openhab.core.thing.binding.ThingHandlerService;
+import org.openhab.core.types.Command;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,16 +55,16 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class XmlTVHandler extends BaseBridgeHandler {
     private final Logger logger = LoggerFactory.getLogger(XmlTVHandler.class);
-    private final XMLInputFactory xif = XMLInputFactory.newFactory();
-    private final JAXBContext jc;
+    private final XMLInputFactory xif;
+    private final Unmarshaller unmarshaller;
 
     private @Nullable Tv currentXmlFile;
     private @NonNullByDefault({}) ScheduledFuture<?> reloadJob;
 
-    public XmlTVHandler(Bridge thing) throws JAXBException {
+    public XmlTVHandler(Bridge thing, XMLInputFactory xif, Unmarshaller unmarshaller) {
         super(thing);
-        xif.setProperty(XMLInputFactory.SUPPORT_DTD, false);
-        jc = JAXBContext.newInstance(Tv.class);
+        this.xif = xif;
+        this.unmarshaller = unmarshaller;
     }
 
     @Override
@@ -67,33 +73,30 @@ public class XmlTVHandler extends BaseBridgeHandler {
         logger.debug("Initializing {} for input file '{}'", getClass(), config.filePath);
 
         reloadJob = scheduler.scheduleWithFixedDelay(() -> {
-            final StreamSource source = new StreamSource(config.filePath);
             currentXmlFile = null;
             XMLStreamReader xsr = null;
             try {
                 // This can take some seconds depending upon weight of the XmlTV source file
-                xsr = xif.createXMLStreamReader(source);
-
+                xsr = xif.createXMLStreamReader(new FileInputStream(new File(config.filePath)), config.encoding);
                 try {
-                    Unmarshaller unmarshaller = jc.createUnmarshaller();
                     Tv xmlFile = (Tv) unmarshaller.unmarshal(xsr);
                     // Remove all finished programmes
                     xmlFile.getProgrammes().removeIf(programme -> Instant.now().isAfter(programme.getProgrammeStop()));
 
-                    if (xmlFile.getProgrammes().size() > 0) {
+                    if (!xmlFile.getProgrammes().isEmpty()) {
                         // Sort programmes by starting instant
                         Collections.sort(xmlFile.getProgrammes(), Comparator.comparing(Programme::getProgrammeStart));
                         // Ready to deliver data to ChannelHandlers
                         currentXmlFile = xmlFile;
                         updateStatus(ThingStatus.ONLINE);
                     } else {
-                        updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.DISABLED, "XMLTV file seems outdated");
+                        updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.DISABLED, "@text/file-outdated");
                     }
                     xsr.close();
                 } catch (JAXBException e) {
                     updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.HANDLER_INITIALIZING_ERROR, e.getMessage());
                 }
-            } catch (XMLStreamException e) {
+            } catch (XMLStreamException | FileNotFoundException e) {
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, e.getMessage());
             } finally {
                 try {
@@ -121,9 +124,12 @@ public class XmlTVHandler extends BaseBridgeHandler {
         // nothing to do
     }
 
-    @Nullable
-    public Tv getXmlFile() {
-        return currentXmlFile;
+    public Optional<Tv> getXmlFile() {
+        return Optional.ofNullable(currentXmlFile);
     }
 
+    @Override
+    public Collection<Class<? extends ThingHandlerService>> getServices() {
+        return Set.of(XmlTVDiscoveryService.class);
+    }
 }

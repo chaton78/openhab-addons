@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -20,23 +20,26 @@ import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jetty.client.HttpClient;
-import org.eclipse.smarthome.core.library.types.DateTimeType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.*;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.thing.type.ChannelKind;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.enturno.internal.connection.EnturCommunicationException;
 import org.openhab.binding.enturno.internal.connection.EnturConfigurationException;
 import org.openhab.binding.enturno.internal.connection.EnturNoConnection;
 import org.openhab.binding.enturno.internal.model.simplified.DisplayData;
+import org.openhab.core.library.types.DateTimeType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.thing.type.ChannelKind;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.State;
+import org.openhab.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,14 +94,15 @@ public class EnturNoHandler extends BaseThingHandler {
 
         logger.debug("Stop place id: {}", stopId);
         boolean configValid = true;
-        if (StringUtils.trimToNull(stopId) == null) {
+        if (stopId == null || stopId.isBlank()) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
                     "@text/offline.conf-error-missing-stopId");
             configValid = false;
         }
 
-        logger.debug("Line code: {}", config.getLineCode());
-        if (StringUtils.trimToNull(config.getLineCode()) == null) {
+        String lineCode = config.getLineCode();
+        logger.debug("Line code: {}", lineCode);
+        if (lineCode == null || lineCode.isBlank()) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
                     "@text/offline.conf-error-missing-lineCode");
             configValid = false;
@@ -163,7 +167,6 @@ public class EnturNoHandler extends BaseThingHandler {
             throws EnturConfigurationException, EnturCommunicationException {
         logger.debug("Update real-time data of thing '{}'.", getThing().getUID());
         try {
-
             processedData = connection.getEnturTimeTable(stopId, config.getLineCode());
 
             return true;
@@ -210,37 +213,39 @@ public class EnturNoHandler extends BaseThingHandler {
         if (processedData.size() > i) {
             State state = UnDefType.UNDEF;
             List<String> departures = processedData.get(i).departures;
+            int departuresCount = departures.size();
             List<String> estimatedFlags = processedData.get(i).estimatedFlags;
+            int esitmatedFlagsCount = estimatedFlags.size();
             switch (channelId) {
                 case EnturNoBindingConstants.CHANNEL_DEPARTURE_01:
-                    state = departures.size() > 0 ? getDateTimeTypeState(departures.get(0)) : state;
+                    state = departuresCount > 0 ? getDateTimeTypeState(departures.get(0)) : state;
                     break;
                 case EnturNoBindingConstants.CHANNEL_DEPARTURE_02:
-                    state = departures.size() > 1 ? getDateTimeTypeState(departures.get(1)) : state;
+                    state = departuresCount > 1 ? getDateTimeTypeState(departures.get(1)) : state;
                     break;
                 case EnturNoBindingConstants.CHANNEL_DEPARTURE_03:
-                    state = departures.size() > 2 ? getDateTimeTypeState(departures.get(2)) : state;
+                    state = departuresCount > 2 ? getDateTimeTypeState(departures.get(2)) : state;
                     break;
                 case EnturNoBindingConstants.CHANNEL_DEPARTURE_04:
-                    state = departures.size() > 3 ? getDateTimeTypeState(departures.get(3)) : state;
+                    state = departuresCount > 3 ? getDateTimeTypeState(departures.get(3)) : state;
                     break;
                 case EnturNoBindingConstants.CHANNEL_DEPARTURE_05:
-                    state = departures.size() > 4 ? getDateTimeTypeState(departures.get(4)) : state;
+                    state = departuresCount > 4 ? getDateTimeTypeState(departures.get(4)) : state;
                     break;
                 case EnturNoBindingConstants.ESTIMATED_FLAG_01:
-                    state = estimatedFlags.size() > 0 ? getStringTypeState(estimatedFlags.get(0)) : state;
+                    state = esitmatedFlagsCount > 0 ? getStringTypeState(estimatedFlags.get(0)) : state;
                     break;
                 case EnturNoBindingConstants.ESTIMATED_FLAG_02:
-                    state = estimatedFlags.size() > 1 ? getStringTypeState(estimatedFlags.get(1)) : state;
+                    state = esitmatedFlagsCount > 1 ? getStringTypeState(estimatedFlags.get(1)) : state;
                     break;
                 case EnturNoBindingConstants.ESTIMATED_FLAG_03:
-                    state = estimatedFlags.size() > 2 ? getStringTypeState(estimatedFlags.get(2)) : state;
+                    state = esitmatedFlagsCount > 2 ? getStringTypeState(estimatedFlags.get(2)) : state;
                     break;
                 case EnturNoBindingConstants.ESTIMATED_FLAG_04:
-                    state = estimatedFlags.size() > 3 ? getStringTypeState(estimatedFlags.get(3)) : state;
+                    state = esitmatedFlagsCount > 3 ? getStringTypeState(estimatedFlags.get(3)) : state;
                     break;
                 case EnturNoBindingConstants.ESTIMATED_FLAG_05:
-                    state = estimatedFlags.size() > 4 ? getStringTypeState(estimatedFlags.get(4)) : state;
+                    state = esitmatedFlagsCount > 4 ? getStringTypeState(estimatedFlags.get(4)) : state;
                     break;
                 case EnturNoBindingConstants.CHANNEL_LINE_CODE:
                     state = getStringTypeState(processedData.get(i).lineCode);
@@ -267,7 +272,7 @@ public class EnturNoHandler extends BaseThingHandler {
     private void updateStopPlaceChannel(ChannelUID channelUID) {
         String channelId = channelUID.getIdWithoutGroup();
         String channelGroupId = channelUID.getGroupId();
-        if (processedData.size() > 0) {
+        if (!processedData.isEmpty()) {
             State state = UnDefType.UNDEF;
             switch (channelId) {
                 case EnturNoBindingConstants.CHANNEL_STOP_ID:

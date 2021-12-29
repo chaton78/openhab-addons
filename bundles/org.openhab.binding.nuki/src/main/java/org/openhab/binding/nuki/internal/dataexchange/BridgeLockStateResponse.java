@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -18,49 +18,26 @@ import org.openhab.binding.nuki.internal.dto.BridgeApiLockStateDto;
  * The {@link BridgeLockStateResponse} class wraps {@link BridgeApiLockStateDto} class.
  *
  * @author Markus Katter - Initial contribution
+ * @contributer Christian Hoefler - Door sensor integration
  */
 public class BridgeLockStateResponse extends NukiBaseResponse {
 
-    private int state;
-    private String stateName;
-    private boolean batteryCritical;
+    private final BridgeApiLockStateDto bridgeApiLockStateDto;
 
     public BridgeLockStateResponse(int status, String message, BridgeApiLockStateDto bridgeApiLockStateDto) {
         super(status, message);
+        this.bridgeApiLockStateDto = bridgeApiLockStateDto;
         if (bridgeApiLockStateDto != null) {
             this.setSuccess(bridgeApiLockStateDto.isSuccess());
-            this.setState(bridgeApiLockStateDto.getState());
-            this.setStateName(bridgeApiLockStateDto.getStateName());
-            this.setBatteryCritical(bridgeApiLockStateDto.isBatteryCritical());
         }
     }
 
     public BridgeLockStateResponse(NukiBaseResponse nukiBaseResponse) {
         super(nukiBaseResponse.getStatus(), nukiBaseResponse.getMessage());
+        this.bridgeApiLockStateDto = null;
     }
 
-    public int getState() {
-        return state;
+    public BridgeApiLockStateDto getBridgeApiLockStateDto() {
+        return bridgeApiLockStateDto;
     }
-
-    public void setState(int state) {
-        this.state = state;
-    }
-
-    public String getStateName() {
-        return stateName;
-    }
-
-    public void setStateName(String stateName) {
-        this.stateName = stateName;
-    }
-
-    public boolean isBatteryCritical() {
-        return batteryCritical;
-    }
-
-    public void setBatteryCritical(boolean batteryCritical) {
-        this.batteryCritical = batteryCritical;
-    }
-
 }

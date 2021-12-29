@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -18,8 +18,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-import org.apache.commons.lang.ObjectUtils;
 import org.openhab.binding.homematic.internal.communicator.message.RpcRequest;
 import org.openhab.binding.homematic.internal.communicator.parser.DeleteDevicesParser;
 import org.openhab.binding.homematic.internal.communicator.parser.EventParser;
@@ -63,7 +63,7 @@ public abstract class RpcResponseHandler<T> {
             for (Object o : (Object[]) responseData[0]) {
                 Map<?, ?> call = (Map<?, ?>) o;
                 if (call != null) {
-                    String method = ObjectUtils.toString(call.get("methodName"));
+                    String method = Objects.toString(call.get("methodName"), "");
                     Object[] data = (Object[]) call.get("params");
                     handleMethodCall(method, data);
                 }
@@ -81,7 +81,7 @@ public abstract class RpcResponseHandler<T> {
      * Creates a BINRPC message with the supported method names.
      */
     private List<String> getListMethods() {
-        List<String> events = new ArrayList<String>();
+        List<String> events = new ArrayList<>();
         events.add(RPC_METHODNAME_SYSTEM_MULTICALL);
         events.add(RPC_METHODNAME_EVENT);
         events.add(RPC_METHODNAME_DELETE_DEVICES);
@@ -138,5 +138,4 @@ public abstract class RpcResponseHandler<T> {
      * Creates a typed RpcRequest.
      */
     protected abstract RpcRequest<T> createRpcRequest();
-
 }

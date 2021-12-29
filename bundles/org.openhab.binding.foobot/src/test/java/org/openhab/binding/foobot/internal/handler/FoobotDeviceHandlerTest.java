@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,21 +12,22 @@
  */
 package org.openhab.binding.foobot.internal.handler;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
-import org.apache.commons.io.IOUtils;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.QuantityType;
-import org.eclipse.smarthome.core.library.unit.SIUnits;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.openhab.binding.foobot.internal.FoobotApiConnector;
 import org.openhab.binding.foobot.internal.FoobotApiException;
 import org.openhab.binding.foobot.internal.json.FoobotJsonData;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.library.unit.SIUnits;
+import org.openhab.core.thing.Thing;
 
 /**
  * Unit test for {@link FoobotDeviceHandler}.
@@ -40,7 +41,7 @@ public class FoobotDeviceHandlerTest {
         @Override
         protected String request(String url, String apiKey) throws FoobotApiException {
             try (InputStream stream = getClass().getResourceAsStream("../sensors.json")) {
-                return IOUtils.toString(stream);
+                return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
             } catch (IOException e) {
                 throw new AssertionError(e.getMessage());
             }
@@ -52,7 +53,8 @@ public class FoobotDeviceHandlerTest {
     public void testSensorDataToState() throws IOException, FoobotApiException {
         final FoobotJsonData sensorData = connector.getSensorData("1234");
 
-        assertNotNull("No sensor data read", sensorData);
+        assertNotNull(sensorData, "No sensor data read");
+        Objects.requireNonNull(sensorData);
         assertEquals(handler.sensorDataToState("temperature", sensorData), new QuantityType(12.345, SIUnits.CELSIUS));
         assertEquals(handler.sensorDataToState("gpi", sensorData), new DecimalType(5.6789012));
     }

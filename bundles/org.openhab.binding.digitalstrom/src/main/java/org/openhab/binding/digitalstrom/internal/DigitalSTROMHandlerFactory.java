@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,16 +16,8 @@ import static org.openhab.binding.digitalstrom.internal.DigitalSTROMBindingConst
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.smarthome.config.core.Configuration;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.ThingUID;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandlerFactory;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory;
 import org.openhab.binding.digitalstrom.internal.discovery.DiscoveryServiceManager;
 import org.openhab.binding.digitalstrom.internal.handler.BridgeHandler;
 import org.openhab.binding.digitalstrom.internal.handler.CircuitHandler;
@@ -35,6 +27,14 @@ import org.openhab.binding.digitalstrom.internal.handler.ZoneTemperatureControlH
 import org.openhab.binding.digitalstrom.internal.lib.manager.ConnectionManager;
 import org.openhab.binding.digitalstrom.internal.lib.manager.impl.ConnectionManagerImpl;
 import org.openhab.binding.digitalstrom.internal.lib.serverconnection.constants.JSONApiResponseKeysEnum;
+import org.openhab.core.config.core.Configuration;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
+import org.openhab.core.thing.binding.BaseThingHandlerFactory;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.thing.binding.ThingHandlerFactory;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,9 +50,9 @@ import org.slf4j.LoggerFactory;
 public class DigitalSTROMHandlerFactory extends BaseThingHandlerFactory {
 
     private final Logger logger = LoggerFactory.getLogger(DigitalSTROMHandlerFactory.class);
-    private final HashMap<String, DiscoveryServiceManager> discoveryServiceManagers = new HashMap<String, DiscoveryServiceManager>();
+    private final Map<String, DiscoveryServiceManager> discoveryServiceManagers = new ConcurrentHashMap<>();
 
-    private HashMap<ThingUID, BridgeHandler> bridgeHandlers;
+    private Map<ThingUID, BridgeHandler> bridgeHandlers;
 
     @Override
     public boolean supportsThingType(ThingTypeUID thingTypeUID) {
@@ -109,7 +109,7 @@ public class DigitalSTROMHandlerFactory extends BaseThingHandlerFactory {
         if (BridgeHandler.SUPPORTED_THING_TYPES.contains(thingTypeUID)) {
             BridgeHandler handler = new BridgeHandler((Bridge) thing);
             if (bridgeHandlers == null) {
-                bridgeHandlers = new HashMap<ThingUID, BridgeHandler>();
+                bridgeHandlers = new HashMap<>();
             }
             bridgeHandlers.put(thing.getUID(), handler);
             DiscoveryServiceManager discoveryServiceManager = new DiscoveryServiceManager(handler);
@@ -138,8 +138,9 @@ public class DigitalSTROMHandlerFactory extends BaseThingHandlerFactory {
 
     private ThingUID getDeviceUID(ThingTypeUID thingTypeUID, ThingUID thingUID, Configuration configuration,
             ThingUID bridgeUID) {
-        if (thingUID == null && StringUtils.isNotBlank((String) configuration.get(DEVICE_DSID))) {
-            return new ThingUID(thingTypeUID, bridgeUID, configuration.get(DEVICE_DSID).toString());
+        String id = (String) configuration.get(DEVICE_DSID);
+        if (thingUID == null && id != null && !id.isBlank()) {
+            return new ThingUID(thingTypeUID, bridgeUID, id);
         }
         return thingUID;
     }
@@ -207,7 +208,8 @@ public class DigitalSTROMHandlerFactory extends BaseThingHandlerFactory {
             return thingUID;
         }
         String dSID;
-        if (StringUtils.isBlank((String) configuration.get(DS_ID))) {
+        String configValue = (String) configuration.get(DS_ID);
+        if (configValue == null || configValue.isBlank()) {
             dSID = getDSSid(configuration);
             if (dSID != null) {
                 configuration.put(DS_ID, dSID);
@@ -224,13 +226,15 @@ public class DigitalSTROMHandlerFactory extends BaseThingHandlerFactory {
 
     private String getDSSid(Configuration configuration) {
         String dSID = null;
-        if (StringUtils.isNotBlank((String) configuration.get(HOST))) {
-            String host = configuration.get(HOST).toString();
+        String hostConfigValue = (String) configuration.get(HOST);
+        if (hostConfigValue != null && !hostConfigValue.isBlank()) {
+            String host = hostConfigValue;
             String applicationToken = null;
             String user = null;
             String pw = null;
 
-            if (StringUtils.isNotBlank((String) configuration.get(APPLICATION_TOKEN))) {
+            String atConfigValue = (String) configuration.get(APPLICATION_TOKEN);
+            if (atConfigValue != null && !atConfigValue.isBlank()) {
                 applicationToken = configuration.get(APPLICATION_TOKEN).toString();
             }
 
@@ -248,17 +252,18 @@ public class DigitalSTROMHandlerFactory extends BaseThingHandlerFactory {
     }
 
     private boolean checkUserPassword(Configuration configuration) {
-        return StringUtils.isNotBlank((String) configuration.get(USER_NAME))
-                && StringUtils.isNotBlank((String) configuration.get(PASSWORD));
+        String userName = (String) configuration.get(USER_NAME);
+        String password = (String) configuration.get(PASSWORD);
+        return userName != null && !userName.isBlank() && password != null && !password.isBlank();
     }
 
     @Override
     protected synchronized void removeHandler(ThingHandler thingHandler) {
         if (thingHandler instanceof BridgeHandler) {
             String uid = thingHandler.getThing().getUID().getAsString();
-            if (discoveryServiceManagers.get(uid) != null) {
-                discoveryServiceManagers.get(uid).unregisterDiscoveryServices(bundleContext);
-                discoveryServiceManagers.remove(uid);
+            DiscoveryServiceManager discoveryServiceManager = discoveryServiceManagers.remove(uid);
+            if (discoveryServiceManager != null) {
+                discoveryServiceManager.unregisterDiscoveryServices(bundleContext);
             }
         }
     }

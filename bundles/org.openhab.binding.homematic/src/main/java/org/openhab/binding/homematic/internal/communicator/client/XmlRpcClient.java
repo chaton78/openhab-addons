@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,11 +14,17 @@ package org.openhab.binding.homematic.internal.communicator.client;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import javax.xml.parsers.ParserConfigurationException;
 
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.ContentResponse;
+import org.eclipse.jetty.client.api.Request;
 import org.eclipse.jetty.client.util.BytesContentProvider;
+import org.eclipse.jetty.client.util.FutureResponseListener;
 import org.eclipse.jetty.http.HttpHeader;
 import org.openhab.binding.homematic.internal.common.HomematicConfig;
 import org.openhab.binding.homematic.internal.communicator.message.RpcRequest;
@@ -27,6 +33,7 @@ import org.openhab.binding.homematic.internal.communicator.message.XmlRpcRespons
 import org.openhab.binding.homematic.internal.communicator.parser.RpcResponseParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xml.sax.SAXException;
 
 /**
  * Client implementation for sending messages via XML-RPC to the Homematic server.
@@ -40,10 +47,6 @@ public class XmlRpcClient extends RpcClient<String> {
     public XmlRpcClient(HomematicConfig config, HttpClient httpClient) throws IOException {
         super(config);
         this.httpClient = httpClient;
-    }
-
-    @Override
-    public void dispose() {
     }
 
     @Override
@@ -64,14 +67,36 @@ public class XmlRpcClient extends RpcClient<String> {
         if (logger.isTraceEnabled()) {
             logger.trace("Client XmlRpcRequest (port {}):\n{}", port, request);
         }
-        return sendMessage(port, request, 0);
+        IOException reason = new IOException();
+        for (int rpcRetryCounter = 1; rpcRetryCounter <= MAX_RPC_RETRY; rpcRetryCounter++) {
+            try {
+                byte[] response = send(port, request);
+                if (response.length == 0 && "setInstallMode".equals(request.getMethodName())) {
+                    return new Object[] {};
+                }
+                Object[] data = new XmlRpcResponse(new ByteArrayInputStream(response), config.getEncoding())
+                        .getResponseData();
+                return new RpcResponseParser(request).parse(data);
+            } catch (UnknownRpcFailureException | UnknownParameterSetException ex) {
+                throw ex;
+            } catch (SAXException | ParserConfigurationException ex) {
+                throw new IOException(ex);
+            } catch (IOException ex) {
+                reason = ex;
+                // no retries for "init" request or if connection is refused
+                if ("init".equals(request.getMethodName())
+                        || ex.getCause() != null && ex.getCause() instanceof ExecutionException) {
+                    break;
+                }
+                logger.debug("XmlRpcMessage failed({}), sending message again {}/{}", ex.getMessage(), rpcRetryCounter,
+                        MAX_RPC_RETRY);
+            }
+        }
+        throw reason;
     }
 
-    /**
-     * Sends the message, retries if there was an error.
-     */
-    private synchronized Object[] sendMessage(int port, RpcRequest<String> request, int rpcRetryCounter)
-            throws IOException {
+    private byte[] send(int port, RpcRequest<String> request) throws IOException {
+        byte[] ret = new byte[0];
         try {
             BytesContentProvider content = new BytesContentProvider(
                     request.createMessage().getBytes(config.getEncoding()));
@@ -79,28 +104,22 @@ public class XmlRpcClient extends RpcClient<String> {
             if (port == config.getGroupPort()) {
                 url += "/groups";
             }
-            ContentResponse response = httpClient.POST(url).content(content)
-                    .timeout(config.getTimeout(), TimeUnit.SECONDS)
-                    .header(HttpHeader.CONTENT_TYPE, "text/xml;charset=" + config.getEncoding()).send();
-
+            Request req = httpClient.POST(url).content(content).timeout(config.getTimeout(), TimeUnit.SECONDS)
+                    .header(HttpHeader.CONTENT_TYPE, "text/xml;charset=" + config.getEncoding());
+            FutureResponseListener listener = new FutureResponseListener(req, config.getBufferSize() * 1024);
+            req.send(listener);
+            ContentResponse response = listener.get(config.getTimeout(), TimeUnit.SECONDS);
+            ret = response.getContent();
+            if (ret == null || ret.length == 0) {
+                throw new IOException("Received no data from the Homematic gateway");
+            }
             if (logger.isTraceEnabled()) {
-                String result = new String(response.getContent(), config.getEncoding());
+                String result = new String(ret, config.getEncoding());
                 logger.trace("Client XmlRpcResponse (port {}):\n{}", port, result);
             }
-
-            Object[] data = new XmlRpcResponse(new ByteArrayInputStream(response.getContent()),
-                    config.getEncoding()).getResponseData();
-            return new RpcResponseParser(request).parse(data);
-        } catch (UnknownRpcFailureException | UnknownParameterSetException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            if ("init".equals(request.getMethodName()) || rpcRetryCounter >= MAX_RPC_RETRY) {
-                throw new IOException(ex.getMessage(), ex);
-            } else {
-                rpcRetryCounter++;
-                logger.debug("XmlRpcMessage failure, sending message again {}/{}", rpcRetryCounter, MAX_RPC_RETRY);
-                return sendMessage(port, request, rpcRetryCounter);
-            }
+        } catch (InterruptedException | ExecutionException | TimeoutException | IllegalArgumentException e) {
+            throw new IOException(e);
         }
+        return ret;
     }
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,7 +13,7 @@
 package org.openhab.binding.omnikinverter.internal;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingTypeUID;
 
 /**
  * The {@link OmnikInverterBindingConstants} class defines common constants, which are
@@ -30,10 +30,20 @@ public class OmnikInverterBindingConstants {
     public static final ThingTypeUID THING_TYPE_OMNIK = new ThingTypeUID(BINDING_ID, "omnik");
 
     // List of all Channel ids
+    public static final String CHANNEL_CURRENT_PV1 = "currentPV1";
+    public static final String CHANNEL_CURRENT_PV2 = "currentPV2";
+    public static final String CHANNEL_CURRENT_PV3 = "currentPV3";
+
+    public static final String CHANNEL_VOLTAGE_PV1 = "voltagePV1";
+    public static final String CHANNEL_VOLTAGE_PV2 = "voltagePV2";
+    public static final String CHANNEL_VOLTAGE_PV3 = "voltagePV3";
+
     public static final String CHANNEL_POWER = "power";
+    public static final String CHANNEL_POWER_AC1 = "powerAC1";
+    public static final String CHANNEL_POWER_AC2 = "powerAC2";
+    public static final String CHANNEL_POWER_AC3 = "powerAC3";
 
     public static final String CHANNEL_ENERGY_TODAY = "energyToday";
 
     public static final String CHANNEL_ENERGY_TOTAL = "energyTotal";
-
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,14 +17,18 @@ import static org.eclipse.jetty.http.HttpMethod.GET;
 import java.io.StringReader;
 
 import javax.xml.bind.JAXBException;
+import javax.xml.bind.UnmarshalException;
 import javax.xml.bind.Unmarshaller;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.openhab.binding.avmfritz.internal.ahamodel.DeviceListModel;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.binding.avmfritz.internal.dto.DeviceListModel;
 import org.openhab.binding.avmfritz.internal.handler.AVMFritzBaseBridgeHandler;
 import org.openhab.binding.avmfritz.internal.hardware.FritzAhaWebInterface;
 import org.openhab.binding.avmfritz.internal.util.JAXBUtils;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,14 +39,14 @@ import org.slf4j.LoggerFactory;
  * @author Robert Bausdorf - Initial contribution
  * @author Christoph Weitkamp - Added support for groups
  */
+@NonNullByDefault
 public class FritzAhaUpdateCallback extends FritzAhaReauthCallback {
 
     private final Logger logger = LoggerFactory.getLogger(FritzAhaUpdateCallback.class);
 
-    /**
-     * Handler to update
-     */
-    private AVMFritzBaseBridgeHandler handler;
+    private static final String WEBSERVICE_COMMAND = "switchcmd=getdevicelistinfos";
+
+    private final AVMFritzBaseBridgeHandler handler;
 
     /**
      * Constructor
@@ -51,25 +55,30 @@ public class FritzAhaUpdateCallback extends FritzAhaReauthCallback {
      * @param handler Bridge handler that will update things.
      */
     public FritzAhaUpdateCallback(FritzAhaWebInterface webIface, AVMFritzBaseBridgeHandler handler) {
-        super(WEBSERVICE_PATH, "switchcmd=getdevicelistinfos", webIface, GET, 1);
+        super(WEBSERVICE_PATH, WEBSERVICE_COMMAND, webIface, GET, 1);
         this.handler = handler;
     }
 
+    @SuppressWarnings({ "null", "unused" })
     @Override
     public void execute(int status, String response) {
         super.execute(status, response);
         logger.trace("Received State response {}", response);
         if (isValidRequest()) {
             try {
-                Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
-                DeviceListModel model = (DeviceListModel) u.unmarshal(new StringReader(response));
+                XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(response));
+                Unmarshaller unmarshaller = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
+                DeviceListModel model = unmarshaller.unmarshal(xsr, DeviceListModel.class).getValue();
                 if (model != null) {
-                    handler.addDeviceList(model.getDevicelist());
+                    handler.onDeviceListAdded(model.getDevicelist());
                 } else {
                     logger.debug("no model in response");
                 }
                 handler.setStatusInfo(ThingStatus.ONLINE, ThingStatusDetail.NONE, null);
-            } catch (JAXBException e) {
+            } catch (UnmarshalException e) {
+                logger.debug("Failed to unmarshal XML document: {}", e.getMessage());
+                handler.setStatusInfo(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, e.getMessage());
+            } catch (JAXBException | XMLStreamException e) {
                 logger.error("Exception creating Unmarshaller: {}", e.getLocalizedMessage(), e);
                 handler.setStatusInfo(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                         e.getLocalizedMessage());

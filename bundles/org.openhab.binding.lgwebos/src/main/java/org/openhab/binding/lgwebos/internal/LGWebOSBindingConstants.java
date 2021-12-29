@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,8 +16,8 @@ import java.util.Collections;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.jupnp.model.types.ServiceType;
+import org.openhab.core.thing.ThingTypeUID;
 
 /**
  * This class defines common constants, which are used across the whole binding.
@@ -38,23 +38,22 @@ public class LGWebOSBindingConstants {
     /*
      * Config names must match property names in
      * - WebOSConfiguration
-     * - parameter names in ESH-INF/config/config.xml
-     * - property names in ESH-INF/thing/thing-types.xml
+     * - parameter names in OH-INF/config/config.xml
+     * - property names in OH-INF/thing/thing-types.xml
      */
     public static final String CONFIG_HOST = "host";
     public static final String CONFIG_KEY = "key";
+    public static final String CONFIG_MAC_ADDRESS = "macAddress";
 
     /*
      * Property names must match property names in
-     * - property names in ESH-INF/thing/thing-types.xml
+     * - property names in OH-INF/thing/thing-types.xml
      */
     public static final String PROPERTY_DEVICE_ID = "deviceId";
     public static final String PROPERTY_DEVICE_OS = "deviceOS";
     public static final String PROPERTY_DEVICE_OS_VERSION = "deviceOSVersion";
     public static final String PROPERTY_DEVICE_OS_RELEASE_VERSION = "deviceOSReleaseVersion";
     public static final String PROPERTY_LAST_CONNECTED = "lastConnected";
-    public static final String PROPERTY_MODEL_NAME = "modelName";
-    public static final String PROPERTY_MANUFACTURER = "manufacturer";
 
     /*
      * List of all Channel ids.
@@ -64,9 +63,9 @@ public class LGWebOSBindingConstants {
     public static final String CHANNEL_POWER = "power";
     public static final String CHANNEL_MUTE = "mute";
     public static final String CHANNEL_CHANNEL = "channel";
-    public static final String CHANNEL_CHANNEL_NAME = "channelName";
     public static final String CHANNEL_TOAST = "toast";
     public static final String CHANNEL_MEDIA_PLAYER = "mediaPlayer";
     public static final String CHANNEL_MEDIA_STOP = "mediaStop";
     public static final String CHANNEL_APP_LAUNCHER = "appLauncher";
+    public static final String CHANNEL_RCBUTTON = "rcButton";
 }

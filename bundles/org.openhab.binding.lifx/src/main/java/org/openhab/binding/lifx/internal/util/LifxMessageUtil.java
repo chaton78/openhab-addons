@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,16 +17,16 @@ import java.math.RoundingMode;
 import java.util.UUID;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.IncreaseDecreaseType;
-import org.eclipse.smarthome.core.library.types.PercentType;
+import org.openhab.binding.lifx.internal.LifxProduct.TemperatureRange;
 import org.openhab.binding.lifx.internal.fields.HSBK;
-import org.openhab.binding.lifx.internal.protocol.Product.TemperatureRange;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.IncreaseDecreaseType;
+import org.openhab.core.library.types.PercentType;
 
 /**
  * Utility class for sharing message utility methods between objects.
  *
- * @author Wouter Born - Extracted methods from LifxLightHandler
+ * @author Wouter Born - Initial contribution
  */
 @NonNullByDefault
 public final class LifxMessageUtil {
@@ -102,6 +102,16 @@ public final class LifxMessageUtil {
         return new PercentType(value);
     }
 
+    public static int commandToKelvin(DecimalType temperature, TemperatureRange temperatureRange) {
+        return temperature instanceof PercentType ? percentTypeToKelvin((PercentType) temperature, temperatureRange)
+                : decimalTypeToKelvin(temperature, temperatureRange);
+    }
+
+    public static int decimalTypeToKelvin(DecimalType temperature, TemperatureRange temperatureRange) {
+        return Math.round(Math.min(Math.max(temperature.intValue(), temperatureRange.getMinimum()),
+                temperatureRange.getMaximum()));
+    }
+
     public static int percentTypeToKelvin(PercentType temperature, TemperatureRange temperatureRange) {
         return Math.round(
                 temperatureRange.getMaximum() - (temperature.floatValue() * (temperatureRange.getRange() / 100)));
@@ -131,5 +141,4 @@ public final class LifxMessageUtil {
     public static long randomSourceId() {
         return UUID.randomUUID().getLeastSignificantBits() & (-1L >>> 32);
     }
-
 }

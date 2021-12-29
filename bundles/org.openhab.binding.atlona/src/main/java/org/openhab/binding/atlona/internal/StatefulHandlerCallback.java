@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,14 +13,14 @@
 package org.openhab.binding.atlona.internal;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.types.State;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.types.State;
 
 /**
  * Defines an implementation of {@link AtlonaHandlerCallback} that will remember the last state
@@ -77,7 +77,6 @@ public class StatefulHandlerCallback implements AtlonaHandlerCallback {
         }
         // If we got this far - call the underlying one
         wrappedCallback.statusChanged(status, detail, msg);
-
     }
 
     /**
@@ -89,26 +88,20 @@ public class StatefulHandlerCallback implements AtlonaHandlerCallback {
      */
     @Override
     public void stateChanged(String channelId, State state) {
-        if (StringUtils.isEmpty(channelId)) {
+        if (channelId == null || "".equals(channelId)) {
             return;
         }
 
         final State oldState = this.state.get(channelId);
 
-        // If both null OR the same value (enums), nothing changed
-        if (oldState == state) {
-            return;
-        }
-
         // If they are equal - nothing changed
-        if (oldState != null && oldState.equals(state)) {
+        if (Objects.equals(oldState, state)) {
             return;
         }
 
         // Something changed - save the new state and call the underlying wrapped
         this.state.put(channelId, state);
         wrappedCallback.stateChanged(channelId, state);
-
     }
 
     /**
@@ -118,7 +111,7 @@ public class StatefulHandlerCallback implements AtlonaHandlerCallback {
      * @param channelId the channel id to remove state
      */
     public void removeState(String channelId) {
-        if (StringUtils.isEmpty(channelId)) {
+        if (channelId == null || "".equals(channelId)) {
             return;
         }
         state.remove(channelId);
@@ -133,7 +126,6 @@ public class StatefulHandlerCallback implements AtlonaHandlerCallback {
     @Override
     public void setProperty(String propertyName, String propertyValue) {
         wrappedCallback.setProperty(propertyName, propertyValue);
-
     }
 
     /**
@@ -143,7 +135,6 @@ public class StatefulHandlerCallback implements AtlonaHandlerCallback {
      * @return the {@link State} for the propertyName or null if not found
      */
     public State getState(String propertyName) {
-        // TODO Auto-generated method stub
         return state.get(propertyName);
     }
 }

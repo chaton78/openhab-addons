@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,7 +12,7 @@
  */
 package org.openhab.binding.tradfri.internal.handler;
 
-import static org.eclipse.smarthome.core.thing.Thing.*;
+import static org.openhab.core.thing.Thing.*;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -21,16 +21,16 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.californium.core.CoapObserveRelation;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.ThingStatusInfo;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
 import org.openhab.binding.tradfri.internal.CoapCallback;
 import org.openhab.binding.tradfri.internal.TradfriCoapClient;
 import org.openhab.binding.tradfri.internal.config.TradfriDeviceConfig;
 import org.openhab.binding.tradfri.internal.model.TradfriDeviceData;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.ThingStatusInfo;
+import org.openhab.core.thing.binding.BaseThingHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,20 +66,21 @@ public abstract class TradfriThingHandler extends BaseThingHandler implements Co
         this.id = getConfigAs(TradfriDeviceConfig.class).id;
         TradfriGatewayHandler handler = (TradfriGatewayHandler) tradfriGateway.getHandler();
 
-        String uriString = handler.getGatewayURI() + "/" + id;
-        try {
-            URI uri = new URI(uriString);
-            coapClient = new TradfriCoapClient(uri);
-            coapClient.setEndpoint(handler.getEndpoint());
-        } catch (URISyntaxException e) {
-            logger.debug("Illegal device URI `{}`: {}", uriString, e.getMessage());
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, e.getMessage());
-            return;
-        }
         active = true;
         updateStatus(ThingStatus.UNKNOWN);
         switch (tradfriGateway.getStatus()) {
             case ONLINE:
+                String uriString = handler.getGatewayURI() + "/" + id;
+                try {
+                    URI uri = new URI(uriString);
+                    coapClient = new TradfriCoapClient(uri);
+                    coapClient.setEndpoint(handler.getEndpoint());
+                } catch (URISyntaxException e) {
+                    logger.debug("Illegal device URI `{}`: {}", uriString, e.getMessage());
+                    updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, e.getMessage());
+                    return;
+                }
+
                 scheduler.schedule(() -> {
                     observeRelation = coapClient.startObserve(this);
                 }, 3, TimeUnit.SECONDS);

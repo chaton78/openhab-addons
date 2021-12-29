@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -15,9 +15,11 @@ package org.openhab.binding.tradfri.internal.handler;
 import static org.openhab.binding.tradfri.internal.TradfriBindingConstants.*;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -33,22 +35,24 @@ import org.eclipse.californium.scandium.config.DtlsConnectorConfig;
 import org.eclipse.californium.scandium.dtls.pskstore.StaticPskStore;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.config.core.Configuration;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseBridgeHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.tradfri.internal.CoapCallback;
 import org.openhab.binding.tradfri.internal.DeviceUpdateListener;
 import org.openhab.binding.tradfri.internal.TradfriBindingConstants;
 import org.openhab.binding.tradfri.internal.TradfriCoapClient;
 import org.openhab.binding.tradfri.internal.TradfriCoapHandler;
 import org.openhab.binding.tradfri.internal.config.TradfriGatewayConfig;
+import org.openhab.binding.tradfri.internal.discovery.TradfriDiscoveryService;
 import org.openhab.binding.tradfri.internal.model.TradfriVersion;
+import org.openhab.core.config.core.Configuration;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseBridgeHandler;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.thing.binding.ThingHandlerService;
+import org.openhab.core.types.Command;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,8 +115,8 @@ public class TradfriGatewayHandler extends BaseBridgeHandler implements CoapCall
             }
         } else {
             String currentFirmware = thing.getProperties().get(Thing.PROPERTY_FIRMWARE_VERSION);
-            if (!isNullOrEmpty(currentFirmware)
-                    && MIN_SUPPORTED_VERSION.compareTo(new TradfriVersion(currentFirmware)) > 0) {
+            if (!isNullOrEmpty(currentFirmware) && MIN_SUPPORTED_VERSION
+                    .compareTo(new TradfriVersion(Objects.requireNonNull(currentFirmware))) > 0) {
                 // older firmware not supported
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
                         String.format(
@@ -129,6 +133,11 @@ public class TradfriGatewayHandler extends BaseBridgeHandler implements CoapCall
                 }
             });
         }
+    }
+
+    @Override
+    public Collection<Class<? extends ThingHandlerService>> getServices() {
+        return Collections.singleton(TradfriDiscoveryService.class);
     }
 
     private void establishConnection() {
@@ -206,7 +215,7 @@ public class TradfriGatewayHandler extends BaseBridgeHandler implements CoapCall
 
             if (gatewayResponse.isSuccess()) {
                 responseText = gatewayResponse.getResponseText();
-                json = new JsonParser().parse(responseText).getAsJsonObject();
+                json = JsonParser.parseString(responseText).getAsJsonObject();
                 preSharedKey = json.get(NEW_PSK_BY_GW).getAsString();
 
                 if (isNullOrEmpty(preSharedKey)) {
@@ -243,8 +252,8 @@ public class TradfriGatewayHandler extends BaseBridgeHandler implements CoapCall
             logger.warn("Invalid response received from gateway '{}'", responseText, e);
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                     String.format("Invalid response received from gateway '%s'", responseText));
-        } catch (ConnectorException |IOException e) {
-            logger.debug("Error connecting to gateway ",e);
+        } catch (ConnectorException | IOException e) {
+            logger.debug("Error connecting to gateway ", e);
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                     String.format("Error connecting to gateway."));
         }
@@ -318,7 +327,7 @@ public class TradfriGatewayHandler extends BaseBridgeHandler implements CoapCall
         deviceClient.setURI(gatewayInfoURI);
         deviceClient.asyncGet().thenAccept(data -> {
             logger.debug("requestGatewayInfo response: {}", data);
-            JsonObject json = new JsonParser().parse(data).getAsJsonObject();
+            JsonObject json = JsonParser.parseString(data).getAsJsonObject();
             String firmwareVersion = json.get(VERSION).getAsString();
             getThing().setProperty(Thing.PROPERTY_FIRMWARE_VERSION, firmwareVersion);
             updateStatus(ThingStatus.ONLINE, ThingStatusDetail.NONE);
@@ -332,7 +341,7 @@ public class TradfriGatewayHandler extends BaseBridgeHandler implements CoapCall
         deviceClient.setURI(gatewayURI + "/" + instanceId);
         deviceClient.asyncGet().thenAccept(data -> {
             logger.debug("requestDeviceDetails response: {}", data);
-            JsonObject json = new JsonParser().parse(data).getAsJsonObject();
+            JsonObject json = JsonParser.parseString(data).getAsJsonObject();
             deviceUpdateListeners.forEach(listener -> listener.onUpdate(instanceId, json));
         });
         // restore root URI
@@ -343,10 +352,9 @@ public class TradfriGatewayHandler extends BaseBridgeHandler implements CoapCall
     public void setStatus(ThingStatus status, ThingStatusDetail statusDetail) {
         // to fix connection issues after a gateway reboot, a session resume is forced for the next command
         if (status == ThingStatus.OFFLINE && statusDetail == ThingStatusDetail.COMMUNICATION_ERROR) {
-            logger.debug("Gateway communication error. Forcing session resume on next command.");
-            TradfriGatewayConfig configuration = getConfigAs(TradfriGatewayConfig.class);
-            InetSocketAddress peerAddress = new InetSocketAddress(configuration.host, configuration.port);
-            this.dtlsConnector.forceResumeSessionFor(peerAddress);
+            logger.debug("Gateway communication error. Forcing a re-initialization!");
+            dispose();
+            initialize();
         }
 
         // are we still connected at all?

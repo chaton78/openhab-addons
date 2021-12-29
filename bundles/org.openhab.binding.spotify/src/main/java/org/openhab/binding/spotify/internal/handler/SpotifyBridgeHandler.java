@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,9 +12,53 @@
  */
 package org.openhab.binding.spotify.internal.handler;
 
-import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.*;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_ACCESSTOKEN;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_CONFIG_IMAGE_INDEX;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_DEVICEACTIVE;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_DEVICEID;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_DEVICENAME;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_DEVICES;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_DEVICESHUFFLE;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_DEVICETYPE;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_DEVICEVOLUME;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_ALBUMHREF;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_ALBUMID;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_ALBUMIMAGE;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_ALBUMIMAGEURL;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_ALBUMNAME;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_ALBUMTYPE;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_ALBUMURI;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_ARTISTHREF;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_ARTISTID;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_ARTISTNAME;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_ARTISTTYPE;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_ARTISTURI;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_TRACKDISCNUMBER;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_TRACKDURATION_FMT;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_TRACKDURATION_MS;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_TRACKEXPLICIT;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_TRACKHREF;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_TRACKID;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_TRACKNAME;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_TRACKNUMBER;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_TRACKPOPULARITY;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_TRACKPROGRESS_FMT;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_TRACKPROGRESS_MS;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_TRACKTYPE;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYED_TRACKURI;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYLISTNAME;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYLISTS;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYLISTS_LIMIT;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_PLAYLISTS_OFFSET;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_TRACKPLAYER;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.CHANNEL_TRACKREPEAT;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.PROPERTY_SPOTIFY_USER;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.SPOTIFY_API_TOKEN_URL;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.SPOTIFY_AUTHORIZE_URL;
+import static org.openhab.binding.spotify.internal.SpotifyBindingConstants.SPOTIFY_SCOPES;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.Collection;
@@ -29,34 +73,9 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jetty.client.HttpClient;
-import org.eclipse.smarthome.core.auth.client.oauth2.AccessTokenRefreshListener;
-import org.eclipse.smarthome.core.auth.client.oauth2.AccessTokenResponse;
-import org.eclipse.smarthome.core.auth.client.oauth2.OAuthClientService;
-import org.eclipse.smarthome.core.auth.client.oauth2.OAuthException;
-import org.eclipse.smarthome.core.auth.client.oauth2.OAuthFactory;
-import org.eclipse.smarthome.core.auth.client.oauth2.OAuthResponseException;
-import org.eclipse.smarthome.core.cache.ExpiringCache;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.PercentType;
-import org.eclipse.smarthome.core.library.types.PlayPauseType;
-import org.eclipse.smarthome.core.library.types.RawType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.ThingUID;
-import org.eclipse.smarthome.core.thing.binding.BaseBridgeHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandlerService;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.UnDefType;
-import org.eclipse.smarthome.io.net.http.HttpUtil;
 import org.openhab.binding.spotify.internal.SpotifyAccountHandler;
 import org.openhab.binding.spotify.internal.SpotifyBridgeConfiguration;
+import org.openhab.binding.spotify.internal.actions.SpotifyActions;
 import org.openhab.binding.spotify.internal.api.SpotifyApi;
 import org.openhab.binding.spotify.internal.api.exception.SpotifyAuthorizationException;
 import org.openhab.binding.spotify.internal.api.exception.SpotifyException;
@@ -70,6 +89,32 @@ import org.openhab.binding.spotify.internal.api.model.Item;
 import org.openhab.binding.spotify.internal.api.model.Me;
 import org.openhab.binding.spotify.internal.api.model.Playlist;
 import org.openhab.binding.spotify.internal.discovery.SpotifyDeviceDiscoveryService;
+import org.openhab.core.auth.client.oauth2.AccessTokenRefreshListener;
+import org.openhab.core.auth.client.oauth2.AccessTokenResponse;
+import org.openhab.core.auth.client.oauth2.OAuthClientService;
+import org.openhab.core.auth.client.oauth2.OAuthException;
+import org.openhab.core.auth.client.oauth2.OAuthFactory;
+import org.openhab.core.auth.client.oauth2.OAuthResponseException;
+import org.openhab.core.cache.ExpiringCache;
+import org.openhab.core.io.net.http.HttpUtil;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.PlayPauseType;
+import org.openhab.core.library.types.RawType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.ThingUID;
+import org.openhab.core.thing.binding.BaseBridgeHandler;
+import org.openhab.core.thing.binding.ThingHandlerService;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.State;
+import org.openhab.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -133,6 +178,8 @@ public class SpotifyBridgeHandler extends BaseBridgeHandler
     private volatile State lastTrackId = StringType.EMPTY;
     private volatile String lastKnownDeviceId = "";
     private volatile boolean lastKnownDeviceActive;
+    private int imageChannelAlbumImageIndex;
+    private int imageChannelAlbumImageUrlIndex;
 
     public SpotifyBridgeHandler(Bridge bridge, OAuthFactory oAuthFactory, HttpClient httpClient,
             SpotifyDynamicStateDescriptionProvider spotifyDynamicStateDescriptionProvider) {
@@ -146,7 +193,7 @@ public class SpotifyBridgeHandler extends BaseBridgeHandler
 
     @Override
     public Collection<Class<? extends ThingHandlerService>> getServices() {
-        return Collections.singleton(SpotifyDeviceDiscoveryService.class);
+        return List.of(SpotifyActions.class, SpotifyDeviceDiscoveryService.class);
     }
 
     @Override
@@ -172,7 +219,7 @@ public class SpotifyBridgeHandler extends BaseBridgeHandler
                         && handleCommand.handleCommand(channelUID, command, lastKnownDeviceActive, lastKnownDeviceId)) {
                     scheduler.schedule(this::scheduledPollingRestart, POLL_DELAY_AFTER_COMMAND_S, TimeUnit.SECONDS);
                 }
-            } catch (SpotifyException e) {
+            } catch (final SpotifyException e) {
                 logger.debug("Handle Spotify command failed: ", e);
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.NONE, e.getMessage());
             }
@@ -218,7 +265,7 @@ public class SpotifyBridgeHandler extends BaseBridgeHandler
 
     @Override
     public String getUser() {
-        return thing.getProperties().get(PROPERTY_SPOTIFY_USER);
+        return thing.getProperties().getOrDefault(PROPERTY_SPOTIFY_USER, "");
     }
 
     @Override
@@ -227,7 +274,7 @@ public class SpotifyBridgeHandler extends BaseBridgeHandler
     }
 
     @Nullable
-    SpotifyApi getSpotifyApi() {
+    public SpotifyApi getSpotifyApi() {
         return spotifyApi;
     }
 
@@ -240,7 +287,7 @@ public class SpotifyBridgeHandler extends BaseBridgeHandler
     public String formatAuthorizationUrl(String redirectUri) {
         try {
             return oAuthService.getAuthorizationUrl(redirectUri, null, thing.getUID().getAsString());
-        } catch (OAuthException e) {
+        } catch (final OAuthException e) {
             logger.debug("Error constructing AuthorizationUrl: ", e);
             return "";
         }
@@ -259,7 +306,7 @@ public class SpotifyBridgeHandler extends BaseBridgeHandler
         } catch (RuntimeException | OAuthException | IOException e) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, e.getMessage());
             throw new SpotifyException(e.getMessage(), e);
-        } catch (OAuthResponseException e) {
+        } catch (final OAuthResponseException e) {
             throw new SpotifyAuthorizationException(e.getMessage(), e);
         }
     }
@@ -287,9 +334,13 @@ public class SpotifyBridgeHandler extends BaseBridgeHandler
         oAuthService.addAccessTokenRefreshListener(SpotifyBridgeHandler.this);
         spotifyApi = new SpotifyApi(oAuthService, scheduler, httpClient);
         handleCommand = new SpotifyHandleCommands(spotifyApi);
-        playingContextCache = new ExpiringCache<>(configuration.refreshPeriod, spotifyApi::getPlayerInfo);
-        playlistCache = new ExpiringCache<>(POLL_PLAY_LIST_HOURS, spotifyApi::getPlaylists);
-        devicesCache = new ExpiringCache<>(configuration.refreshPeriod, spotifyApi::getDevices);
+        final Duration expiringPeriod = Duration.ofSeconds(configuration.refreshPeriod);
+
+        playingContextCache = new ExpiringCache<>(expiringPeriod, spotifyApi::getPlayerInfo);
+        final int offset = getIntChannelParameter(CHANNEL_PLAYLISTS, CHANNEL_PLAYLISTS_OFFSET, 0);
+        final int limit = getIntChannelParameter(CHANNEL_PLAYLISTS, CHANNEL_PLAYLISTS_LIMIT, 20);
+        playlistCache = new ExpiringCache<>(POLL_PLAY_LIST_HOURS, () -> spotifyApi.getPlaylists(offset, limit));
+        devicesCache = new ExpiringCache<>(expiringPeriod, spotifyApi::getDevices);
 
         // Start with update status by calling Spotify. If no credentials available no polling should be started.
         scheduler.execute(() -> {
@@ -297,6 +348,16 @@ public class SpotifyBridgeHandler extends BaseBridgeHandler
                 startPolling();
             }
         });
+        imageChannelAlbumImageIndex = getIntChannelParameter(CHANNEL_PLAYED_ALBUMIMAGE, CHANNEL_CONFIG_IMAGE_INDEX, 0);
+        imageChannelAlbumImageUrlIndex = getIntChannelParameter(CHANNEL_PLAYED_ALBUMIMAGEURL,
+                CHANNEL_CONFIG_IMAGE_INDEX, 0);
+    }
+
+    private int getIntChannelParameter(String channelName, String parameter, int _default) {
+        final Channel channel = thing.getChannel(channelName);
+        final BigDecimal index = channel == null ? null : (BigDecimal) channel.getConfiguration().get(parameter);
+
+        return index == null ? _default : index.intValue();
     }
 
     @Override
@@ -318,7 +379,7 @@ public class SpotifyBridgeHandler extends BaseBridgeHandler
                 if (pollStatus() && pollingNotRunning) {
                     startPolling();
                 }
-            } catch (RuntimeException e) {
+            } catch (final RuntimeException e) {
                 logger.debug("Restarting polling failed: ", e);
             }
         }
@@ -363,7 +424,7 @@ public class SpotifyBridgeHandler extends BaseBridgeHandler
                 final CurrentlyPlayingContext playingContext = pc == null ? EMPTY_CURRENTLY_PLAYING_CONTEXT : pc;
 
                 // Collect devices and populate selection with available devices.
-                if (hasPlayData || hasAnyDeviceStatusUnknown()) {
+                if (hasPlayData) {
                     final List<Device> ld = devicesCache.getValue();
                     final List<Device> devices = ld == null ? Collections.emptyList() : ld;
                     spotifyDynamicStateDescriptionProvider.setDevices(devicesChannelUID, devices);
@@ -381,17 +442,17 @@ public class SpotifyBridgeHandler extends BaseBridgeHandler
                 }
                 updateStatus(ThingStatus.ONLINE);
                 return true;
-            } catch (SpotifyAuthorizationException e) {
+            } catch (final SpotifyAuthorizationException e) {
                 logger.debug("Authorization error during polling: ", e);
 
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, e.getMessage());
                 cancelSchedulers();
                 devicesCache.invalidateValue();
-            } catch (SpotifyException e) {
+            } catch (final SpotifyException e) {
                 logger.info("Spotify returned an error during polling: {}", e.getMessage());
 
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, e.getMessage());
-            } catch (RuntimeException e) {
+            } catch (final RuntimeException e) {
                 // This only should catch RuntimeException as the apiCall don't throw other exceptions.
                 logger.info("Unexpected error during polling status, please report if this keeps occurring: ", e);
 
@@ -431,12 +492,6 @@ public class SpotifyBridgeHandler extends BaseBridgeHandler
                 .forEach(thing -> ((SpotifyDeviceHandler) thing.getHandler()).setStatusGone());
     }
 
-    private boolean hasAnyDeviceStatusUnknown() {
-        return getThing().getThings().stream() //
-                .filter(thing -> thing.getHandler() instanceof SpotifyDeviceHandler) //
-                .anyMatch(sd -> ((SpotifyDeviceHandler) sd.getHandler()).getThing().getStatus() == ThingStatus.UNKNOWN);
-    }
-
     /**
      * Update the player data.
      *
@@ -473,6 +528,7 @@ public class SpotifyBridgeHandler extends BaseBridgeHandler
             updateChannelState(CHANNEL_PLAYED_TRACKNUMBER, valueOrZero(item.getTrackNumber()));
             updateChannelState(CHANNEL_PLAYED_TRACKDISCNUMBER, valueOrZero(item.getDiscNumber()));
             updateChannelState(CHANNEL_PLAYED_TRACKPOPULARITY, valueOrZero(item.getPopularity()));
+            updateChannelState(CHANNEL_PLAYED_TRACKEXPLICIT, OnOffType.from(item.isExplicit()));
 
             final boolean hasAlbum = hasItem && item.getAlbum() != null;
             final Album album = hasAlbum ? item.getAlbum() : EMPTY_ALBUM;
@@ -569,7 +625,6 @@ public class SpotifyBridgeHandler extends BaseBridgeHandler
         if (channel != null && isLinked(channel.getUID())) {
             updateState(channel.getUID(), state);
         }
-
     }
 
     /**
@@ -651,20 +706,30 @@ public class SpotifyBridgeHandler extends BaseBridgeHandler
          * @param album album data
          */
         public void updateAlbumImage(Album album) {
-            final Channel channel = thing.getChannel(CHANNEL_PLAYED_ALBUMIMAGE);
+            final Channel imageChannel = thing.getChannel(CHANNEL_PLAYED_ALBUMIMAGE);
             final List<Image> images = album.getImages();
 
-            if (channel != null && images != null && !images.isEmpty()) {
-                final String imageUrl = images.get(0).getUrl();
+            // Update album image url channel
+            final String albumImageUrlUrl = albumUrl(images, imageChannelAlbumImageUrlIndex);
+            updateChannelState(CHANNEL_PLAYED_ALBUMIMAGEURL,
+                    albumImageUrlUrl == null ? UnDefType.UNDEF : StringType.valueOf(albumImageUrlUrl));
 
-                if (!lastAlbumImageUrl.equals(imageUrl)) {
+            // Trigger image refresh of album image channel
+            final String albumImageUrl = albumUrl(images, imageChannelAlbumImageIndex);
+            if (imageChannel != null && albumImageUrl != null) {
+                if (!lastAlbumImageUrl.equals(albumImageUrl)) {
                     // Download the cover art in a different thread to not delay the other operations
-                    lastAlbumImageUrl = imageUrl == null ? "" : imageUrl;
-                    refreshAlbumImage(channel.getUID());
-                }
+                    lastAlbumImageUrl = albumImageUrl;
+                    refreshAlbumImage(imageChannel.getUID());
+                } // else album image still the same so nothing to do
             } else {
+                lastAlbumImageUrl = "";
                 updateChannelState(CHANNEL_PLAYED_ALBUMIMAGE, UnDefType.UNDEF);
             }
+        }
+
+        private @Nullable String albumUrl(@Nullable List<Image> images, int index) {
+            return images == null || index >= images.size() || images.isEmpty() ? null : images.get(index).getUrl();
         }
 
         /**
@@ -686,7 +751,7 @@ public class SpotifyBridgeHandler extends BaseBridgeHandler
                     final RawType image = HttpUtil.downloadImage(imageUrl, true, MAX_IMAGE_SIZE);
                     updateChannelState(CHANNEL_PLAYED_ALBUMIMAGE, image == null ? UnDefType.UNDEF : image);
                 }
-            } catch (RuntimeException e) {
+            } catch (final RuntimeException e) {
                 logger.debug("Async call to refresh Album image failed: ", e);
             }
         }

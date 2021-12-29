@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -46,9 +46,18 @@ public class Response {
         return status;
     }
 
+    public boolean isResponseFor(CommandPacket cmd) {
+        if (cmd == null || cmd.isEasyCheck()) {
+            return false;
+        }
+
+        byte[] cmdBytes = cmd.getBytes();
+        int[] cmdChannels = ResponseUtil.getChannelIds(cmdBytes[3], cmdBytes[4]);
+        return Arrays.equals(channels, cmdChannels);
+    }
+
     @Override
     public String toString() {
         return status + " for channels " + Arrays.toString(channels);
     }
-
 }

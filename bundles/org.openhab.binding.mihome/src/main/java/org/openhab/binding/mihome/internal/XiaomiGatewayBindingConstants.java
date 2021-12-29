@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,7 +13,7 @@
 package org.openhab.binding.mihome.internal;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingTypeUID;
 
 /**
  * The {@link XiaomiGatewayBindingConstants} class defines common constants, which are
@@ -123,6 +123,7 @@ public class XiaomiGatewayBindingConstants {
     public static final String SERIAL_NUMBER = "serialNumber";
     public static final String HOST = "ipAddress";
     public static final String PORT = "port";
+    public static final String INTERFACE = "interface";
     public static final String TOKEN = "token";
 
     // Item config properties

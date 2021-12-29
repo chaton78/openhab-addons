@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -22,14 +22,18 @@ import java.net.NoRouteToHostException;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
+import java.text.MessageFormat;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.pjlinkdevice.internal.device.command.AuthenticationException;
+import org.openhab.binding.pjlinkdevice.internal.device.command.CachedCommand;
 import org.openhab.binding.pjlinkdevice.internal.device.command.ResponseException;
 import org.openhab.binding.pjlinkdevice.internal.device.command.authentication.AuthenticationCommand;
 import org.openhab.binding.pjlinkdevice.internal.device.command.errorstatus.ErrorStatusQueryCommand;
@@ -41,6 +45,9 @@ import org.openhab.binding.pjlinkdevice.internal.device.command.input.InputInstr
 import org.openhab.binding.pjlinkdevice.internal.device.command.input.InputListQueryCommand;
 import org.openhab.binding.pjlinkdevice.internal.device.command.input.InputQueryCommand;
 import org.openhab.binding.pjlinkdevice.internal.device.command.input.InputQueryResponse;
+import org.openhab.binding.pjlinkdevice.internal.device.command.lampstatus.LampStatesCommand;
+import org.openhab.binding.pjlinkdevice.internal.device.command.lampstatus.LampStatesResponse;
+import org.openhab.binding.pjlinkdevice.internal.device.command.lampstatus.LampStatesResponse.LampState;
 import org.openhab.binding.pjlinkdevice.internal.device.command.mute.MuteInstructionCommand;
 import org.openhab.binding.pjlinkdevice.internal.device.command.mute.MuteInstructionCommand.MuteInstructionChannel;
 import org.openhab.binding.pjlinkdevice.internal.device.command.mute.MuteInstructionCommand.MuteInstructionState;
@@ -72,6 +79,7 @@ public class PJLinkDevice {
     private final Logger logger = LoggerFactory.getLogger(PJLinkDevice.class);
     private String prefixForNextCommand = "";
     private @Nullable Instant socketCreatedOn;
+    private CachedCommand<LampStatesResponse> cachedLampHoursCommand = new CachedCommand<>(new LampStatesCommand(this));
 
     public PJLinkDevice(int tcpPort, InetAddress ipAddress, @Nullable String adminPassword, int timeout) {
         this.tcpPort = tcpPort;
@@ -118,8 +126,9 @@ public class PJLinkDevice {
         Instant now = Instant.now();
         Socket socket = this.socket;
         boolean connectionTooOld = false;
-        if (this.socketCreatedOn != null) {
-            long millisecondsSinceLastConnect = Duration.between(this.socketCreatedOn, now).toMillis();
+        Instant socketCreatedOn = this.socketCreatedOn;
+        if (socketCreatedOn != null) {
+            long millisecondsSinceLastConnect = Duration.between(socketCreatedOn, now).toMillis();
             // according to the PJLink specification, the device closes the connection after 30s idle (without notice),
             // so to be on the safe side we do not reuse sockets older than 20s
             connectionTooOld = millisecondsSinceLastConnect > 20 * 1000;
@@ -143,11 +152,11 @@ public class PJLinkDevice {
             socket.connect(socketAddress, timeout);
             socket.setSoTimeout(timeout);
             BufferedReader reader = getReader();
-            String header = reader.readLine();
-            if (header == null) {
+            String rawHeader = reader.readLine();
+            if (rawHeader == null) {
                 throw new ResponseException("No PJLink header received from the device");
             }
-            header = header.toUpperCase();
+            String header = rawHeader.toUpperCase();
             switch (header.substring(0, "PJLINK x".length())) {
                 case "PJLINK 0":
                     logger.debug("Authentication not needed");
@@ -161,7 +170,7 @@ public class PJLinkDevice {
                         throw new AuthenticationException("No password provided, but device requires authentication");
                     } else {
                         try {
-                            authenticate(header.substring("PJLINK 1 ".length()));
+                            authenticate(rawHeader.substring("PJLINK 1 ".length()));
                         } catch (AuthenticationException e) {
                             // propagate AuthenticationException
                             throw e;
@@ -199,6 +208,11 @@ public class PJLinkDevice {
         this.prefixForNextCommand = cmd;
     }
 
+    public static String preprocessResponse(String response) {
+        // some devices send leading zero bytes, see https://github.com/openhab/openhab-addons/issues/6725
+        return response.replaceAll("^\0*|\0*$", "");
+    }
+
     public synchronized String execute(String command) throws IOException, AuthenticationException, ResponseException {
         String fullCommand = this.prefixForNextCommand + command;
         this.prefixForNextCommand = "";
@@ -220,16 +234,20 @@ public class PJLinkDevice {
         }
 
         String response = null;
-        while ((response = getReader().readLine()) != null && response.isEmpty()) {
+        while ((response = getReader().readLine()) != null && preprocessResponse(response).isEmpty()) {
             logger.debug("Got empty string response for request '{}' from {}, waiting for another line", response,
                     fullCommand.replaceAll("\r", "\\\\r"));
         }
-        logger.debug("Got response '{}' for request '{}' from {}", response, fullCommand.replaceAll("\r", "\\\\r"),
-                ipAddress.toString());
         if (response == null) {
-            throw new ResponseException("Response to request '" + fullCommand.replaceAll("\r", "\\\\r") + "' was null");
+            throw new ResponseException(MessageFormat.format("Response to request ''{0}'' was null",
+                    fullCommand.replaceAll("\r", "\\\\r")));
         }
-        return response;
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("Got response '{}' ({}) for request '{}' from {}", response,
+                    Arrays.toString(response.getBytes()), fullCommand.replaceAll("\r", "\\\\r"), ipAddress);
+        }
+        return preprocessResponse(response);
     }
 
     public void checkAvailability() throws IOException, AuthenticationException, ResponseException {
@@ -326,9 +344,12 @@ public class PJLinkDevice {
         return new ErrorStatusQueryCommand(this).execute().getResult();
     }
 
-    public String getLampHours() throws ResponseException, IOException, AuthenticationException {
-        return new IdentificationCommand(this, IdentificationCommand.IdentificationProperty.LAMP_HOURS).execute()
-                .getResult();
+    public List<LampState> getLampStates() throws ResponseException, IOException, AuthenticationException {
+        return new LampStatesCommand(this).execute().getResult();
+    }
+
+    public List<LampState> getLampStatesCached() throws ResponseException, IOException, AuthenticationException {
+        return cachedLampHoursCommand.execute().getResult();
     }
 
     public String getOtherInformation() throws ResponseException, IOException, AuthenticationException {
@@ -338,7 +359,6 @@ public class PJLinkDevice {
 
     public Set<Input> getAvailableInputs() throws ResponseException, IOException, AuthenticationException {
         return new InputListQueryCommand(this).execute().getResult();
-
     }
 
     public void dispose() {

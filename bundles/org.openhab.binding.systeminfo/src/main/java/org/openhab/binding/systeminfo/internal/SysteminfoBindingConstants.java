@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,7 +13,7 @@
 package org.openhab.binding.systeminfo.internal;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingTypeUID;
 
 /**
  * The {@link SysteminfoBindingConstants} class defines common constants, which are
@@ -80,6 +80,16 @@ public class SysteminfoBindingConstants {
      * Percents of the used memory
      */
     public static final String CHANNEL_MEMORY_USED_PERCENT = "memory#usedPercent";
+
+    /**
+     * Percents of the used heap
+     */
+    public static final String CHANNEL_MEMORY_USED_HEAP_PERCENT = "memory#usedHeapPercent";
+
+    /**
+     * Bytes used in the heap
+     */
+    public static final String CHANNEL_MEMORY_HEAP_AVAILABLE = "memory#availableHeap";
 
     /**
      * Total size of swap memory
@@ -330,5 +340,4 @@ public class SysteminfoBindingConstants {
      *
      */
     public static final String PID_PARAM = "pid";
-
 }

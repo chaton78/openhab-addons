@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -25,11 +25,11 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.BufferOverflowException;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -40,24 +40,22 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.smarthome.core.common.ThreadPoolManager;
-import org.eclipse.smarthome.core.library.types.DateTimeType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.PercentType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.State;
 import org.openhab.binding.bigassfan.internal.BigAssFanConfig;
 import org.openhab.binding.bigassfan.internal.utils.BigAssFanConverter;
+import org.openhab.core.common.ThreadPoolManager;
+import org.openhab.core.library.types.DateTimeType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,9 +82,9 @@ public class BigAssFanHandler extends BaseThingHandler {
 
     private FanListener fanListener;
 
-    protected Map<String, State> fanStateMap = Collections.synchronizedMap(new HashMap<String, State>());
+    protected Map<String, State> fanStateMap = Collections.synchronizedMap(new HashMap<>());
 
-    public BigAssFanHandler(@NonNull Thing thing, String ipv4Address) {
+    public BigAssFanHandler(Thing thing, String ipv4Address) {
         super(thing);
         this.thing = thing;
 
@@ -669,7 +667,7 @@ public class BigAssFanHandler extends BaseThingHandler {
         }
 
         private void processMessage(String incomingMessage) {
-            if (StringUtils.isEmpty(incomingMessage)) {
+            if (incomingMessage == null || incomingMessage.isEmpty()) {
                 return;
             }
 
@@ -743,11 +741,11 @@ public class BigAssFanHandler extends BaseThingHandler {
 
         private boolean isMe(String idFromDevice) {
             // Check match on MAC address
-            if (StringUtils.equalsIgnoreCase(idFromDevice, macAddress)) {
+            if (macAddress.equalsIgnoreCase(idFromDevice)) {
                 return true;
             }
             // Didn't match MAC address, check match for label
-            if (StringUtils.equalsIgnoreCase(idFromDevice, label)) {
+            if (label.equalsIgnoreCase(idFromDevice)) {
                 return true;
             }
             return false;
@@ -990,10 +988,8 @@ public class BigAssFanHandler extends BaseThingHandler {
             logger.debug("Process time update for {}: {}", thing.getUID(), messageParts[3]);
             // (mac|name;TIME;VALUE;2017-03-26T14:06:27Z)
             try {
-                Calendar cal = Calendar.getInstance();
                 Instant instant = Instant.parse(messageParts[3]);
-                cal.setTime(Date.from(instant));
-                DateTimeType state = new DateTimeType(cal);
+                DateTimeType state = new DateTimeType(ZonedDateTime.ofInstant(instant, ZoneId.systemDefault()));
                 updateChannel(CHANNEL_TIME, state);
                 fanStateMap.put(CHANNEL_TIME, state);
             } catch (DateTimeParseException e) {

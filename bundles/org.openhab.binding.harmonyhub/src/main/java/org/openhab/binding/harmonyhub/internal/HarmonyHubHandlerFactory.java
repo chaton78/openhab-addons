@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -27,25 +27,26 @@ import java.util.stream.Stream;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jetty.client.HttpClient;
-import org.eclipse.smarthome.config.discovery.DiscoveryService;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.ThingUID;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandlerFactory;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory;
-import org.eclipse.smarthome.core.thing.type.ChannelGroupType;
-import org.eclipse.smarthome.core.thing.type.ChannelGroupTypeProvider;
-import org.eclipse.smarthome.core.thing.type.ChannelGroupTypeUID;
-import org.eclipse.smarthome.core.thing.type.ChannelType;
-import org.eclipse.smarthome.core.thing.type.ChannelTypeProvider;
-import org.eclipse.smarthome.core.thing.type.ChannelTypeUID;
-import org.eclipse.smarthome.io.net.http.HttpClientFactory;
 import org.openhab.binding.harmonyhub.internal.discovery.HarmonyDeviceDiscoveryService;
 import org.openhab.binding.harmonyhub.internal.handler.HarmonyDeviceHandler;
 import org.openhab.binding.harmonyhub.internal.handler.HarmonyHubHandler;
+import org.openhab.core.config.discovery.DiscoveryService;
+import org.openhab.core.io.net.http.HttpClientFactory;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
+import org.openhab.core.thing.binding.BaseThingHandlerFactory;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.thing.binding.ThingHandlerFactory;
+import org.openhab.core.thing.type.ChannelGroupType;
+import org.openhab.core.thing.type.ChannelGroupTypeProvider;
+import org.openhab.core.thing.type.ChannelGroupTypeUID;
+import org.openhab.core.thing.type.ChannelType;
+import org.openhab.core.thing.type.ChannelTypeProvider;
+import org.openhab.core.thing.type.ChannelTypeUID;
 import org.osgi.framework.ServiceRegistration;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
@@ -67,11 +68,16 @@ public class HarmonyHubHandlerFactory extends BaseThingHandlerFactory
                     HarmonyDeviceHandler.SUPPORTED_THING_TYPES_UIDS.stream())
             .collect(Collectors.toSet());
 
-    private final Map<ThingUID, @Nullable ServiceRegistration<?>> discoveryServiceRegs = new HashMap<>();
-    private @NonNullByDefault({}) HttpClient httpClient;
+    private final Map<ThingUID, ServiceRegistration<?>> discoveryServiceRegs = new HashMap<>();
+    private final HttpClient httpClient;
 
     private final List<ChannelType> channelTypes = new CopyOnWriteArrayList<>();
     private final List<ChannelGroupType> channelGroupTypes = new CopyOnWriteArrayList<>();
+
+    @Activate
+    public HarmonyHubHandlerFactory(@Reference final HttpClientFactory httpClientFactory) {
+        this.httpClient = httpClientFactory.getCommonHttpClient();
+    }
 
     @Override
     public boolean supportsThingType(ThingTypeUID thingTypeUID) {
@@ -147,15 +153,6 @@ public class HarmonyHubHandlerFactory extends BaseThingHandlerFactory
         return channelGroupTypes;
     }
 
-    @Reference
-    protected void setHttpClientFactory(HttpClientFactory httpClientFactory) {
-        this.httpClient = httpClientFactory.getCommonHttpClient();
-    }
-
-    protected void unsetHttpClientFactory(HttpClientFactory httpClientFactory) {
-        this.httpClient = null;
-    }
-
     public HttpClient getHttpClient() {
         return this.httpClient;
     }
@@ -177,5 +174,4 @@ public class HarmonyHubHandlerFactory extends BaseThingHandlerFactory
         }
         channelTypes.removeAll(removes);
     }
-
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,7 +13,7 @@
 package org.openhab.binding.nikobus.internal;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingTypeUID;
 
 /**
  * The {@link NikobusBindingConstants} class defines common constants, which are
@@ -37,6 +37,8 @@ public class NikobusBindingConstants {
 
     // List of all Channel ids
     public static final String CHANNEL_BUTTON = "button";
+    public static final String CHANNEL_TRIGGER_FILTER = "trigger-filter";
+    public static final String CHANNEL_TRIGGER_BUTTON = "trigger-button";
     public static final String CHANNEL_OUTPUT_PREFIX = "output-";
 
     // Configuration parameters
@@ -44,5 +46,4 @@ public class NikobusBindingConstants {
     public static final String CONFIG_IMPACTED_MODULES = "impactedModules";
     public static final String CONFIG_ADDRESS = "address";
     public static final String CONFIG_PORT_NAME = "port";
-
 }

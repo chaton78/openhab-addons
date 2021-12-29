@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -10,7 +10,6 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
-
 /*
  * This file is based on:
  *
@@ -37,6 +36,7 @@ package org.openhab.binding.lgwebos.internal.handler.command;
 
 import java.util.function.Function;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.lgwebos.internal.handler.core.ResponseListener;
 
 import com.google.gson.JsonElement;
@@ -58,21 +58,17 @@ public class ServiceCommand<T> {
     protected Type type;
     protected JsonObject payload;
     protected String target;
-    protected Function<JsonObject, T> converter;
-
-    int requestId;
+    protected Function<JsonObject, @Nullable T> converter;
 
     ResponseListener<T> responseListener;
 
-    public ServiceCommand(String targetURL, JsonObject payload, Function<JsonObject, T> converter,
+    public ServiceCommand(String targetURL, JsonObject payload, Function<JsonObject, @Nullable T> converter,
             ResponseListener<T> listener) {
         this.target = targetURL;
         this.payload = payload;
         this.converter = converter;
         this.responseListener = listener;
         this.type = Type.request;
-        requestId = -1;
-
     }
 
     public JsonElement getPayload() {
@@ -101,8 +97,6 @@ public class ServiceCommand<T> {
 
     @Override
     public String toString() {
-        return "ServiceCommand [requestId=" + requestId + ", type=" + type + ", target=" + target + ", payload="
-                + payload + "]";
+        return "ServiceCommand [type=" + type + ", target=" + target + ", payload=" + payload + "]";
     }
-
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -15,7 +15,7 @@ package org.openhab.binding.spotify.internal;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingTypeUID;
 
 /**
  * The {@link SpotifyBindingConstants} class defines common constants, which are used across the whole binding.
@@ -55,6 +55,8 @@ public class SpotifyBindingConstants {
 
     public static final String CHANNEL_PLAYLISTS = "playlists";
     public static final String CHANNEL_PLAYLISTNAME = "playlistName";
+    public static final String CHANNEL_PLAYLISTS_LIMIT = "limit";
+    public static final String CHANNEL_PLAYLISTS_OFFSET = "offset";
 
     public static final String CHANNEL_PLAYED_TRACKID = "trackId";
     public static final String CHANNEL_PLAYED_TRACKURI = "trackUri";
@@ -64,6 +66,7 @@ public class SpotifyBindingConstants {
     public static final String CHANNEL_PLAYED_TRACKNUMBER = "trackNumber";
     public static final String CHANNEL_PLAYED_TRACKDISCNUMBER = "trackDiscNumber";
     public static final String CHANNEL_PLAYED_TRACKPOPULARITY = "trackPopularity";
+    public static final String CHANNEL_PLAYED_TRACKEXPLICIT = "trackExplicit";
     public static final String CHANNEL_PLAYED_TRACKDURATION_MS = "trackDurationMs";
     public static final String CHANNEL_PLAYED_TRACKPROGRESS_MS = "trackProgressMs";
     public static final String CHANNEL_PLAYED_TRACKDURATION_FMT = "trackDuration";
@@ -75,6 +78,8 @@ public class SpotifyBindingConstants {
     public static final String CHANNEL_PLAYED_ALBUMNAME = "albumName";
     public static final String CHANNEL_PLAYED_ALBUMTYPE = "albumType";
     public static final String CHANNEL_PLAYED_ALBUMIMAGE = "albumImage";
+    public static final String CHANNEL_PLAYED_ALBUMIMAGEURL = "albumImageUrl";
+    public static final String CHANNEL_CONFIG_IMAGE_INDEX = "imageIndex";
 
     public static final String CHANNEL_PLAYED_ARTISTID = "artistId";
     public static final String CHANNEL_PLAYED_ARTISTURI = "artistUri";

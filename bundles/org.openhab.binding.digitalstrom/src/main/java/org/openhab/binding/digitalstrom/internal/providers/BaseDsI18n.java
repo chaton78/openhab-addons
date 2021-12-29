@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,17 +13,18 @@
 package org.openhab.binding.digitalstrom.internal.providers;
 
 import java.util.Locale;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.smarthome.core.i18n.TranslationProvider;
+import org.openhab.core.i18n.TranslationProvider;
 import org.osgi.framework.Bundle;
 import org.osgi.service.component.ComponentContext;
 
 /**
  * The {@link BaseDsI18n} provides the internationalization service in form of the
- * {@link org.eclipse.smarthome.core.i18n.TranslationProvider} of the
+ * {@link org.openhab.core.i18n.TranslationProvider} of the
  * digitalSTROM-Bindings. So this class can be implement e.g. by provider implementations like the
- * {@link org.eclipse.smarthome.core.thing.type.ChannelTypeProvider}.
+ * {@link org.openhab.core.thing.type.ChannelTypeProvider}.
  *
  * @author Michael Ochel - initial contributer
  * @author Matthias Siegele - initial contributer
@@ -132,6 +133,9 @@ public abstract class BaseDsI18n {
      * @return key
      */
     public static String buildIdentifier(Object... parts) {
-        return StringUtils.join(parts, SEPERATOR).toLowerCase();
+        return Stream.of(parts) //
+                .map(Object::toString) //
+                .map(String::toLowerCase) //
+                .collect(Collectors.joining(SEPERATOR));
     }
 }

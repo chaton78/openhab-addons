@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -44,13 +44,13 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 
-import org.eclipse.smarthome.core.common.ThreadPoolManager;
-import org.eclipse.smarthome.core.id.InstanceUUID;
-import org.eclipse.smarthome.core.util.HexUtils;
 import org.openhab.binding.loxone.internal.LxServerHandlerApi;
 import org.openhab.binding.loxone.internal.LxWebSocket;
 import org.openhab.binding.loxone.internal.types.LxErrorCode;
 import org.openhab.binding.loxone.internal.types.LxResponse;
+import org.openhab.core.common.ThreadPoolManager;
+import org.openhab.core.id.InstanceUUID;
+import org.openhab.core.util.HexUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,6 +86,7 @@ class LxWsSecurityToken extends LxWsSecurity {
     private class LxResponseKeySalt {
         String key;
         String salt;
+        String hashAlg;
     }
 
     /**
@@ -148,6 +149,7 @@ class LxWsSecurityToken extends LxWsSecurity {
     private int tokenRefreshRetryCount;
     private ScheduledFuture<?> tokenRefreshTimer;
     private final Lock tokenRefreshLock = new ReentrantLock();
+    private boolean sha256 = false;
 
     private final byte[] initVector = new byte[IV_LENGTH_BYTES];
     private final Logger logger = LoggerFactory.getLogger(LxWsSecurityToken.class);
@@ -352,14 +354,14 @@ class LxWsSecurityToken extends LxWsSecurity {
         }
     }
 
-    private String hashCredentials(LxResponseKeySalt keySalt) {
+    private String hashCredentials(LxResponseKeySalt keySalt, boolean sha256) {
         try {
-            MessageDigest msgDigest = MessageDigest.getInstance("SHA-1");
+            MessageDigest msgDigest = MessageDigest.getInstance(sha256 ? "SHA-256" : "SHA-1");
             String pwdHashStr = password + ":" + keySalt.salt;
             byte[] rawData = msgDigest.digest(pwdHashStr.getBytes(StandardCharsets.UTF_8));
             String pwdHash = HexUtils.bytesToHex(rawData).toUpperCase();
             logger.debug("[{}] PWDHASH: {}", debugId, pwdHash);
-            return hashString(user + ":" + pwdHash, keySalt.key);
+            return hashString(user + ":" + pwdHash, keySalt.key, sha256);
         } catch (NoSuchAlgorithmException e) {
             logger.debug("[{}] Error hashing token credentials: {}", debugId, e.getMessage());
             return null;
@@ -376,10 +378,12 @@ class LxWsSecurityToken extends LxWsSecurity {
         if (keySalt == null) {
             return setError(null, "Error parsing hash key/salt json: " + resp.getValueAsString());
         }
-
+        if ("SHA256".equals(keySalt.hashAlg)) {
+            sha256 = true;
+        }
         logger.debug("[{}] Hash key: {}, salt: {}", debugId, keySalt.key, keySalt.salt);
         // Hash user name, password, key and salt
-        String hash = hashCredentials(keySalt);
+        String hash = hashCredentials(keySalt, sha256);
         if (hash == null) {
             return false;
         }
@@ -407,7 +411,6 @@ class LxWsSecurityToken extends LxWsSecurity {
         persistToken();
         logger.debug("[{}] Token acquired.", debugId);
         return true;
-
     }
 
     private boolean useToken() {
@@ -437,7 +440,7 @@ class LxWsSecurityToken extends LxWsSecurity {
         try {
             String hashKey = resp.getValueAsString();
             // here is a difference to the API spec, which says the string to hash is "user:token", but this is "token"
-            String hash = hashString(token, hashKey);
+            String hash = hashString(token, hashKey, sha256);
             if (hash == null) {
                 setError(null, "Error hashing token.");
             }

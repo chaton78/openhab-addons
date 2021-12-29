@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -15,7 +15,7 @@ package org.openhab.binding.nikobus.internal.protocol;
 import static org.openhab.binding.nikobus.internal.NikobusBindingConstants.CHANNEL_OUTPUT_PREFIX;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.thing.ChannelUID;
+import org.openhab.core.thing.ChannelUID;
 
 /**
  * The {@link SwitchModuleGroup} class defines Nikobus module group used for reading status or set its new value.

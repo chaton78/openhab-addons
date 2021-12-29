@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,24 +12,24 @@
  */
 package org.openhab.binding.avmfritz.internal.discovery;
 
-import static org.eclipse.smarthome.core.thing.Thing.PROPERTY_VENDOR;
-import static org.openhab.binding.avmfritz.internal.BindingConstants.*;
+import static org.openhab.binding.avmfritz.internal.AVMFritzBindingConstants.*;
+import static org.openhab.core.thing.Thing.PROPERTY_VENDOR;
 
 import java.util.Dictionary;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.config.discovery.DiscoveryResult;
-import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
-import org.eclipse.smarthome.config.discovery.upnp.UpnpDiscoveryParticipant;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.ThingUID;
 import org.jupnp.model.meta.DeviceDetails;
 import org.jupnp.model.meta.ModelDetails;
 import org.jupnp.model.meta.RemoteDevice;
+import org.openhab.core.config.discovery.DiscoveryResult;
+import org.openhab.core.config.discovery.DiscoveryResultBuilder;
+import org.openhab.core.config.discovery.upnp.UpnpDiscoveryParticipant;
+import org.openhab.core.config.discovery.upnp.internal.UpnpDiscoveryService;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -45,7 +45,7 @@ import org.slf4j.LoggerFactory;
  * @author Christoph Weitkamp - Added support for groups
  * @author Christoph Weitkamp - Use "discovery.avmfritz:background=false" to disable discovery service
  */
-@Component(immediate = true, configurationPid = "discovery.avmfritz")
+@Component(configurationPid = "discovery.avmfritz")
 @NonNullByDefault
 public class AVMFritzUpnpDiscoveryParticipant implements UpnpDiscoveryParticipant {
 
@@ -83,16 +83,11 @@ public class AVMFritzUpnpDiscoveryParticipant implements UpnpDiscoveryParticipan
             if (uid != null) {
                 logger.debug("discovered: {} ({}) at {}", device.getDisplayString(),
                         device.getDetails().getFriendlyName(), device.getIdentity().getDescriptorURL().getHost());
-
-                Map<String, Object> properties = new HashMap<>();
-                properties.put(CONFIG_IP_ADDRESS, device.getIdentity().getDescriptorURL().getHost());
-                properties.put(PROPERTY_VENDOR, device.getDetails().getManufacturerDetails().getManufacturer());
-
-                DiscoveryResult result = DiscoveryResultBuilder.create(uid).withProperties(properties)
+                return DiscoveryResultBuilder.create(uid)
+                        .withProperties(Map.of(CONFIG_IP_ADDRESS, device.getIdentity().getDescriptorURL().getHost(),
+                                PROPERTY_VENDOR, device.getDetails().getManufacturerDetails().getManufacturer()))
                         .withLabel(device.getDetails().getFriendlyName()).withRepresentationProperty(CONFIG_IP_ADDRESS)
                         .build();
-
-                return result;
             }
         }
         return null;
@@ -114,9 +109,9 @@ public class AVMFritzUpnpDiscoveryParticipant implements UpnpDiscoveryParticipan
                         if (modelName.startsWith(BOX_MODEL_NAME)) {
                             logger.debug("discovered on {}", device.getIdentity().getDiscoveredOnLocalAddress());
                             return new ThingUID(BRIDGE_THING_TYPE, id);
-                        } else if (modelName.startsWith(POWERLINE_MODEL_NAME)) {
+                        } else if (POWERLINE546E_MODEL_NAME.equals(modelName)) {
                             logger.debug("discovered on {}", device.getIdentity().getDiscoveredOnLocalAddress());
-                            return new ThingUID(PL546E_STANDALONE_THING_TYPE, id);
+                            return new ThingUID(POWERLINE546E_STANDALONE_THING_TYPE, id);
                         }
                     }
                 }

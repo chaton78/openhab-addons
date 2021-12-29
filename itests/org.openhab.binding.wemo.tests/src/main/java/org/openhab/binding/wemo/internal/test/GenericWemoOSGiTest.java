@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,7 +13,7 @@
 package org.openhab.binding.wemo.internal.test;
 
 import static org.hamcrest.CoreMatchers.*;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -22,25 +22,8 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.Locale;
 
-import org.eclipse.smarthome.config.core.Configuration;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.ManagedThingProvider;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingRegistry;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.ThingUID;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.thing.binding.builder.ChannelBuilder;
-import org.eclipse.smarthome.core.thing.binding.builder.ThingBuilder;
-import org.eclipse.smarthome.core.thing.type.ChannelKind;
-import org.eclipse.smarthome.core.thing.type.ChannelType;
-import org.eclipse.smarthome.core.thing.type.ChannelTypeProvider;
-import org.eclipse.smarthome.core.thing.type.ChannelTypeUID;
-import org.eclipse.smarthome.io.transport.upnp.UpnpIOService;
-import org.eclipse.smarthome.test.java.JavaOSGiTest;
-import org.eclipse.smarthome.test.storage.VolatileStorageService;
 import org.jupnp.UpnpService;
 import org.jupnp.mock.MockUpnpService;
 import org.jupnp.model.ValidationException;
@@ -54,9 +37,29 @@ import org.jupnp.model.types.DeviceType;
 import org.jupnp.model.types.ServiceId;
 import org.jupnp.model.types.ServiceType;
 import org.jupnp.model.types.UDN;
+import org.mockito.Mockito;
 import org.openhab.binding.wemo.internal.WemoBindingConstants;
-import org.openhab.binding.wemo.internal.handler.AbstractWemoHandler;
+import org.openhab.binding.wemo.internal.WemoHttpCallFactory;
+import org.openhab.binding.wemo.internal.WemoUtil;
 import org.openhab.binding.wemo.internal.http.WemoHttpCall;
+import org.openhab.core.config.core.Configuration;
+import org.openhab.core.io.transport.upnp.UpnpIOService;
+import org.openhab.core.library.CoreItemFactory;
+import org.openhab.core.test.java.JavaOSGiTest;
+import org.openhab.core.test.storage.VolatileStorageService;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.ManagedThingProvider;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingRegistry;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
+import org.openhab.core.thing.binding.builder.ChannelBuilder;
+import org.openhab.core.thing.binding.builder.ThingBuilder;
+import org.openhab.core.thing.type.ChannelKind;
+import org.openhab.core.thing.type.ChannelTypeBuilder;
+import org.openhab.core.thing.type.ChannelTypeProvider;
+import org.openhab.core.thing.type.ChannelTypeUID;
 
 /**
  * Generic test class for all Wemo related tests that contains methods and constants used across the different test
@@ -67,35 +70,39 @@ import org.openhab.binding.wemo.internal.http.WemoHttpCall;
  */
 public abstract class GenericWemoOSGiTest extends JavaOSGiTest {
 
-    public static MockUpnpService mockUpnpService;
     public static final String DEVICE_MANUFACTURER = "Belkin";
 
     // This port is included in the run configuration
-    private final int ORG_OSGI_SERVICE_HTTP_PORT = 9090;
+    private static final int ORG_OSGI_SERVICE_HTTP_PORT = 9090;
 
     // Thing information
-    protected String TEST_THING_ID = "TestThing";
+    protected static final String TEST_THING_ID = "TestThing";
 
     // UPnP Device information
-    public static String DEVICE_UDN = "Test-1_0-22124";
+    public static final String DEVICE_UDN = "Test-1_0-22124";
 
-    private final String DEVICE_TYPE = "Test";
-    private final int DEVICE_VERSION = 1;
-    private final String DEVICE_URL = "http://127.0.0.1:" + ORG_OSGI_SERVICE_HTTP_PORT;
-    private final String DEVICE_DESCRIPTION_PATH = "/setup.xml";
+    private static final String DEVICE_TYPE = "Test";
+    private static final int DEVICE_VERSION = 1;
+    private static final String DEVICE_URL = "http://127.0.0.1:" + ORG_OSGI_SERVICE_HTTP_PORT;
+    private static final String DEVICE_DESCRIPTION_PATH = "/setup.xml";
 
-    protected final String DEVICE_FRIENDLY_NAME = "WeMo Test";
-    protected final String DEVICE_CONTROL_PATH = "/upnp/control/";
-    protected final ChannelTypeUID DEFAULT_CHANNEL_TYPE_UID = new ChannelTypeUID(
+    protected static final String DEVICE_FRIENDLY_NAME = "WeMo Test";
+    protected static final String DEVICE_CONTROL_PATH = "/upnp/control/";
+    protected static final ChannelTypeUID DEFAULT_CHANNEL_TYPE_UID = new ChannelTypeUID(
             WemoBindingConstants.BINDING_ID + ":channelType");
 
     protected ManagedThingProvider managedThingProvider;
     protected UpnpIOService upnpIOService;
     protected ThingRegistry thingRegistry;
 
+    protected WemoHttpCall mockCaller;
+    protected MockUpnpService mockUpnpService;
+
     protected Thing thing;
 
     protected void setUpServices() throws IOException {
+        WemoUtil.serviceAvailableFunction = (host, port) -> true;
+
         // StorageService is required from the ManagedThingProvider
         VolatileStorageService volatileStorageService = new VolatileStorageService();
         registerService(volatileStorageService);
@@ -115,14 +122,17 @@ public abstract class GenericWemoOSGiTest extends JavaOSGiTest {
         upnpIOService = getService(UpnpIOService.class);
         assertThat(upnpIOService, is(notNullValue()));
 
+        mockCaller = Mockito.spy(new WemoHttpCall());
+        WemoHttpCallFactory wemoHttpCallFactory = () -> mockCaller;
+        registerService(wemoHttpCallFactory, WemoHttpCallFactory.class.getName());
+
         ChannelTypeProvider channelTypeProvider = mock(ChannelTypeProvider.class);
-        when(channelTypeProvider.getChannelType(any(), any())).thenReturn(new ChannelType(DEFAULT_CHANNEL_TYPE_UID,
-                false, "Switch", ChannelKind.STATE, "label", null, null, null, null, null, null));
+        when(channelTypeProvider.getChannelType(any(ChannelTypeUID.class), any(Locale.class))).thenReturn(
+                ChannelTypeBuilder.state(DEFAULT_CHANNEL_TYPE_UID, "label", CoreItemFactory.SWITCH).build());
         registerService(channelTypeProvider);
     }
 
-    protected Thing createThing(ThingTypeUID thingTypeUID, String channelID, String itemAcceptedType,
-            WemoHttpCall wemoHttpCaller) {
+    protected Thing createThing(ThingTypeUID thingTypeUID, String channelID, String itemAcceptedType) {
         Configuration configuration = new Configuration();
         configuration.put(WemoBindingConstants.UDN, DEVICE_UDN);
 
@@ -136,13 +146,6 @@ public abstract class GenericWemoOSGiTest extends JavaOSGiTest {
                 .build();
 
         managedThingProvider.add(thing);
-
-        ThingHandler handler = thing.getHandler();
-        if (handler != null) {
-            AbstractWemoHandler h = (AbstractWemoHandler) handler;
-            h.setWemoHttpCaller(wemoHttpCaller);
-        }
-
         return thing;
     }
 
@@ -151,8 +154,8 @@ public abstract class GenericWemoOSGiTest extends JavaOSGiTest {
         UDN udn = new UDN(DEVICE_UDN);
         URL deviceURL = new URL(DEVICE_URL + DEVICE_DESCRIPTION_PATH);
 
-        RemoteDeviceIdentity identity = new RemoteDeviceIdentity(udn, WemoBindingConstants.SUBSCRIPTION_DURATION,
-                deviceURL, new byte[1], null);
+        RemoteDeviceIdentity identity = new RemoteDeviceIdentity(udn,
+                WemoBindingConstants.SUBSCRIPTION_DURATION_SECONDS, deviceURL, new byte[1], null);
         DeviceType type = new DeviceType(DEVICE_MANUFACTURER, DEVICE_TYPE, DEVICE_VERSION);
 
         ManufacturerDetails manufacturerDetails = new ManufacturerDetails(DEVICE_MANUFACTURER);
@@ -174,5 +177,4 @@ public abstract class GenericWemoOSGiTest extends JavaOSGiTest {
         RemoteDevice localDevice = new RemoteDevice(identity, type, details, service);
         mockUpnpService.getRegistry().addDevice(localDevice);
     }
-
 }

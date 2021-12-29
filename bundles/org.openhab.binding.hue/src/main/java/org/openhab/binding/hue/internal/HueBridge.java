@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,6 +12,7 @@
  */
 package org.openhab.binding.hue.internal;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Type;
@@ -22,12 +23,14 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -55,6 +58,7 @@ import com.google.gson.JsonParser;
  * @author Andre Fuechsel - search for lights with given serial number added
  * @author Denis Dudnik - moved Jue library source code inside the smarthome Hue binding, minor code cleanup
  * @author Samuel Leisering - added cached config and API-Version
+ * @author Laurent Garnier - change the return type of getGroups
  */
 @NonNullByDefault
 public class HueBridge {
@@ -111,6 +115,17 @@ public class HueBridge {
             throws IOException, ApiException {
         this(ip, port, protocol, scheduler);
         authenticate(username);
+    }
+
+    /**
+     * Test constructor
+     */
+    HueBridge(String ip, String baseUrl, String username, ScheduledExecutorService scheduler, HttpClient http) {
+        this.ip = ip;
+        this.baseUrl = baseUrl;
+        this.username = username;
+        this.scheduler = scheduler;
+        this.http = http;
     }
 
     /**
@@ -207,9 +222,12 @@ public class HueBridge {
         ArrayList<T> lightList = new ArrayList<>();
 
         for (String id : lightMap.keySet()) {
+            @Nullable
             T light = lightMap.get(id);
-            light.setId(id);
-            lightList.add(light);
+            if (light != null) {
+                light.setId(id);
+                lightList.add(light);
+            }
         }
 
         return lightList;
@@ -342,7 +360,11 @@ public class HueBridge {
         List<SuccessResponse> entries = safeFromJson(result.getBody(), SuccessResponse.GSON_TYPE);
         SuccessResponse response = entries.get(0);
 
-        return (String) response.success.get("/lights/" + enc(light.getId()) + "/name");
+        String lightName = (String) response.success.get("/lights/" + enc(light.getId()) + "/name");
+        if (lightName == null) {
+            throw new ApiException("Response didn't contain light name.");
+        }
+        return lightName;
     }
 
     /**
@@ -377,10 +399,10 @@ public class HueBridge {
         requireAuthentication();
 
         String body = update.toJson();
-        return http.putAsync(getRelativeURL("sensors/" + enc(sensor.getId()) + "/state"), body, update.getMessageDelay(),
-                scheduler);
-    }    
-    
+        return http.putAsync(getRelativeURL("sensors/" + enc(sensor.getId()) + "/state"), body,
+                update.getMessageDelay(), scheduler);
+    }
+
     /**
      * Changes the config of a sensor.
      *
@@ -404,8 +426,6 @@ public class HueBridge {
      * @return all lights pseudo group
      */
     public Group getAllGroup() {
-        requireAuthentication();
-
         return new Group();
     }
 
@@ -415,23 +435,33 @@ public class HueBridge {
      * @return list of groups
      * @throws UnauthorizedException thrown if the user no longer exists
      */
-    public List<Group> getGroups() throws IOException, ApiException {
+    public List<FullGroup> getGroups() throws IOException, ApiException {
         requireAuthentication();
 
         Result result = http.get(getRelativeURL("groups"));
 
         handleErrors(result);
 
-        Map<String, Group> groupMap = safeFromJson(result.getBody(), Group.GSON_TYPE);
-        ArrayList<Group> groupList = new ArrayList<>();
+        Map<String, FullGroup> groupMap = safeFromJson(result.getBody(), FullGroup.GSON_TYPE);
+        ArrayList<FullGroup> groupList = new ArrayList<>();
 
-        groupList.add(new Group());
+        if (groupMap.get("0") == null) {
+            // Group 0 is not returned, we create it as in fact it exists
+            try {
+                groupList.add(getGroup(getAllGroup()));
+            } catch (FileNotFoundException e) {
+                // We need a special exception handling here to further support deCONZ REST API. On deCONZ group "0" may
+                // not exist and the APIs will return a different HTTP status code if requesting a non existing group
+                // (Hue: 200, deCONZ: 404).
+                // see https://github.com/openhab/openhab-addons/issues/9175
+                logger.debug("Cannot find AllGroup with id \"0\" on Hue Bridge. Skipping it.");
+            }
+        }
 
-        for (String id : groupMap.keySet()) {
-            Group group = groupMap.get(id);
+        groupMap.forEach((id, group) -> {
             group.setId(id);
             groupList.add(group);
-        }
+        });
 
         return groupList;
     }
@@ -540,7 +570,11 @@ public class HueBridge {
         List<SuccessResponse> entries = safeFromJson(result.getBody(), SuccessResponse.GSON_TYPE);
         SuccessResponse response = entries.get(0);
 
-        return (String) response.success.get("/groups/" + enc(group.getId()) + "/name");
+        String groupName = (String) response.success.get("/groups/" + enc(group.getId()) + "/name");
+        if (groupName == null) {
+            throw new ApiException("Response didn't contain group name.");
+        }
+        return groupName;
     }
 
     /**
@@ -590,7 +624,11 @@ public class HueBridge {
         List<SuccessResponse> entries = safeFromJson(result.getBody(), SuccessResponse.GSON_TYPE);
         SuccessResponse response = entries.get(0);
 
-        return (String) response.success.get("/groups/" + enc(group.getId()) + "/name");
+        String groupName = (String) response.success.get("/groups/" + enc(group.getId()) + "/name");
+        if (groupName == null) {
+            throw new ApiException("Response didn't contain group name.");
+        }
+        return groupName;
     }
 
     /**
@@ -601,13 +639,12 @@ public class HueBridge {
      * @throws UnauthorizedException thrown if the user no longer exists
      * @throws EntityNotAvailableException thrown if the specified group no longer exists
      */
-    public void setGroupState(Group group, StateUpdate update) throws IOException, ApiException {
+    public CompletableFuture<Result> setGroupState(Group group, StateUpdate update) {
         requireAuthentication();
 
         String body = update.toJson();
-        Result result = http.put(getRelativeURL("groups/" + enc(group.getId()) + "/action"), body);
-
-        handleErrors(result);
+        return http.putAsync(getRelativeURL("groups/" + enc(group.getId()) + "/action"), body, update.getMessageDelay(),
+                scheduler);
     }
 
     /**
@@ -803,11 +840,11 @@ public class HueBridge {
             @Override
             protected Result doNetwork(String address, String requestMethod, @Nullable String body) throws IOException {
                 // GET requests cannot be scheduled, so will continue working normally for convenience
-                if (requestMethod.equals("GET")) {
+                if ("GET".equals(requestMethod)) {
                     return super.doNetwork(address, requestMethod, body);
                 } else {
                     String extractedAddress = Util.quickMatch("^http://[^/]+(.+)$", address);
-                    JsonElement commandBody = new JsonParser().parse(body);
+                    JsonElement commandBody = body == null ? null : JsonParser.parseString(body);
                     scheduleCommand = new ScheduleCommand(extractedAddress, requestMethod, commandBody);
 
                     // Return a fake result that will cause an exception and the callback to end
@@ -846,6 +883,39 @@ public class HueBridge {
         Result result = http.delete(getRelativeURL("schedules/" + enc(schedule.getId())));
 
         handleErrors(result);
+    }
+
+    /**
+     * Returns the list of scenes that are not recyclable.
+     *
+     * @return all scenes that can be activated
+     */
+    public List<Scene> getScenes() throws IOException, ApiException {
+        requireAuthentication();
+
+        Result result = http.get(getRelativeURL("scenes"));
+        handleErrors(result);
+
+        Map<String, Scene> sceneMap = safeFromJson(result.getBody(), Scene.GSON_TYPE);
+        return sceneMap.entrySet().stream()//
+                .map(e -> {
+                    e.getValue().setId(e.getKey());
+                    return e.getValue();
+                })//
+                .filter(scene -> !scene.isRecycle())//
+                .sorted(Comparator.comparing(Scene::extractKeyForComparator))//
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Activate scene to all lights that belong to the scene.
+     *
+     * @param id the scene to be activated
+     * @throws IOException if the bridge cannot be reached
+     */
+    public CompletableFuture<Result> recallScene(String id) {
+        Group allLightsGroup = new Group();
+        return setGroupState(allLightsGroup, new StateUpdate().setScene(id));
     }
 
     /**
@@ -903,7 +973,11 @@ public class HueBridge {
         List<SuccessResponse> entries = safeFromJson(result.getBody(), SuccessResponse.GSON_TYPE);
         SuccessResponse response = entries.get(0);
 
-        return (String) response.success.get("username");
+        String username = (String) response.success.get("username");
+        if (username == null) {
+            throw new ApiException("Response didn't contain username");
+        }
+        return username;
     }
 
     /**
@@ -967,7 +1041,8 @@ public class HueBridge {
 
         handleErrors(result);
 
-        return gson.fromJson(result.getBody(), FullConfig.class);
+        FullConfig fullConfig = gson.fromJson(result.getBody(), FullConfig.class);
+        return Objects.requireNonNull(fullConfig);
     }
 
     // Used as assert in requests that require authentication

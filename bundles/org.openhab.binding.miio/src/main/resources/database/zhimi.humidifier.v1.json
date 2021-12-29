@@ -11,12 +11,15 @@
 				"channel": "power",
 				"type": "Switch",
 				"refresh": true,
-				"channelGroup": "actions",
 				"actions": [
 					{
 						"command": "set_power",
 						"parameterType": "ONOFF"
 					}
+				],
+				"category": "switch",
+				"tags": [
+					"Switch"
 				]
 			},
 			{
@@ -31,16 +34,25 @@
 						"command": "set_mode",
 						"parameterType": "STRING"
 					}
+				],
+				"tags": [
+					"Control"
 				]
 			},
 			{
 				"property": "humidity",
 				"friendlyName": "Humidity",
 				"channel": "humidity",
-				"type": "Number",
+				"type": "Number:Dimensionless",
+				"unit": "PERCENT",
 				"refresh": true,
 				"ChannelGroup": "Status",
-				"actions": []
+				"actions": [],
+				"category": "humidity",
+				"tags": [
+					"Measurement",
+					"Humidity"
+				]
 			},
 			{
 				"property": "limit_hum",
@@ -63,7 +75,10 @@
 				"type": "Number",
 				"refresh": true,
 				"ChannelGroup": "Status",
-				"actions": []
+				"actions": [],
+				"tags": [
+					"Measurement"
+				]
 			},
 			{
 				"property": "trans_level",
@@ -76,9 +91,9 @@
 			},
 			{
 				"property": "led_b",
-				"friendlyName": "Led Brightness",
+				"friendlyName": "LED Brightness",
 				"channel": "bright",
-				"type": "Number",
+				"type": "Dimmer",
 				"refresh": true,
 				"ChannelGroup": "actions",
 				"actions": [
@@ -129,17 +144,25 @@
 				"property": "use_time",
 				"friendlyName": "Run Time",
 				"channel": "usedhours",
-				"type": "Number",
+				"type": "Number:Time",
+				"unit": "hours",
+				"stateDescription": {
+					"pattern": "%.0f %unit%"
+				},
 				"refresh": true,
 				"transformation": "SecondsToHours",
 				"ChannelGroup": "Status",
-				"actions": []
+				"actions": [],
+				"category": "time"
 			},
 			{
 				"property": "speed",
 				"friendlyName": "Motor Speed",
 				"channel": "motorspeed",
 				"type": "Number",
+				"stateDescription": {
+					"pattern": "%.0f rpm"
+				},
 				"refresh": true,
 				"ChannelGroup": "Status",
 				"actions": []
@@ -148,11 +171,21 @@
 				"property": "temp_dec",
 				"friendlyName": "Temperature",
 				"channel": "temperature",
-				"type": "Number",
+				"type": "Number:Temperature",
+				"unit": "CELSIUS",
+				"stateDescription": {
+					"pattern": "%.1f %unit%",
+					"readOnly": true
+				},
 				"refresh": true,
 				"transformation": "/10",
 				"ChannelGroup": "Status",
-				"actions": []
+				"actions": [],
+				"category": "temperature",
+				"tags": [
+					"Measurement",
+					"Temperature"
+				]
 			},
 			{
 				"property": "child_lock",

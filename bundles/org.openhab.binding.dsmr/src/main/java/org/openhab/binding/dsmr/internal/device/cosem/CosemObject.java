@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -20,7 +20,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.types.State;
+import org.openhab.core.types.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -123,16 +123,14 @@ public class CosemObject {
 
             int cosemValueItr = 0;
             while (cosemValueMatcher.find()) {
-                Entry<String, CosemValueDescriptor<?>> valueDescriptorEntry = type.getDescriptor(cosemValueItr);
-                State cosemValue = valueDescriptorEntry.getValue().getStateValue(cosemValueMatcher.group(2));
+                final Entry<String, CosemValueDescriptor<?>> valueDescriptorEntry = type.getDescriptor(cosemValueItr);
+                final State cosemValue = valueDescriptorEntry.getValue().getStateValue(cosemValueMatcher.group(2));
 
-                if (cosemValue != null) {
-                    if (!cosemValues.containsKey(valueDescriptorEntry.getKey())) {
-                        cosemValues.put(valueDescriptorEntry.getKey(), cosemValue);
-                    } else {
-                        logger.warn("Value for descriptor {} already exists, dropping value {}", valueDescriptorEntry,
-                                cosemValue);
-                    }
+                if (!cosemValues.containsKey(valueDescriptorEntry.getKey())) {
+                    cosemValues.put(valueDescriptorEntry.getKey(), cosemValue);
+                } else {
+                    logger.warn("Value for descriptor {} already exists, dropping value {}", valueDescriptorEntry,
+                            cosemValue);
                 }
                 cosemValueItr++;
             }

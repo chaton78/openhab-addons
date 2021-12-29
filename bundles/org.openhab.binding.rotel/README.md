@@ -107,12 +107,13 @@ The thing requires the following configuration parameters:
 All things have the following parameters: serialPort, host and port.
 Some have additional parameters listed in the next table:
 
-| Thing Type | Parameters available in addition to serialPort, host and port |
-|------------|---------------------------------------------------------------|
-| ra1572     | protocol (ASCII_V2 by default)                                |
-| ra1592     | protocol (ASCII_V2 by default)                                |
-| rc1572     | protocol (ASCII_V2 by default)                                |
-| rcd1572    | protocol (ASCII_V2 by default)                                |
+| Thing Type | Parameters available in addition to serialPort, host and port   |
+|------------|-----------------------------------------------------------------|
+| ra1572     | protocol (ASCII_V2 by default); as of firmware V2.65, select V2 |
+| ra1592     | protocol (ASCII_V2 by default); as of firmware V1.53, select V2 |
+| rc1572     | protocol (ASCII_V2 by default); as of firmware V2.65, select V2 |
+| rc1590     | protocol (ASCII_V2 by default); as of firmware V1.40, select V2 |
+| rcd1572    | protocol (ASCII_V2 by default); as of firmware V2.33, select V2 |
 | rsp1066    | inputLabelVideo1, inputLabelVideo2, inputLabelVideo3, inputLabelVideo4, inputLabelVideo5 |
 | rsp1068    | inputLabelCd, inputLabelTuner, inputLabelTape, inputLabelVideo1, inputLabelVideo2, inputLabelVideo3, inputLabelVideo4, inputLabelVideo5 |
 | rsp1069    | inputLabelCd, inputLabelTuner, inputLabelTape, inputLabelVideo1, inputLabelVideo2, inputLabelVideo3, inputLabelVideo4, inputLabelVideo5 |
@@ -149,7 +150,7 @@ The following channels are available:
 | power, mainZone#power, zone2#power, zone3#power, zone4#power | Power               | Switch    | Power ON/OFF the equipment or the zone | ON, OFF                            |
 | source, mainZone#source, zone2#source, zone3#source, zone4#source | Source Input        | String    | Select the source input               | CD, TUNER, TAPE, VIDEO1, VIDEO2, VIDEO3, VIDEO4, VIDEO5, VIDEO6, VIDEO7, VIDEO8, USB, PCUSB, MULTI, PHONO, BLUETOOTH, AUX, AUX1, AUX2, AUX1_COAX, AUX1_OPTICAL, COAX1, COAX2, COAX3, OPTICAL1, OPTICAL2, OPTICAL3, XLR, RCD, FM, DAB, PLAYFI, IRADIO, NETWORK |
 | mainZone#recordSource | Record Source       | String    | Select the source to be recorded      | CD, TUNER, TAPE, VIDEO1, VIDEO2, VIDEO3, VIDEO4, VIDEO5, VIDEO6, USB, MAIN |
-| dsp, mainZone#dsp | DSP Mode            | String    | Select the DSP mode                   | NONE, STEREO3, STEREO5, STEREO7, STEREO9, STEREO11, MUSIC1, MUSIC2, MUSIC3, MUSIC4, PROLOGIC, PLIICINEMA, PLIIMUSIC, PLIIGAME, PLIIZ, NEO6MUSIC, NEO6CINEMA, ATMOS, NEURALX, BYPASS |
+| dsp, mainZone#dsp | DSP Mode            | String    | Select the DSP mode                   | NONE, STEREO3, STEREO5, STEREO7, STEREO9, STEREO11, MUSIC1, MUSIC2, MUSIC3, MUSIC4, PROLOGIC, PLIICINEMA, PLIIMUSIC, PLIIGAME, PLIIXCINEMA, PLIIXMUSIC, PLIIXGAME, PLIIZ, NEO6MUSIC, NEO6CINEMA, ATMOS, NEURALX, BYPASS |
 | mainZone#volumeUpDown, zone2#volumeUpDown | Volume              | Number    | Increase or decrease the volume       | INCREASE, DECREASE, value |
 | volume, mainZone#volume, zone2#volume, zone3#volume, zone4#volume | Volume              | Dimmer    | Adjust the volume                     | value between 0 and 100 |
 | mute, mainZone#mute, zone2#mute, zone3#mute, zone4#mute | Mute                | Switch    | Mute/unmute the sound                 | ON, OFF                            |

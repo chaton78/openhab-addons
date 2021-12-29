@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -24,28 +24,28 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.cache.ExpiringCache;
-import org.eclipse.smarthome.core.library.CoreItemFactory;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.QuantityType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandlerService;
-import org.eclipse.smarthome.core.thing.binding.builder.ThingBuilder;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.networkupstools.internal.NUTBindingConstants.Parameters;
 import org.openhab.binding.networkupstools.internal.nut.NutApi;
 import org.openhab.binding.networkupstools.internal.nut.NutException;
 import org.openhab.binding.networkupstools.internal.nut.NutFunction;
+import org.openhab.core.cache.ExpiringCache;
+import org.openhab.core.library.CoreItemFactory;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.thing.binding.ThingHandlerService;
+import org.openhab.core.thing.binding.builder.ThingBuilder;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.State;
+import org.openhab.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +64,7 @@ public class NUTHandler extends BaseThingHandler {
      * Map to cache user configured channels with their configuration. Channels are dynamically created at
      * initialization phase of the thing.
      */
-    private final Map<ChannelUID, @Nullable NUTDynamicChannelConfiguration> userChannelToNutMap = new HashMap<>();
+    private final Map<ChannelUID, NUTDynamicChannelConfiguration> userChannelToNutMap = new HashMap<>();
     /**
      * Cache of the UPS status. When expired makes a call to the NUT server is done to get the actual status. Expires at
      * the
@@ -309,7 +309,7 @@ public class NUTHandler extends BaseThingHandler {
      * @param nutApiFunction function that will be called
      * @return the value returned by the api call or null in case of an error
      */
-    private <T> T wrappedNutApiCall(final NutFunction<String, T> nutApiFunction, String logging) {
+    private @Nullable <T> T wrappedNutApiCall(final NutFunction<String, T> nutApiFunction, String logging) {
         try {
             final NUTConfiguration localConfig = config;
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,12 +16,13 @@ import static java.lang.Math.*;
 
 import java.awt.Color;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.HSBType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.PercentType;
-import org.eclipse.smarthome.core.library.types.StringType;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.HSBType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.StringType;
 
 /**
  * The {@link LEDStateDTO} class holds the data and the settings for a LED device (i.e. the selected colors, the running
@@ -92,13 +93,13 @@ public class LEDStateDTO {
         PercentType b = new PercentType(new BigDecimal(hsv[2]).multiply(new BigDecimal(100.0)));
         HSBType hsbType = new HSBType(h, s, b);
 
-        PercentType w = new PercentType(new BigDecimal(white).divide(new BigDecimal(255.0), 3, BigDecimal.ROUND_HALF_UP)
+        PercentType w = new PercentType(new BigDecimal(white).divide(new BigDecimal(255.0), 3, RoundingMode.HALF_UP)
                 .multiply(new BigDecimal(100.0)));
-        PercentType w2 = new PercentType(new BigDecimal(white2)
-                .divide(new BigDecimal(255.0), 3, BigDecimal.ROUND_HALF_UP).multiply(new BigDecimal(100.0)));
+        PercentType w2 = new PercentType(new BigDecimal(white2).divide(new BigDecimal(255.0), 3, RoundingMode.HALF_UP)
+                .multiply(new BigDecimal(100.0)));
 
         // Range: 0x00 .. 0x1F. Speed is inversed
-        BigDecimal ps = new BigDecimal(programSpeed).divide(new BigDecimal(0x1f), 2, BigDecimal.ROUND_HALF_UP)
+        BigDecimal ps = new BigDecimal(programSpeed).divide(new BigDecimal(0x1f), 2, RoundingMode.HALF_UP)
                 .multiply(new BigDecimal(100.0));
         PercentType e = new PercentType(new BigDecimal(100.0).subtract(ps));
 

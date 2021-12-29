@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -25,19 +25,22 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.config.core.Configuration;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.systeminfo.internal.model.DeviceNotFoundException;
 import org.openhab.binding.systeminfo.internal.model.SysteminfoInterface;
+import org.openhab.core.config.core.Configuration;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.library.unit.Units;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.State;
+import org.openhab.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,18 +109,14 @@ public class SysteminfoHandler extends BaseThingHandler {
 
     @Override
     public void initialize() {
-        logger.debug("Start initializing!");
-
         if (instantiateSysteminfoLibrary() && isConfigurationValid() && updateProperties()) {
             groupChannelsByPriority();
             scheduleUpdates();
-            logger.debug("Thing is successfully initialized!");
             updateStatus(ThingStatus.ONLINE);
         } else {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.HANDLER_INITIALIZING_ERROR,
                     "Thing cannot be initialized!");
         }
-
     }
 
     private boolean instantiateSysteminfoLibrary() {
@@ -168,7 +167,6 @@ public class SysteminfoHandler extends BaseThingHandler {
             logger.debug("Cannot get system properties! Please try to restart the binding.", e);
             return false;
         }
-
     }
 
     private void groupChannelsByPriority() {
@@ -236,7 +234,6 @@ public class SysteminfoHandler extends BaseThingHandler {
         scheduler.schedule(() -> {
             publishData(lowPriorityChannels);
         }, WAIT_TIME_CHANNEL_ITEM_LINK_INIT, TimeUnit.SECONDS);
-
     }
 
     private void publishData(Set<ChannelUID> channels) {
@@ -293,6 +290,13 @@ public class SysteminfoHandler extends BaseThingHandler {
 
         try {
             switch (channelID) {
+                case CHANNEL_MEMORY_HEAP_AVAILABLE:
+                    state = new QuantityType<>(Runtime.getRuntime().freeMemory(), Units.BYTE);
+                    break;
+                case CHANNEL_MEMORY_USED_HEAP_PERCENT:
+                    state = new DecimalType((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())
+                            * 100 / Runtime.getRuntime().maxMemory());
+                    break;
                 case CHANNEL_DISPLAY_INFORMATION:
                     state = systeminfo.getDisplayInformation(deviceIndex);
                     break;
@@ -603,5 +607,4 @@ public class SysteminfoHandler extends BaseThingHandler {
     public void dispose() {
         stopScheduledUpdates();
     }
-
 }

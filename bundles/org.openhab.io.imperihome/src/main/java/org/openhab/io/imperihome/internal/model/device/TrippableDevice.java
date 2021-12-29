@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,13 +12,12 @@
  */
 package org.openhab.io.imperihome.internal.model.device;
 
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.smarthome.core.items.Item;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.OpenClosedType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.types.State;
+import org.openhab.core.items.Item;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.OpenClosedType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.types.State;
 import org.openhab.io.imperihome.internal.model.param.DeviceParam;
 import org.openhab.io.imperihome.internal.model.param.ParamType;
 
@@ -44,17 +43,17 @@ public class TrippableDevice extends AbstractDevice {
         boolean tripped = false;
 
         if (item.getStateAs(OpenClosedType.class) != null) {
-            OpenClosedType state = (OpenClosedType) item.getStateAs(OpenClosedType.class);
+            OpenClosedType state = item.getStateAs(OpenClosedType.class);
             tripped = state == OpenClosedType.CLOSED;
         } else if (item.getStateAs(OnOffType.class) != null) {
-            OnOffType state = (OnOffType) item.getStateAs(OnOffType.class);
+            OnOffType state = item.getStateAs(OnOffType.class);
             tripped = state == OnOffType.ON;
         } else if (item.getStateAs(DecimalType.class) != null) {
-            DecimalType state = (DecimalType) item.getStateAs(DecimalType.class);
-            tripped = state.intValue() != 0;
+            DecimalType state = item.getStateAs(DecimalType.class);
+            tripped = state != null && state.intValue() != 0;
         } else if (item.getStateAs(StringType.class) != null) {
-            StringType state = (StringType) item.getStateAs(StringType.class);
-            tripped = StringUtils.isNotBlank(state.toString()) && !state.toString().trim().equals("ok");
+            StringType state = item.getStateAs(StringType.class);
+            tripped = state != null && !state.toString().isBlank() && !state.toString().trim().equals("ok");
         } else {
             logger.debug("Can't interpret state {} as tripped status", item.getState());
         }
@@ -65,5 +64,4 @@ public class TrippableDevice extends AbstractDevice {
             addParam(new DeviceParam(ParamType.LAST_TRIP, String.valueOf(System.currentTimeMillis())));
         }
     }
-
 }

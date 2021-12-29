@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -15,13 +15,13 @@ package org.openhab.binding.somfytahoma.internal.handler;
 import static org.openhab.binding.somfytahoma.internal.SomfyTahomaBindingConstants.EXECUTE_ACTION;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.types.Command;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.types.Command;
 
 /**
  * The {@link SomfyTahomaActionGroupHandler} is responsible for handling commands,
@@ -32,25 +32,26 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class SomfyTahomaActionGroupHandler extends SomfyTahomaBaseThingHandler {
 
-    private final Logger logger = LoggerFactory.getLogger(SomfyTahomaActionGroupHandler.class);
-
     public SomfyTahomaActionGroupHandler(Thing thing) {
         super(thing);
     }
 
     @Override
-    public void initialize() {
-        updateStatus(ThingStatus.ONLINE);
-    }
-
-    @Override
-    protected boolean isAlwaysOnline() {
-        return true;
+    public void initializeThing(@Nullable ThingStatus bridgeStatus) {
+        if (bridgeStatus != null) {
+            url = getURL();
+            if (bridgeStatus == ThingStatus.ONLINE) {
+                updateStatus(ThingStatus.ONLINE);
+            } else {
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_OFFLINE);
+            }
+        } else {
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_UNINITIALIZED);
+        }
     }
 
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
-        logger.debug("Action group: {} received command: {}", channelUID.getId(), command);
         if (EXECUTE_ACTION.equals(channelUID.getId()) && command instanceof OnOffType) {
             if (OnOffType.ON.equals(command)) {
                 executeActionGroup();

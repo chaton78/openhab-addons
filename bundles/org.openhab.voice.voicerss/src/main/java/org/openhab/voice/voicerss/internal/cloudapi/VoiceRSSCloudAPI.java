@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,7 +17,7 @@ import java.io.InputStream;
 import java.util.Locale;
 import java.util.Set;
 
-import org.eclipse.smarthome.core.audio.AudioFormat;
+import org.openhab.core.audio.AudioFormat;
 
 /**
  * Interface which represents the functionality needed from the VoiceRSS TTS
@@ -68,6 +68,8 @@ public interface VoiceRSSCloudAPI {
      *            the text to translate into speech
      * @param locale
      *            the locale to use
+     * @param voice
+     *            the voice to use, "default" for the default voice
      * @param audioFormat
      *            the audio format to use
      * @return an InputStream to the audio data in specified format
@@ -75,5 +77,6 @@ public interface VoiceRSSCloudAPI {
      *             will be raised if the audio data can not be retrieved from
      *             cloud service
      */
-    InputStream getTextToSpeech(String apiKey, String text, String locale, String audioFormat) throws IOException;
+    InputStream getTextToSpeech(String apiKey, String text, String locale, String voice, String audioFormat)
+            throws IOException;
 }

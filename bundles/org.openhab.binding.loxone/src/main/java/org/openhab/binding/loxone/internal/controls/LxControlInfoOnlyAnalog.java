@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,12 +14,12 @@ package org.openhab.binding.loxone.internal.controls;
 
 import static org.openhab.binding.loxone.internal.LxBindingConstants.*;
 
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.type.ChannelTypeUID;
-import org.eclipse.smarthome.core.types.StateDescriptionFragmentBuilder;
 import org.openhab.binding.loxone.internal.types.LxCategory;
 import org.openhab.binding.loxone.internal.types.LxTags;
 import org.openhab.binding.loxone.internal.types.LxUuid;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.type.ChannelTypeUID;
+import org.openhab.core.types.StateDescriptionFragmentBuilder;
 
 /**
  * An InfoOnlyAnalog type of control on Loxone Miniserver.

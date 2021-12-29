@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,19 +12,17 @@
  */
 package org.openhab.binding.mqtt.handler;
 
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.spy;
 
-import java.util.concurrent.CompletableFuture;
+import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.io.transport.mqtt.MqttBrokerConnection;
-import org.eclipse.smarthome.io.transport.mqtt.MqttConnectionState;
-import org.eclipse.smarthome.io.transport.mqtt.internal.client.MqttAsyncClientWrapper;
-
-import com.hivemq.client.mqtt.MqttClientState;
+import org.openhab.core.io.transport.mqtt.MqttBrokerConnection;
+import org.openhab.core.io.transport.mqtt.MqttConnectionState;
+import org.openhab.core.io.transport.mqtt.internal.Subscription;
+import org.openhab.core.io.transport.mqtt.internal.client.MqttAsyncClientWrapper;
 
 /**
  * We need an extended MqttBrokerConnection to overwrite the protected `connectionCallbacks` with
@@ -53,56 +51,21 @@ public class MqttBrokerConnectionEx extends MqttBrokerConnection {
         connectionCallback = spy(new ConnectionCallback(o));
     }
 
+    public Map<String, Subscription> getSubscribers() {
+        return subscribers;
+    }
+
+    public ConnectionCallback getCallback() {
+        return connectionCallback;
+    }
+
     @Override
     protected MqttAsyncClientWrapper createClient() {
-        MqttAsyncClientWrapper mockedClient = mock(MqttAsyncClientWrapper.class);
-        // connect
-        doAnswer(i -> {
-            if (!connectTimeout) {
-                connectionCallback.onConnected(null);
-                connectionStateOverwrite = MqttConnectionState.CONNECTED;
-                return CompletableFuture.completedFuture(null);
-            }
-            return new CompletableFuture<Boolean>();
-        }).when(mockedClient).connect(any(), anyInt(), any(), any());
-        doAnswer(i -> {
-            if (disconnectSuccess) {
-                connectionCallback.onDisconnected(new Throwable("disconnect called"));
-                connectionStateOverwrite = MqttConnectionState.DISCONNECTED;
-                return CompletableFuture.completedFuture(null);
-            }
-            return new CompletableFuture<Boolean>();
-        }).when(mockedClient).disconnect();
-        // subscribe
-        doAnswer(i -> {
-            if (subscribeSuccess) {
-                return CompletableFuture.completedFuture(null);
-            } else {
-                CompletableFuture<Void> future = new CompletableFuture<>();
-                future.completeExceptionally(new Throwable("subscription failed"));
-                return future;
-            }
-        }).when(mockedClient).subscribe(any(), anyInt(), any());
-        // unsubscribe
-        doAnswer(i -> {
-            if (unsubscribeSuccess) {
-                return CompletableFuture.completedFuture(null);
-            } else {
-                CompletableFuture<Void> future = new CompletableFuture<>();
-                future.completeExceptionally(new Throwable("unsubscription failed"));
-                return future;
-            }
-        }).when(mockedClient).unsubscribe(any());
-        // state
-        doAnswer(i -> {
-            return MqttClientState.CONNECTED;
-        }).when(mockedClient).getState();
-        return mockedClient;
+        return new MqttAsyncClientWrapperEx(this);
     }
 
     @Override
     public @NonNull MqttConnectionState connectionState() {
         return connectionStateOverwrite;
     }
-
 }

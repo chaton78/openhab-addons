@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,13 +17,13 @@ import static org.openhab.binding.lgwebos.internal.LGWebOSBindingConstants.*;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandlerFactory;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory;
-import org.eclipse.smarthome.io.net.http.WebSocketFactory;
 import org.openhab.binding.lgwebos.internal.handler.LGWebOSHandler;
+import org.openhab.core.io.net.http.WebSocketFactory;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.binding.BaseThingHandlerFactory;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.thing.binding.ThingHandlerFactory;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -44,13 +44,17 @@ public class LGWebOSHandlerFactory extends BaseThingHandlerFactory {
 
     private final WebSocketClient webSocketClient;
 
+    private final LGWebOSStateDescriptionOptionProvider stateDescriptionProvider;
+
     @Activate
-    public LGWebOSHandlerFactory(final @Reference WebSocketFactory webSocketFactory) {
+    public LGWebOSHandlerFactory(final @Reference WebSocketFactory webSocketFactory,
+            final @Reference LGWebOSStateDescriptionOptionProvider stateDescriptionProvider) {
         /*
          * Cannot use openHAB's shared web socket client (webSocketFactory.getCommonWebSocketClient()) as we have to
          * change client settings.
          */
         this.webSocketClient = webSocketFactory.createWebSocketClient("lgwebos");
+        this.stateDescriptionProvider = stateDescriptionProvider;
     }
 
     @Override
@@ -62,7 +66,7 @@ public class LGWebOSHandlerFactory extends BaseThingHandlerFactory {
     protected @Nullable ThingHandler createHandler(Thing thing) {
         ThingTypeUID thingTypeUID = thing.getThingTypeUID();
         if (thingTypeUID.equals(THING_TYPE_WEBOSTV)) {
-            return new LGWebOSHandler(thing, webSocketClient);
+            return new LGWebOSHandler(thing, webSocketClient, stateDescriptionProvider);
         }
         return null;
     }
@@ -77,8 +81,8 @@ public class LGWebOSHandlerFactory extends BaseThingHandlerFactory {
         // reduce timeout from default 15sec
         this.webSocketClient.setConnectTimeout(1000);
 
-        // channel and app listing are json docs up to 3MB
-        this.webSocketClient.getPolicy().setMaxTextMessageSize(3 * 1024 * 1024);
+        // channel and app listing are json docs up to 4MB
+        this.webSocketClient.getPolicy().setMaxTextMessageSize(4 * 1024 * 1024);
 
         // since this is not using openHAB's shared web socket client we need to start and stop
         try {
@@ -97,5 +101,4 @@ public class LGWebOSHandlerFactory extends BaseThingHandlerFactory {
             logger.warn("Unable to to stop websocket client.", e);
         }
     }
-
 }

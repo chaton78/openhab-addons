@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -22,8 +22,8 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.Random;
 
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.smarthome.core.util.HexUtils;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.util.HexUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,30 +34,30 @@ import org.slf4j.LoggerFactory;
  *
  * @author Krzysztof Goworek - Initial contribution
  */
+@NonNullByDefault
 public class Ethm1Module extends SatelModule {
+
+    private static final ByteArrayInputStream EMPTY_INPUT_STREAM = new ByteArrayInputStream(new byte[0]);
 
     private final Logger logger = LoggerFactory.getLogger(Ethm1Module.class);
 
-    private String host;
-    private int port;
-    private String encryptionKey;
+    private final String host;
+    private final int port;
+    private final String encryptionKey;
 
     /**
      * Creates new instance with host, port, timeout and encryption key set to
      * specified values.
      *
-     * @param host
-     *            host name or IP of ETHM-1 module
-     * @param port
-     *            TCP port the module listens on
-     * @param timeout
-     *            timeout value in milliseconds for connect/read/write
-     *            operations
-     * @param encryptionKey
-     *            encryption key for encrypted communication
+     * @param host host name or IP of ETHM-1 module
+     * @param port TCP port the module listens on
+     * @param timeout timeout value in milliseconds for connect/read/write operations
+     * @param encryptionKey encryption key for encrypted communication
+     * @param extPayloadSupport if <code>true</code>, the module supports extended command payload for reading
+     *            INTEGRA 256 state
      */
-    public Ethm1Module(String host, int port, int timeout, String encryptionKey) {
-        super(timeout);
+    public Ethm1Module(String host, int port, int timeout, String encryptionKey, boolean extPayloadSupport) {
+        super(timeout, extPayloadSupport);
 
         this.host = host;
         this.port = port;
@@ -66,17 +66,17 @@ public class Ethm1Module extends SatelModule {
 
     @Override
     protected CommunicationChannel connect() throws ConnectionFailureException {
-        logger.info("Connecting to ETHM-1 module at {}:{}", this.host, this.port);
+        logger.info("Connecting to ETHM-1 module at {}:{}", host, port);
 
         try {
             Socket socket = new Socket();
-            socket.connect(new InetSocketAddress(this.host, this.port), this.getTimeout());
+            socket.connect(new InetSocketAddress(host, port), this.getTimeout());
             logger.info("ETHM-1 module connected successfully");
 
-            if (StringUtils.isBlank(this.encryptionKey)) {
+            if (encryptionKey.isBlank()) {
                 return new TCPCommunicationChannel(socket);
             } else {
-                return new EncryptedCommunicationChannel(socket, this.encryptionKey);
+                return new EncryptedCommunicationChannel(socket, encryptionKey);
             }
         } catch (SocketTimeoutException e) {
             throw new ConnectionFailureException("Connection timeout", e);
@@ -138,11 +138,11 @@ public class Ethm1Module extends SatelModule {
             this.rollingCounter = 0;
 
             this.inputStream = new InputStream() {
-                private ByteArrayInputStream inputBuffer = null;
+                private ByteArrayInputStream inputBuffer = EMPTY_INPUT_STREAM;
 
                 @Override
                 public int read() throws IOException {
-                    if (inputBuffer == null || inputBuffer.available() == 0) {
+                    if (inputBuffer.available() == 0) {
                         // read message and decrypt it
                         byte[] data = readMessage(socket.getInputStream());
                         // create new buffer
@@ -255,5 +255,4 @@ public class Ethm1Module extends SatelModule {
             os.flush();
         }
     }
-
 }

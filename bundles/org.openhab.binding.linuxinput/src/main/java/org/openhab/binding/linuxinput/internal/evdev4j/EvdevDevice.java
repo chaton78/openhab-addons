@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,15 +12,7 @@
  */
 package org.openhab.binding.linuxinput.internal.evdev4j;
 
-import jnr.constants.platform.Errno;
-import jnr.constants.platform.OpenFlags;
-import jnr.enxio.channels.NativeDeviceChannel;
-import jnr.enxio.channels.NativeFileSelectorProvider;
-import jnr.ffi.byref.PointerByReference;
-import jnr.posix.POSIX;
-import jnr.posix.POSIXFactory;
-import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.binding.linuxinput.internal.evdev4j.jnr.EvdevLibrary;
+import static org.openhab.binding.linuxinput.internal.evdev4j.Utils.combineFlags;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -37,7 +29,16 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-import static org.openhab.binding.linuxinput.internal.evdev4j.Utils.combineFlags;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.binding.linuxinput.internal.evdev4j.jnr.EvdevLibrary;
+
+import jnr.constants.platform.Errno;
+import jnr.constants.platform.OpenFlags;
+import jnr.enxio.channels.NativeDeviceChannel;
+import jnr.enxio.channels.NativeFileSelectorProvider;
+import jnr.ffi.byref.PointerByReference;
+import jnr.posix.POSIX;
+import jnr.posix.POSIXFactory;
 
 /**
  * Classbased access to libevdev-input functionality.
@@ -188,7 +189,7 @@ public class EvdevDevice implements Closeable {
 
     public Collection<Key> enumerateKeys() {
         int minKey = 0;
-        int maxKey = 255 - 1;
+        int maxKey = lib.event_type_get_max(EvdevLibrary.Type.KEY.intValue());
         List<Key> result = new ArrayList<>();
         for (int i = minKey; i <= maxKey; i++) {
             if (has(EvdevLibrary.Type.KEY, i)) {
@@ -213,6 +214,11 @@ public class EvdevDevice implements Closeable {
 
         public String getName() {
             return lib.event_code_get_name(EvdevLibrary.Type.KEY.intValue(), code);
+        }
+
+        @Override
+        public String toString() {
+            return String.valueOf(code);
         }
     }
 

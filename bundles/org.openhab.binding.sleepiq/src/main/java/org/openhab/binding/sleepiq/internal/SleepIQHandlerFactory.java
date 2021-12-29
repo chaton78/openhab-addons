@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -20,19 +20,23 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.eclipse.smarthome.config.discovery.DiscoveryService;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.ThingUID;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandlerFactory;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory;
+import javax.ws.rs.client.ClientBuilder;
+
 import org.openhab.binding.sleepiq.internal.discovery.SleepIQBedDiscoveryService;
 import org.openhab.binding.sleepiq.internal.handler.SleepIQCloudHandler;
 import org.openhab.binding.sleepiq.internal.handler.SleepIQDualBedHandler;
+import org.openhab.core.config.discovery.DiscoveryService;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
+import org.openhab.core.thing.binding.BaseThingHandlerFactory;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.thing.binding.ThingHandlerFactory;
 import org.osgi.framework.ServiceRegistration;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +53,14 @@ public class SleepIQHandlerFactory extends BaseThingHandlerFactory {
 
     private final Logger logger = LoggerFactory.getLogger(SleepIQHandlerFactory.class);
 
+    private final ClientBuilder clientBuilder;
+
     private final Map<ThingUID, ServiceRegistration<?>> discoveryServiceReg = new HashMap<>();
+
+    @Activate
+    public SleepIQHandlerFactory(@Reference ClientBuilder clientBuilder) {
+        this.clientBuilder = clientBuilder;
+    }
 
     @Override
     public boolean supportsThingType(final ThingTypeUID thingTypeUID) {
@@ -62,7 +73,7 @@ public class SleepIQHandlerFactory extends BaseThingHandlerFactory {
 
         if (SleepIQCloudHandler.SUPPORTED_THING_TYPE_UIDS.contains(thingTypeUID)) {
             logger.debug("Creating SleepIQ cloud thing handler");
-            SleepIQCloudHandler cloudHandler = new SleepIQCloudHandler((Bridge) thing);
+            SleepIQCloudHandler cloudHandler = new SleepIQCloudHandler((Bridge) thing, clientBuilder);
             registerBedDiscoveryService(cloudHandler);
             return cloudHandler;
         } else if (SleepIQDualBedHandler.SUPPORTED_THING_TYPE_UIDS.contains(thingTypeUID)) {

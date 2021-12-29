@@ -36,6 +36,7 @@ If a device is removed or disconnects from the account the respective openHAB de
 
 All Things are updated according to the configured refresh time of their shared account Bridge.
 You may force an update by sending the `REFRESH` command to any channel of the Bridge Things.
+However this `REFRESH` command will not request data directly from the phone, but it will only make a query to the server.
 
 ## Channels
 
@@ -53,8 +54,8 @@ The following channels are available (if supported by the device):
 | batteryLevel       | Number   | Battery charge in percent                                                                                                                         |
 | findMyPhone        | Switch   | Triggers the ["Find My Phone"](https://support.apple.com/explore/find-my-iphone-ipad-mac-watch) functionality of the device (if available). |
 | location           | Location | GPS coordinates of the devices current/last known location                                                                                  |
-| locationAccuracy   | Number   | Accuracy of the last position report                                                                                                        |
-| locationLastUpdate | DateTime | Timestamp of the last location update                                                                                                       |
+| locationAccuracy   | Number   | Accuracy of the last position report (Advanced Option on UI)                                                                                                        |
+| locationLastUpdate | DateTime | Timestamp of the last location update  (Advanced Option on UI)                                                                                                       |
 
 ## Full Example
 
@@ -67,7 +68,7 @@ Bridge icloud:account:myaccount [appleId="mail@example.com", password="secure", 
 }
 ```
 
-The device ID can be found in the Paper UI inbox.
+The device ID can be found in the Inbox after it has been discovered.
 The information *@ "World"* is optional.
 
 ### icloud.items
@@ -115,7 +116,7 @@ then
     val PointType phone_location = iPhone_Location.state as PointType
     val int distance = phone_location.distanceFrom(home_location).intValue()
     // specify your preferred radius (in meters)
-    if ( distance < 200) {
+    if (distance < 200) {
         iPhone_Home.postUpdate(ON)
         logInfo("iPhone Home", "iPhone is at home.")
     } else {

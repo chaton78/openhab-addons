@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,9 +14,10 @@ package org.openhab.binding.bosesoundtouch.internal;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
-import org.apache.commons.lang.StringEscapeUtils;
-import org.eclipse.smarthome.core.types.StateOption;
+import org.apache.commons.lang3.StringEscapeUtils;
+import org.openhab.core.types.StateOption;
 
 import com.google.gson.annotations.Expose;
 
@@ -90,19 +91,19 @@ public class ContentItem {
     public boolean equals(Object obj) {
         if (obj instanceof ContentItem) {
             ContentItem other = (ContentItem) obj;
-            if (!isEqual(other.source, this.source)) {
+            if (!Objects.equals(other.source, this.source)) {
                 return false;
             }
-            if (!isEqual(other.sourceAccount, this.sourceAccount)) {
+            if (!Objects.equals(other.sourceAccount, this.sourceAccount)) {
                 return false;
             }
             if (other.presetable != this.presetable) {
                 return false;
             }
-            if (!isEqual(other.location, this.location)) {
+            if (!Objects.equals(other.location, this.location)) {
                 return false;
             }
-            if (!isEqual(other.itemName, this.itemName)) {
+            if (!Objects.equals(other.itemName, this.itemName)) {
                 return false;
             }
             return true;
@@ -192,7 +193,7 @@ public class ContentItem {
     public int getPresetID() {
         return presetID;
     }
-    
+
     public String getContainerArt() {
         return containerArt;
     }
@@ -249,7 +250,7 @@ public class ContentItem {
         }
         return xml;
     }
-    
+
     public StateOption toStateOption() {
         String stateOptionLabel = String.valueOf(presetID) + ": " + itemName;
         return new StateOption(String.valueOf(presetID), stateOptionLabel);
@@ -264,15 +265,5 @@ public class ContentItem {
         // return buffer.toString();
         // }
         return itemName;
-    }
-
-    private boolean isEqual(String s1, String s2) {
-        if (s1 == s2) {
-            return true;
-        }
-        if (s1 == null || s2 == null) {
-            return false;
-        }
-        return s1.equals(s2);
     }
 }

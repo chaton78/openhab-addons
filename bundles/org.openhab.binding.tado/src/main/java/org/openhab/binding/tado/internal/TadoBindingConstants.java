@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,7 +12,8 @@
  */
 package org.openhab.binding.tado.internal;
 
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.core.thing.ThingTypeUID;
 
 /**
  * The {@link TadoBinding} class defines common constants, which are
@@ -20,33 +21,36 @@ import org.eclipse.smarthome.core.thing.ThingTypeUID;
  *
  * @author Dennis Frommknecht - Initial contribution
  * @author Andrew Fiddian-Green - Added Low Battery Alarm, A/C Power and Open Window channels
- * 
+ *
  */
+@NonNullByDefault
 public class TadoBindingConstants {
 
     public static final String BINDING_ID = "tado";
 
     // List of all Thing Type UIDs
-    public final static ThingTypeUID THING_TYPE_HOME = new ThingTypeUID(BINDING_ID, "home");
-    public final static ThingTypeUID THING_TYPE_ZONE = new ThingTypeUID(BINDING_ID, "zone");
-    public final static ThingTypeUID THING_TYPE_MOBILE_DEVICE = new ThingTypeUID(BINDING_ID, "mobiledevice");
+    public static final ThingTypeUID THING_TYPE_HOME = new ThingTypeUID(BINDING_ID, "home");
+    public static final ThingTypeUID THING_TYPE_ZONE = new ThingTypeUID(BINDING_ID, "zone");
+    public static final ThingTypeUID THING_TYPE_MOBILE_DEVICE = new ThingTypeUID(BINDING_ID, "mobiledevice");
 
     // List of all Channel IDs
-    public final static String PROPERTY_HOME_TEMPERATURE_UNIT = "temperatureUnit";
+    public static final String PROPERTY_HOME_TEMPERATURE_UNIT = "temperatureUnit";
 
     public static enum TemperatureUnit {
         CELSIUS,
         FAHRENHEIT
     }
 
-    public final static String CHANNEL_ZONE_CURRENT_TEMPERATURE = "currentTemperature";
-    public final static String CHANNEL_ZONE_HUMIDITY = "humidity";
+    public static final String CHANNEL_HOME_PRESENCE_MODE = "homePresence";
 
-    public final static String CHANNEL_ZONE_HEATING_POWER = "heatingPower";
+    public static final String CHANNEL_ZONE_CURRENT_TEMPERATURE = "currentTemperature";
+    public static final String CHANNEL_ZONE_HUMIDITY = "humidity";
+
+    public static final String CHANNEL_ZONE_HEATING_POWER = "heatingPower";
     // air conditioning power
-    public final static String CHANNEL_ZONE_AC_POWER = "acPower";
+    public static final String CHANNEL_ZONE_AC_POWER = "acPower";
 
-    public final static String CHANNEL_ZONE_HVAC_MODE = "hvacMode";
+    public static final String CHANNEL_ZONE_HVAC_MODE = "hvacMode";
 
     public static enum HvacMode {
         OFF,
@@ -57,11 +61,11 @@ public class TadoBindingConstants {
         AUTO
     }
 
-    public final static String CHANNEL_ZONE_TARGET_TEMPERATURE = "targetTemperature";
+    public static final String CHANNEL_ZONE_TARGET_TEMPERATURE = "targetTemperature";
 
-    public final static String CHANNEL_ZONE_SWING = "swing";
+    public static final String CHANNEL_ZONE_SWING = "swing";
 
-    public final static String CHANNEL_ZONE_FAN_SPEED = "fanspeed";
+    public static final String CHANNEL_ZONE_FAN_SPEED = "fanspeed";
 
     public static enum FanSpeed {
         LOW,
@@ -70,7 +74,7 @@ public class TadoBindingConstants {
         AUTO
     }
 
-    public final static String CHANNEL_ZONE_OPERATION_MODE = "operationMode";
+    public static final String CHANNEL_ZONE_OPERATION_MODE = "operationMode";
 
     public static enum OperationMode {
         SCHEDULE,
@@ -79,23 +83,23 @@ public class TadoBindingConstants {
         UNTIL_CHANGE
     }
 
-    public final static String CHANNEL_ZONE_TIMER_DURATION = "timerDuration";
-    public final static String CHANNEL_ZONE_OVERLAY_EXPIRY = "overlayExpiry";
+    public static final String CHANNEL_ZONE_TIMER_DURATION = "timerDuration";
+    public static final String CHANNEL_ZONE_OVERLAY_EXPIRY = "overlayExpiry";
 
     // battery low alarm channel
-    public final static String CHANNEL_ZONE_BATTERY_LOW_ALARM = "batteryLowAlarm";
+    public static final String CHANNEL_ZONE_BATTERY_LOW_ALARM = "batteryLowAlarm";
     // open window detected channel
-    public final static String CHANNEL_ZONE_OPEN_WINDOW_DETECTED = "openWindowDetected";
+    public static final String CHANNEL_ZONE_OPEN_WINDOW_DETECTED = "openWindowDetected";
 
-    public final static String CHANNEL_MOBILE_DEVICE_AT_HOME = "atHome";
+    public static final String CHANNEL_MOBILE_DEVICE_AT_HOME = "atHome";
 
     // Configuration
-    public final static String CONFIG_ZONE_ID = "id";
-    public final static String CONFIG_MOBILE_DEVICE_ID = "id";
+    public static final String CONFIG_ZONE_ID = "id";
+    public static final String CONFIG_MOBILE_DEVICE_ID = "id";
 
     // Properties
-    public final static String PROPERTY_ZONE_NAME = "name";
-    public final static String PROPERTY_ZONE_TYPE = "type";
+    public static final String PROPERTY_ZONE_NAME = "name";
+    public static final String PROPERTY_ZONE_TYPE = "type";
 
     public static enum ZoneType {
         HEATING,
@@ -103,5 +107,5 @@ public class TadoBindingConstants {
         HOT_WATER
     }
 
-    public final static String PROPERTY_MOBILE_DEVICE_NAME = "name";
+    public static final String PROPERTY_MOBILE_DEVICE_NAME = "name";
 }

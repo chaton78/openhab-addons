@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,25 +13,24 @@
 package org.openhab.transform.map.internal.profiles;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.profiles.ProfileCallback;
-import org.eclipse.smarthome.core.thing.profiles.ProfileContext;
-import org.eclipse.smarthome.core.thing.profiles.ProfileTypeUID;
-import org.eclipse.smarthome.core.thing.profiles.StateProfile;
-import org.eclipse.smarthome.core.transform.TransformationException;
-import org.eclipse.smarthome.core.transform.TransformationHelper;
-import org.eclipse.smarthome.core.transform.TransformationService;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.Type;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.profiles.ProfileCallback;
+import org.openhab.core.thing.profiles.ProfileContext;
+import org.openhab.core.thing.profiles.ProfileTypeUID;
+import org.openhab.core.thing.profiles.StateProfile;
+import org.openhab.core.transform.TransformationException;
+import org.openhab.core.transform.TransformationHelper;
+import org.openhab.core.transform.TransformationService;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.State;
+import org.openhab.core.types.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Profile to offer the MapTransformationservice on a ItemChannelLink
  *
- * @author Stefan Triller - initial contribution
- *
+ * @author Stefan Triller - Initial contribution
  */
 @NonNullByDefault
 public class MapTransformationProfile implements StateProfile {
@@ -83,7 +82,6 @@ public class MapTransformationProfile implements StateProfile {
 
     @Override
     public void onStateUpdateFromItem(State state) {
-        callback.handleUpdate(state);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -26,7 +26,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.yamahareceiver.internal.YamahaReceiverBindingConstants.Feature;
 import org.openhab.binding.yamahareceiver.internal.YamahaReceiverBindingConstants.Zone;
 import org.openhab.binding.yamahareceiver.internal.config.YamahaUtils;
@@ -79,7 +78,7 @@ public class DeviceDescriptorXML {
         return result;
     }
 
-    public static abstract class HasCommands {
+    public abstract static class HasCommands {
 
         public final Set<String> commands;
 
@@ -157,14 +156,13 @@ public class DeviceDescriptorXML {
      * @param con
      */
     public void load(XMLConnection con) {
-
         // Get and store the Yamaha Description XML. This will be used to detect proper element naming in other areas.
         Node descNode = tryGetDescriptor(con);
 
         unitName = descNode.getAttributes().getNamedItem("Unit_Name").getTextContent();
 
         system = buildFeatureLookup(descNode, "Unit", tag -> tag, (tag, e) -> new SystemDescriptor(e))
-                .getOrDefault("System", null); // there will be only one System entry
+                .getOrDefault("System", this.system); // there will be only one System entry
 
         zones = buildFeatureLookup(descNode, "Subunit", tag -> YamahaUtils.tryParseEnum(Zone.class, tag),
                 (zone, e) -> new ZoneDescriptor(zone, e));
@@ -217,7 +215,7 @@ public class DeviceDescriptorXML {
             elements.forEach(e -> {
                 String tag = e.getAttribute("YNC_Tag");
 
-                if (StringUtils.isNotEmpty(tag)) {
+                if (!tag.isEmpty()) {
                     T key = converter.apply(tag);
                     if (key != null) {
                         V value = factory.apply(key, e);

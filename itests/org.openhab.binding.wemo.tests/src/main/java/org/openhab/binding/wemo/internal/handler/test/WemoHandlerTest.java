@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,24 +13,26 @@
 package org.openhab.binding.wemo.internal.handler.test;
 
 import static org.hamcrest.CoreMatchers.*;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.*;
 import static org.openhab.binding.wemo.internal.WemoBindingConstants.*;
 
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.ThingUID;
-import org.eclipse.smarthome.core.types.State;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.openhab.binding.wemo.internal.WemoBindingConstants;
 import org.openhab.binding.wemo.internal.handler.WemoHandler;
 import org.openhab.binding.wemo.internal.http.WemoHttpCall;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.library.unit.Units;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
+import org.openhab.core.types.State;
 
 /**
  * Tests for {@link WemoHandler}.
@@ -40,27 +42,27 @@ import org.openhab.binding.wemo.internal.http.WemoHttpCall;
  */
 public class WemoHandlerTest {
 
-    private final ThingTypeUID THING_TYPE = WemoBindingConstants.THING_TYPE_INSIGHT;
-    private final String THING_ID = "test";
+    private static final ThingTypeUID THING_TYPE = WemoBindingConstants.THING_TYPE_INSIGHT;
+    private static final String THING_ID = "test";
 
     private MockWemoHandler handler;
 
-    private final String SERVICE_ID = "insight";
-    private final String PARAMS_NAME = "InsightParams";
+    private static final String SERVICE_ID = "insight";
+    private static final String PARAMS_NAME = "InsightParams";
     private WemoInsightParams insightParams;
 
     /** Used for all tests, where expected value is time in seconds **/
-    private final int TIME_PARAM = 4702;
+    private static final int TIME_PARAM = 4702;
 
     /** Represents a state parameter, where 1 stays for ON and 0 stays for OFF **/
-    private final int STATE_PARAM = 1;
+    private static final int STATE_PARAM = 1;
 
     /** Represents power in Wats **/
-    private final int POWER_PARAM = 54;
+    private static final int POWER_PARAM = 54;
 
     private final Thing thing = mock(Thing.class);
 
-    @Before
+    @BeforeEach
     public void setUp() {
         insightParams = new WemoInsightParams();
         when(thing.getUID()).thenReturn(new ThingUID(THING_TYPE, THING_ID));
@@ -68,7 +70,7 @@ public class WemoHandlerTest {
         when(thing.getStatus()).thenReturn(ThingStatus.ONLINE);
     }
 
-    @After
+    @AfterEach
     public void clear() {
         handler.channelState = null;
         handler.channelToWatch = null;
@@ -122,7 +124,7 @@ public class WemoHandlerTest {
     @Test
     public void assertThatChannelAVERAGEPOWERIsUpdatedOnReceivedValue() {
         insightParams.avgPower = POWER_PARAM;
-        State expectedStateType = new DecimalType(POWER_PARAM);
+        State expectedStateType = new QuantityType<>(POWER_PARAM, Units.WATT);
         String expectedChannel = CHANNEL_AVERAGEPOWER;
 
         testOnValueReceived(expectedChannel, expectedStateType, insightParams.toString());

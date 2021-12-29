@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,6 +13,7 @@
 package org.openhab.binding.tellstick.internal.live;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -34,15 +35,15 @@ import org.asynchttpclient.Response;
 import org.asynchttpclient.oauth.ConsumerKey;
 import org.asynchttpclient.oauth.OAuthSignatureCalculator;
 import org.asynchttpclient.oauth.RequestToken;
-import org.eclipse.smarthome.core.library.types.IncreaseDecreaseType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.PercentType;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.State;
 import org.openhab.binding.tellstick.internal.TelldusBindingException;
 import org.openhab.binding.tellstick.internal.handler.TelldusDeviceController;
 import org.openhab.binding.tellstick.internal.live.xml.TelldusLiveResponse;
 import org.openhab.binding.tellstick.internal.live.xml.TellstickNetDevice;
+import org.openhab.core.library.types.IncreaseDecreaseType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.tellstick.JNA;
@@ -137,7 +138,6 @@ public class TelldusLiveDeviceController implements DeviceChangeListener, Sensor
         } else {
             logger.warn("Cannot send to {}", device);
         }
-
     }
 
     private void increaseDecrease(Device dev, IncreaseDecreaseType increaseDecreaseType) throws TellstickException {
@@ -249,7 +249,7 @@ public class TelldusLiveDeviceController implements DeviceChangeListener, Sensor
             case JNA.CLibrary.TELLSTICK_DIM:
                 dimValue = new BigDecimal(((TellstickNetDevice) device).getStatevalue());
                 dimValue = dimValue.multiply(new BigDecimal(100));
-                dimValue = dimValue.divide(new BigDecimal(255), 0, BigDecimal.ROUND_HALF_UP);
+                dimValue = dimValue.divide(new BigDecimal(255), 0, RoundingMode.HALF_UP);
                 break;
             default:
                 logger.warn("Could not handle {} for {}", (((TellstickNetDevice) device).getState()), device);
@@ -273,7 +273,6 @@ public class TelldusLiveDeviceController implements DeviceChangeListener, Sensor
     @Override
     public void onRequest(TellstickDeviceEvent newDevices) {
         setLastSend(newDevices.getTimestamp());
-
     }
 
     <T> T callRestMethod(String uri, Class<T> response) throws TelldusLiveException {
@@ -311,6 +310,8 @@ public class TelldusLiveDeviceController implements DeviceChangeListener, Sensor
         // TelldusLiveHandler.logger.info("Devices" + resp.getResponseBody());
         JAXBContext jc = JAXBContext.newInstance(response);
         XMLInputFactory xif = XMLInputFactory.newInstance();
+        xif.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
+        xif.setProperty(XMLInputFactory.SUPPORT_DTD, false);
         XMLStreamReader xsr = xif.createXMLStreamReader(resp.getResponseBodyAsStream());
         // xsr = new PropertyRenamerDelegate(xsr);
 

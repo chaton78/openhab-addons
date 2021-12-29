@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -36,23 +36,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.smarthome.core.common.ThreadPoolManager;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.transform.TransformationException;
-import org.eclipse.smarthome.core.transform.TransformationHelper;
-import org.eclipse.smarthome.core.transform.TransformationService;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
 import org.openhab.binding.globalcache.internal.GlobalCacheBindingConstants.CommandType;
 import org.openhab.binding.globalcache.internal.command.CommandGetstate;
 import org.openhab.binding.globalcache.internal.command.CommandGetversion;
@@ -61,6 +45,21 @@ import org.openhab.binding.globalcache.internal.command.CommandSendserial;
 import org.openhab.binding.globalcache.internal.command.CommandSetstate;
 import org.openhab.binding.globalcache.internal.command.RequestMessage;
 import org.openhab.binding.globalcache.internal.command.ResponseMessage;
+import org.openhab.core.common.ThreadPoolManager;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.transform.TransformationException;
+import org.openhab.core.transform.TransformationHelper;
+import org.openhab.core.transform.TransformationService;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
 import org.slf4j.Logger;
@@ -252,7 +251,7 @@ public class GlobalCacheHandler extends BaseThingHandler {
         }
 
         String mapFile = (String) thing.getConfiguration().get(THING_CONFIG_MAP_FILENAME);
-        if (StringUtils.isEmpty(mapFile)) {
+        if (mapFile == null || mapFile.isEmpty()) {
             logger.warn("MAP file is not defined in configuration of thing {}", thingID());
             return null;
         }
@@ -266,14 +265,13 @@ public class GlobalCacheHandler extends BaseThingHandler {
         String code;
         try {
             code = transformService.transform(mapFile, command.toString());
-
         } catch (TransformationException e) {
             logger.error("Failed to transform {} for thing {} using map file '{}', exception={}", command, thingID(),
                     mapFile, e.getMessage());
             return null;
         }
 
-        if (StringUtils.isEmpty(code)) {
+        if (code == null || code.isEmpty()) {
             logger.warn("No entry for {} in map file '{}' for thing {}", command, mapFile, thingID());
             return null;
         }
@@ -462,7 +460,7 @@ public class GlobalCacheHandler extends BaseThingHandler {
 
         public CommandProcessor() {
             super("GlobalCache Command Processor");
-            sendQueue = new LinkedBlockingQueue<RequestMessage>(SEND_QUEUE_MAX_DEPTH);
+            sendQueue = new LinkedBlockingQueue<>(SEND_QUEUE_MAX_DEPTH);
             logger.debug("Processor for thing {} created request queue, depth={}", thingID(), SEND_QUEUE_MAX_DEPTH);
         }
 
@@ -638,7 +636,7 @@ public class GlobalCacheHandler extends BaseThingHandler {
 
         private String getIPAddress() {
             String ipAddress = ((GlobalCacheHandler) thing.getHandler()).getIP();
-            if (StringUtils.isEmpty(ipAddress)) {
+            if (ipAddress == null || ipAddress.isEmpty()) {
                 logger.debug("Handler for thing {} could not get IP address from config", thingID());
                 markThingOfflineWithError(ThingStatusDetail.OFFLINE.CONFIGURATION_ERROR, "IP address not set");
             }
@@ -912,7 +910,7 @@ public class GlobalCacheHandler extends BaseThingHandler {
             if (Boolean.TRUE.equals(enableTwoWay)) {
                 // Get the end of message delimiter from the config, URL decode it, and convert it to a byte array
                 String endOfMessageString = (String) thing.getConfiguration().get(endOfMessageDelimiterConfig);
-                if (StringUtils.isNotEmpty(endOfMessageString)) {
+                if (endOfMessageString != null && !endOfMessageString.isEmpty()) {
                     logger.debug("End of message is {} for thing {} {}", endOfMessageString, thingID(), serialDevice);
                     byte[] endOfMessage;
                     try {

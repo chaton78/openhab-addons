@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -18,18 +18,17 @@ import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.lang3.StringUtils;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.binding.BaseBridgeHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.zway.internal.config.ZWayBridgeConfiguration;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.binding.BaseBridgeHandler;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.types.Command;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -292,7 +291,7 @@ public class ZWayBridgeHandler extends BaseBridgeHandler implements IZWayApiCall
         ZWaveController zwaveController = mZWayApi.getZWaveController();
         if (zwaveController != null) {
             Map<String, String> properties = editProperties();
-            // ESH default properties
+            // System properties
             properties.put(Thing.PROPERTY_FIRMWARE_VERSION, zwaveController.getData().getAPIVersion().getValue());
             properties.put(Thing.PROPERTY_HARDWARE_VERSION, zwaveController.getData().getZWaveChip().getValue());
             // Thing.PROPERTY_MODEL_ID not available, only manufacturerProductId
@@ -387,7 +386,8 @@ public class ZWayBridgeHandler extends BaseBridgeHandler implements IZWayApiCall
          ****************************************/
 
         // Z-Way IP address
-        if (StringUtils.trimToNull(config.getZWayIpAddress()) == null) {
+        String zWayIpAddress = config.getZWayIpAddress();
+        if (zWayIpAddress == null || zWayIpAddress.isBlank()) {
             config.setZWayIpAddress("localhost"); // default value
         }
 
@@ -397,19 +397,22 @@ public class ZWayBridgeHandler extends BaseBridgeHandler implements IZWayApiCall
         }
 
         // Z-Way Protocol
-        if (StringUtils.trimToNull(config.getZWayProtocol()) == null) {
+        String zWayProtocol = config.getZWayProtocol();
+        if (zWayProtocol == null || zWayProtocol.isBlank()) {
             config.setZWayProtocol("http");
         }
 
         // Z-Way Password
-        if (StringUtils.trimToNull(config.getZWayPassword()) == null) {
+        String zWayPassword = config.getZWayPassword();
+        if (zWayPassword == null || zWayPassword.isBlank()) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
                     "The connection to the Z-Way Server can't established, because the Z-Way password is missing. Please set a Z-Way password.");
             return null;
         }
 
         // Z-Way Username
-        if (StringUtils.trimToNull(config.getZWayUsername()) == null) {
+        String zWayUsername = config.getZWayUsername();
+        if (zWayUsername == null || zWayUsername.isBlank()) {
             config.setZWayUsername("admin"); // default value
         }
 

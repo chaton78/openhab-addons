@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,11 +12,11 @@
  */
 package org.openhab.binding.heos.internal.resources;
 
-import java.util.EventListener;
-import java.util.Map;
-
 import org.eclipse.jdt.annotation.NonNullByDefault;
-//import org.openhab.binding.heos.internal.api.HeosEventController;
+import org.openhab.binding.heos.internal.api.HeosEventController;
+import org.openhab.binding.heos.internal.exception.HeosFunctionalException;
+import org.openhab.binding.heos.internal.json.dto.HeosEventObject;
+import org.openhab.binding.heos.internal.json.dto.HeosResponseObject;
 
 /**
  * The {@link HeosEventListener } is an Event Listener
@@ -25,14 +25,14 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * implement this class and register itself at the {@link HeosEventController}
  *
  * @author Johannes Einig - Initial contribution
+ * @author Martin van Wingerden - change handling of stop/pause depending on playing item type
  */
 @NonNullByDefault
-public interface HeosEventListener extends EventListener {
+public interface HeosEventListener extends HeosMediaEventListener {
 
-    void playerStateChangeEvent(String pid, String event, String command);
+    void playerStateChangeEvent(HeosEventObject eventObject);
 
-    void playerMediaChangeEvent(String pid, Map<String, String> info);
+    void playerStateChangeEvent(HeosResponseObject<?> responseObject) throws HeosFunctionalException;
 
-    void bridgeChangeEvent(String event, String result, String command);
-
+    void bridgeChangeEvent(String event, boolean success, Object command);
 }

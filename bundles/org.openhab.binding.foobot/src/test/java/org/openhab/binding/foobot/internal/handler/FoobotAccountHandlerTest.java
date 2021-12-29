@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,19 +12,19 @@
  */
 package org.openhab.binding.foobot.internal.handler;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-import org.apache.commons.io.IOUtils;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.openhab.binding.foobot.internal.FoobotApiConnector;
 import org.openhab.binding.foobot.internal.FoobotApiException;
 import org.openhab.binding.foobot.internal.json.FoobotDevice;
+import org.openhab.core.thing.Bridge;
 
 /**
  * Unit test for {@link FoobotAccountHandler}.
@@ -38,7 +38,7 @@ public class FoobotAccountHandlerTest {
         @Override
         protected String request(String url, String apiKey) throws FoobotApiException {
             try (InputStream stream = getClass().getResourceAsStream("../devices.json")) {
-                return IOUtils.toString(stream);
+                return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
             } catch (IOException e) {
                 throw new AssertionError(e.getMessage());
             }
@@ -50,7 +50,7 @@ public class FoobotAccountHandlerTest {
     public void testSensorDataToState() throws IOException, FoobotApiException {
         final List<FoobotDevice> deviceList = handler.getDeviceList();
 
-        assertFalse("Device list should not return empty", deviceList.isEmpty());
-        assertEquals("1234567890ABCDEF", deviceList.get(0).getUuid());
+        assertFalse(deviceList.isEmpty(), "Device list should not return empty");
+        assertEquals(deviceList.get(0).getUuid(), "1234567890ABCDEF");
     }
 }

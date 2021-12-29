@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,11 +12,11 @@
  */
 package org.openhab.binding.opengarage.internal.api;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 /**
  * Class for holding the set of parameters used to read the controller variables.
@@ -37,14 +37,13 @@ public class ControllerVariables {
     public String cid;
     public int rssi;
 
-
     private ControllerVariables() {
     }
 
     public static ControllerVariables parse(String response) {
         LOGGER.debug("Parsing string: \"{}\"", response);
         /* parse json string */
-        JsonObject jsonObject = new JsonParser().parse(response).getAsJsonObject();
+        JsonObject jsonObject = JsonParser.parseString(response).getAsJsonObject();
         ControllerVariables info = new ControllerVariables();
         info.dist = jsonObject.get("dist").getAsInt();
         info.door = jsonObject.get("door").getAsInt();
@@ -57,5 +56,4 @@ public class ControllerVariables {
         info.rssi = jsonObject.get("rssi").getAsInt();
         return info;
     }
-
 }

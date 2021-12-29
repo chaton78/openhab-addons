@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,8 +12,8 @@
  */
 package org.openhab.binding.digitalstrom.internal;
 
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.openhab.binding.digitalstrom.internal.lib.structure.scene.constants.SceneTypes;
+import org.openhab.core.thing.ThingTypeUID;
 
 /**
  * The {@link DigitalSTROMBindingConstants} class defines common constants, which are
@@ -52,11 +52,6 @@ public class DigitalSTROMBindingConstants {
     public static final String OPTION_COMBINED_BOTH_ON = "200";
     public static final String OPTION_COMBINED_FIRST_ON = "90";
     public static final String OPTION_COMBINED_SECOND_ON = "130";
-
-    /* config URIs */
-    public static final String DEVICE_CONFIG = "binding:digitalstrom:device";
-    public static final String GRAY_DEVICE_CONFIG = "binding:digitalstrom:grayDevice";
-    public static final String DSS_BRIDE_CONFIG = "binding:digitalstrom:dssBridge";
 
     /* Bridge config properties */
 
@@ -106,5 +101,4 @@ public class DigitalSTROMBindingConstants {
     public static final String API_VERSION = "apiVersion";
     public static final String DSP_SW_VERSION = "armSwVersion";
     public static final String ARM_SW_VERSION = "dspSwVersion";
-
 }

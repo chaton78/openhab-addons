@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,10 +12,9 @@
  */
 package org.openhab.io.imperihome.internal.model.device;
 
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.smarthome.core.items.Item;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.types.State;
+import org.openhab.core.items.Item;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.types.State;
 import org.openhab.io.imperihome.internal.model.param.NumericValueParam;
 import org.openhab.io.imperihome.internal.model.param.ParamType;
 import org.openhab.io.imperihome.internal.processor.ItemProcessor;
@@ -54,7 +53,8 @@ public class WindDevice extends AbstractNumericValueDevice {
             }
 
             NumericValueParam dirParam = new NumericValueParam(ParamType.DIRECTION, valueParam.getUnit(), null);
-            if (StringUtils.isEmpty(dirParam.getUnit())) {
+            String unit = dirParam.getUnit();
+            if (unit == null || unit.isEmpty()) {
                 dirParam.setUnit("Degrees");
             }
 
@@ -67,8 +67,7 @@ public class WindDevice extends AbstractNumericValueDevice {
     public void stateUpdated(Item item, State newState) {
         super.stateUpdated(item, newState);
 
-        DecimalType value = (DecimalType) item.getStateAs(DecimalType.class);
+        DecimalType value = item.getStateAs(DecimalType.class);
         addParam(new NumericValueParam(ParamType.SPEED, getUnit(), value));
     }
-
 }

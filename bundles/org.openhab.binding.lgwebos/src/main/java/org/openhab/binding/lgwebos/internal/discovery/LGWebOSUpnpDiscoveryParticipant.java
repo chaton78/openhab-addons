@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -18,12 +18,13 @@ import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.config.discovery.DiscoveryResult;
-import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
-import org.eclipse.smarthome.config.discovery.upnp.UpnpDiscoveryParticipant;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.ThingUID;
 import org.jupnp.model.meta.RemoteDevice;
+import org.openhab.core.config.discovery.DiscoveryResult;
+import org.openhab.core.config.discovery.DiscoveryResultBuilder;
+import org.openhab.core.config.discovery.upnp.UpnpDiscoveryParticipant;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +37,7 @@ import org.slf4j.LoggerFactory;
  * @author Sebastian Prehn - Initial contribution
  */
 @NonNullByDefault
-@Component(service = UpnpDiscoveryParticipant.class, immediate = true, configurationPid = "discovery.lgwebos.upnp")
+@Component(service = UpnpDiscoveryParticipant.class, configurationPid = "discovery.lgwebos.upnp")
 public class LGWebOSUpnpDiscoveryParticipant implements UpnpDiscoveryParticipant {
 
     private final Logger logger = LoggerFactory.getLogger(LGWebOSUpnpDiscoveryParticipant.class);
@@ -54,12 +55,16 @@ public class LGWebOSUpnpDiscoveryParticipant implements UpnpDiscoveryParticipant
             return null;
         }
 
+        String modelName = device.getDetails().getModelDetails().getModelName();
+        if (device.getDetails().getModelDetails().getModelNumber() != null) {
+            modelName += " " + device.getDetails().getModelDetails().getModelNumber();
+        }
+
         return DiscoveryResultBuilder.create(thingUID).withLabel(device.getDetails().getFriendlyName())
                 .withProperty(PROPERTY_DEVICE_ID, device.getIdentity().getUdn().getIdentifierString())
                 .withProperty(CONFIG_HOST, device.getIdentity().getDescriptorURL().getHost())
-                .withLabel(device.getDetails().getFriendlyName())
-                .withProperty(PROPERTY_MODEL_NAME, device.getDetails().getModelDetails().getModelName())
-                .withProperty(PROPERTY_MANUFACTURER, device.getDetails().getManufacturerDetails().getManufacturer())
+                .withProperty(Thing.PROPERTY_MODEL_ID, modelName)
+                .withProperty(Thing.PROPERTY_VENDOR, device.getDetails().getManufacturerDetails().getManufacturer())
                 .withRepresentationProperty(PROPERTY_DEVICE_ID).withThingType(THING_TYPE_WEBOSTV).build();
     }
 
@@ -72,5 +77,4 @@ public class LGWebOSUpnpDiscoveryParticipant implements UpnpDiscoveryParticipant
         }
         return null;
     }
-
 }

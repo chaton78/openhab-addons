@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -18,16 +18,18 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandlerFactory;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.opensprinkler.internal.api.OpenSprinklerApiFactory;
 import org.openhab.binding.opensprinkler.internal.handler.OpenSprinklerDeviceHandler;
 import org.openhab.binding.opensprinkler.internal.handler.OpenSprinklerHttpBridgeHandler;
 import org.openhab.binding.opensprinkler.internal.handler.OpenSprinklerStationHandler;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.binding.BaseThingHandlerFactory;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.thing.binding.ThingHandlerFactory;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -40,14 +42,18 @@ import org.osgi.service.component.annotations.Reference;
  * @author Florian Schmidt - Split channels to their own things
  */
 @Component(service = ThingHandlerFactory.class, configurationPid = "binding.opensprinkler")
+@NonNullByDefault
 public class OpenSprinklerHandlerFactory extends BaseThingHandlerFactory {
     private static final Set<ThingTypeUID> SUPPORTED_THING_TYPES_UIDS = new HashSet<>(
             Arrays.asList(OPENSPRINKLER_HTTP_BRIDGE, OPENSPRINKLER_STATION, OPENSPRINKLER_DEVICE));
+    private final OpenSprinklerStateDescriptionProvider stateDescriptionProvider;
     private OpenSprinklerApiFactory apiFactory;
 
     @Activate
-    public OpenSprinklerHandlerFactory(@Reference OpenSprinklerApiFactory apiFactory) {
+    public OpenSprinklerHandlerFactory(@Reference OpenSprinklerApiFactory apiFactory,
+            final @Reference OpenSprinklerStateDescriptionProvider stateDescriptionProvider) {
         this.apiFactory = apiFactory;
+        this.stateDescriptionProvider = stateDescriptionProvider;
     }
 
     @Override
@@ -56,7 +62,7 @@ public class OpenSprinklerHandlerFactory extends BaseThingHandlerFactory {
     }
 
     @Override
-    protected ThingHandler createHandler(Thing thing) {
+    protected @Nullable ThingHandler createHandler(Thing thing) {
         ThingTypeUID thingTypeUID = thing.getThingTypeUID();
 
         if (thingTypeUID.equals(OPENSPRINKLER_HTTP_BRIDGE)) {
@@ -64,7 +70,7 @@ public class OpenSprinklerHandlerFactory extends BaseThingHandlerFactory {
         } else if (thingTypeUID.equals(OPENSPRINKLER_STATION)) {
             return new OpenSprinklerStationHandler(thing);
         } else if (thingTypeUID.equals(OPENSPRINKLER_DEVICE)) {
-            return new OpenSprinklerDeviceHandler(thing);
+            return new OpenSprinklerDeviceHandler(thing, stateDescriptionProvider);
         }
 
         return null;

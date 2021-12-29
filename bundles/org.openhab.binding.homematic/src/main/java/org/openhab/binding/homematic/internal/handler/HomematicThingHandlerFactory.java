@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,20 +14,22 @@ package org.openhab.binding.homematic.internal.handler;
 
 import static org.openhab.binding.homematic.internal.HomematicBindingConstants.*;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jetty.client.HttpClient;
-import org.eclipse.smarthome.core.net.NetworkAddressService;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandlerFactory;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory;
-import org.eclipse.smarthome.io.net.http.HttpClientFactory;
+import org.openhab.binding.homematic.internal.type.HomematicChannelTypeProvider;
 import org.openhab.binding.homematic.internal.type.HomematicTypeGenerator;
+import org.openhab.core.io.net.http.HttpClientFactory;
+import org.openhab.core.net.NetworkAddressService;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.binding.BaseThingHandlerFactory;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.thing.binding.ThingHandlerFactory;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The {@link HomematicThingHandlerFactory} is responsible for creating thing and bridge handlers.
@@ -35,38 +37,22 @@ import org.slf4j.LoggerFactory;
  * @author Gerhard Riegler - Initial contribution
  */
 @Component(service = ThingHandlerFactory.class, configurationPid = "binding.homematic")
+@NonNullByDefault
 public class HomematicThingHandlerFactory extends BaseThingHandlerFactory {
-    private final Logger logger = LoggerFactory.getLogger(HomematicThingHandlerFactory.class);
 
-    private HomematicTypeGenerator typeGenerator;
-    private NetworkAddressService networkAddressService;
-    private HttpClient httpClient;
+    private final HomematicTypeGenerator typeGenerator;
+    private final HomematicChannelTypeProvider channelTypeProvider;
+    private final NetworkAddressService networkAddressService;
+    private final HttpClient httpClient;
 
-    @Reference
-    protected void setTypeGenerator(HomematicTypeGenerator typeGenerator) {
+    @Activate
+    public HomematicThingHandlerFactory(@Reference HomematicTypeGenerator typeGenerator,
+            @Reference HomematicChannelTypeProvider channelTypeProvider,
+            @Reference NetworkAddressService networkAddressService, @Reference HttpClientFactory httpClientFactory) {
         this.typeGenerator = typeGenerator;
-    }
-
-    protected void unsetTypeGenerator(HomematicTypeGenerator typeGenerator) {
-        this.typeGenerator = null;
-    }
-
-    @Reference
-    protected void setHttpClientFactory(HttpClientFactory httpClientFactory) {
-        this.httpClient = httpClientFactory.getCommonHttpClient();
-    }
-
-    protected void unsetHttpClientFactory(HttpClientFactory httpClientFactory) {
-        this.httpClient = null;
-    }
-
-    @Reference
-    protected void setNetworkAddressService(NetworkAddressService networkAddressService) {
+        this.channelTypeProvider = channelTypeProvider;
         this.networkAddressService = networkAddressService;
-    }
-
-    protected void unsetNetworkAddressService(NetworkAddressService networkAddressService) {
-        this.networkAddressService = null;
+        this.httpClient = httpClientFactory.getCommonHttpClient();
     }
 
     @Override
@@ -75,12 +61,12 @@ public class HomematicThingHandlerFactory extends BaseThingHandlerFactory {
     }
 
     @Override
-    protected ThingHandler createHandler(Thing thing) {
+    protected @Nullable ThingHandler createHandler(Thing thing) {
         if (THING_TYPE_BRIDGE.equals(thing.getThingTypeUID())) {
             return new HomematicBridgeHandler((Bridge) thing, typeGenerator,
                     networkAddressService.getPrimaryIpv4HostAddress(), httpClient);
         } else {
-            return new HomematicThingHandler(thing);
+            return new HomematicThingHandler(thing, channelTypeProvider);
         }
     }
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,7 +12,7 @@
  */
 package org.openhab.binding.freebox.internal;
 
-import static org.eclipse.smarthome.core.audio.AudioFormat.*;
+import static org.openhab.core.audio.AudioFormat.*;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -21,21 +21,21 @@ import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.audio.AudioFormat;
-import org.eclipse.smarthome.core.audio.AudioHTTPServer;
-import org.eclipse.smarthome.core.audio.AudioSink;
-import org.eclipse.smarthome.core.audio.AudioStream;
-import org.eclipse.smarthome.core.audio.FixedLengthAudioStream;
-import org.eclipse.smarthome.core.audio.URLAudioStream;
-import org.eclipse.smarthome.core.audio.UnsupportedAudioFormatException;
-import org.eclipse.smarthome.core.audio.UnsupportedAudioStreamException;
-import org.eclipse.smarthome.core.library.types.PercentType;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.util.ThingHandlerHelper;
 import org.openhab.binding.freebox.internal.api.FreeboxException;
 import org.openhab.binding.freebox.internal.config.FreeboxAirPlayDeviceConfiguration;
 import org.openhab.binding.freebox.internal.handler.FreeboxThingHandler;
+import org.openhab.core.audio.AudioFormat;
+import org.openhab.core.audio.AudioHTTPServer;
+import org.openhab.core.audio.AudioSink;
+import org.openhab.core.audio.AudioStream;
+import org.openhab.core.audio.FixedLengthAudioStream;
+import org.openhab.core.audio.URLAudioStream;
+import org.openhab.core.audio.UnsupportedAudioFormatException;
+import org.openhab.core.audio.UnsupportedAudioStreamException;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.util.ThingHandlerHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -173,5 +173,4 @@ public class FreeboxAirPlayAudioSink implements AudioSink {
     public void setVolume(PercentType volume) {
         throw new UnsupportedOperationException("Volume can not be set");
     }
-
 }

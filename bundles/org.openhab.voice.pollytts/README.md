@@ -23,7 +23,7 @@ To use the service you will need the **access key**, **secret key** and **server
 
 ## Service Configuration
 
-Using your favorite configuration UI (e.g. Paper UI) edit **Services/Voice/Polly Text-to-Speech** settings and set:
+The following configurations can be edited using the "Polly Text-to-Speech" settings in the UI:
 
 * **Access Key** - The AWS credentials access key (required).
 * **Secret Key** - The AWS credentials secret key (required).
@@ -42,6 +42,22 @@ A value of 365 removes files that have been unused for a year.
  
 Use "default" to select the system default audio format.
 The default audio format can be overriden with the value "mp3" or "ogg".
+
+
+### Service Configuration via Text files
+
+Create a new file in `$OPENHAB_ROOT/conf/services` named `pollytts.cfg`
+
+It's contents should look similar to:
+
+```
+org.openhab.voice.pollytts:accessKey=ACCESS_KEY_ID
+org.openhab.voice.pollytts:secretKey=SECRET_KEY
+org.openhab.voice.pollytts:serviceRegion=SERVICE_REGION
+org.openhab.voice.pollytts:cacheExpiration=EXPIRATION_IN_DAYS
+```
+
+These have the same meanings as described in the **Service Configuration** block above.
 
 ## Rule Examples
 

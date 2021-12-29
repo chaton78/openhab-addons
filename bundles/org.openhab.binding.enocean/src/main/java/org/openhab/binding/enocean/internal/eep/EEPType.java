@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -19,11 +19,8 @@ import java.util.Hashtable;
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.smarthome.config.core.Configuration;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.type.ChannelTypeUID;
 import org.openhab.binding.enocean.internal.EnOceanChannelDescription;
+import org.openhab.binding.enocean.internal.config.EnOceanChannelTransformationConfig;
 import org.openhab.binding.enocean.internal.eep.A5_02.A5_02_01;
 import org.openhab.binding.enocean.internal.eep.A5_02.A5_02_02;
 import org.openhab.binding.enocean.internal.eep.A5_02.A5_02_03;
@@ -101,18 +98,22 @@ import org.openhab.binding.enocean.internal.eep.A5_12.A5_12_00;
 import org.openhab.binding.enocean.internal.eep.A5_12.A5_12_01;
 import org.openhab.binding.enocean.internal.eep.A5_12.A5_12_02;
 import org.openhab.binding.enocean.internal.eep.A5_12.A5_12_03;
+import org.openhab.binding.enocean.internal.eep.A5_13.A5_13_01;
 import org.openhab.binding.enocean.internal.eep.A5_14.A5_14_01;
 import org.openhab.binding.enocean.internal.eep.A5_14.A5_14_01_ELTAKO;
 import org.openhab.binding.enocean.internal.eep.A5_14.A5_14_09;
 import org.openhab.binding.enocean.internal.eep.A5_14.A5_14_0A;
 import org.openhab.binding.enocean.internal.eep.A5_20.A5_20_04;
+import org.openhab.binding.enocean.internal.eep.A5_30.A5_30_03_ELTAKO;
 import org.openhab.binding.enocean.internal.eep.A5_38.A5_38_08_Blinds;
 import org.openhab.binding.enocean.internal.eep.A5_38.A5_38_08_Dimming;
 import org.openhab.binding.enocean.internal.eep.A5_38.A5_38_08_Switching;
+import org.openhab.binding.enocean.internal.eep.A5_3F.A5_3F_7F_EltakoFRM;
 import org.openhab.binding.enocean.internal.eep.A5_3F.A5_3F_7F_EltakoFSB;
 import org.openhab.binding.enocean.internal.eep.Base.PTM200Message;
 import org.openhab.binding.enocean.internal.eep.Base.UTEResponse;
 import org.openhab.binding.enocean.internal.eep.Base._4BSTeachInVariation3Response;
+import org.openhab.binding.enocean.internal.eep.D0.D0_06;
 import org.openhab.binding.enocean.internal.eep.D2_01.D2_01_00;
 import org.openhab.binding.enocean.internal.eep.D2_01.D2_01_01;
 import org.openhab.binding.enocean.internal.eep.D2_01.D2_01_02;
@@ -136,10 +137,15 @@ import org.openhab.binding.enocean.internal.eep.D2_01.D2_01_12;
 import org.openhab.binding.enocean.internal.eep.D2_01.D2_01_12_NodON;
 import org.openhab.binding.enocean.internal.eep.D2_03.D2_03_0A;
 import org.openhab.binding.enocean.internal.eep.D2_05.D2_05_00;
+import org.openhab.binding.enocean.internal.eep.D2_06.D2_06_01;
+import org.openhab.binding.enocean.internal.eep.D2_06.D2_06_50;
+import org.openhab.binding.enocean.internal.eep.D2_14.D2_14_30;
+import org.openhab.binding.enocean.internal.eep.D2_50.D2_50;
 import org.openhab.binding.enocean.internal.eep.D5_00.D5_00_01;
 import org.openhab.binding.enocean.internal.eep.F6_01.F6_01_01;
 import org.openhab.binding.enocean.internal.eep.F6_02.F6_02_01;
 import org.openhab.binding.enocean.internal.eep.F6_02.F6_02_02;
+import org.openhab.binding.enocean.internal.eep.F6_05.F6_05_02;
 import org.openhab.binding.enocean.internal.eep.F6_10.F6_10_00;
 import org.openhab.binding.enocean.internal.eep.F6_10.F6_10_00_EltakoFPE;
 import org.openhab.binding.enocean.internal.eep.F6_10.F6_10_01;
@@ -147,6 +153,10 @@ import org.openhab.binding.enocean.internal.eep.Generic.Generic4BS;
 import org.openhab.binding.enocean.internal.eep.Generic.GenericRPS;
 import org.openhab.binding.enocean.internal.eep.Generic.GenericVLD;
 import org.openhab.binding.enocean.internal.messages.ERP1Message.RORG;
+import org.openhab.core.config.core.Configuration;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.type.ChannelTypeUID;
 
 /**
  *
@@ -158,15 +168,9 @@ public enum EEPType {
     UTEResponse(RORG.UTE, 0, 0, false, UTEResponse.class, null),
     _4BSTeachInVariation3Response(RORG._4BS, 0, 0, false, _4BSTeachInVariation3Response.class, null),
 
-    GenericRPS(RORG.RPS, 0xFF, 0xFF, false, GenericRPS.class, THING_TYPE_GENERICTHING, CHANNEL_GENERIC_SWITCH,
-            CHANNEL_GENERIC_ROLLERSHUTTER, CHANNEL_GENERIC_DIMMER, CHANNEL_GENERIC_NUMBER, CHANNEL_GENERIC_STRING,
-            CHANNEL_GENERIC_COLOR, CHANNEL_GENERIC_TEACHINCMD),
-    Generic4BS(RORG._4BS, 0xFF, 0xFF, false, Generic4BS.class, THING_TYPE_GENERICTHING, CHANNEL_GENERIC_SWITCH,
-            CHANNEL_GENERIC_ROLLERSHUTTER, CHANNEL_GENERIC_DIMMER, CHANNEL_GENERIC_NUMBER, CHANNEL_GENERIC_STRING,
-            CHANNEL_GENERIC_COLOR, CHANNEL_GENERIC_TEACHINCMD, CHANNEL_VIBRATION),
-    GenericVLD(RORG.VLD, 0xFF, 0xFF, false, GenericVLD.class, THING_TYPE_GENERICTHING, CHANNEL_GENERIC_SWITCH,
-            CHANNEL_GENERIC_ROLLERSHUTTER, CHANNEL_GENERIC_DIMMER, CHANNEL_GENERIC_NUMBER, CHANNEL_GENERIC_STRING,
-            CHANNEL_GENERIC_COLOR, CHANNEL_GENERIC_TEACHINCMD),
+    GenericRPS(RORG.RPS, 0xFF, 0xFF, false, GenericRPS.class, THING_TYPE_GENERICTHING),
+    Generic4BS(RORG._4BS, 0xFF, 0xFF, false, Generic4BS.class, THING_TYPE_GENERICTHING, CHANNEL_VIBRATION),
+    GenericVLD(RORG.VLD, 0xFF, 0xFF, false, GenericVLD.class, THING_TYPE_GENERICTHING),
 
     PTM200(RORG.RPS, 0x00, 0x00, false, PTM200Message.class, null, CHANNEL_GENERAL_SWITCHING, CHANNEL_ROLLERSHUTTER,
             CHANNEL_CONTACT),
@@ -176,13 +180,14 @@ public enum EEPType {
             CHANNEL_DOUBLEPRESS, CHANNEL_LONGPRESS, CHANNEL_BATTERY_LEVEL),
 
     RockerSwitch2RockerStyle1(RORG.RPS, 0x02, 0x01, false, F6_02_01.class, THING_TYPE_ROCKERSWITCH,
-            CHANNEL_ROCKERSWITCH_CHANNELA, CHANNEL_ROCKERSWITCH_CHANNELB, CHANNEL_VIRTUALSWITCHA,
-            CHANNEL_VIRTUALROLLERSHUTTERA, CHANNEL_VIRTUALROCKERSWITCHB, CHANNEL_ROCKERSWITCHLISTENERSWITCH,
-            CHANNEL_ROCKERSWITCHLISTENERROLLERSHUTTER),
+            CHANNEL_ROCKERSWITCH_CHANNELA, CHANNEL_ROCKERSWITCH_CHANNELB, CHANNEL_ROCKERSWITCH_ACTION,
+            CHANNEL_VIRTUALSWITCHA, CHANNEL_VIRTUALROLLERSHUTTERA, CHANNEL_VIRTUALROCKERSWITCHB,
+            CHANNEL_ROCKERSWITCHLISTENERSWITCH, CHANNEL_ROCKERSWITCHLISTENERROLLERSHUTTER),
+
     RockerSwitch2RockerStyle2(RORG.RPS, 0x02, 0x02, false, F6_02_02.class, THING_TYPE_ROCKERSWITCH,
-            CHANNEL_ROCKERSWITCH_CHANNELA, CHANNEL_ROCKERSWITCH_CHANNELB, CHANNEL_VIRTUALSWITCHA,
-            CHANNEL_VIRTUALROLLERSHUTTERA, CHANNEL_VIRTUALROCKERSWITCHB, CHANNEL_ROCKERSWITCHLISTENERSWITCH,
-            CHANNEL_ROCKERSWITCHLISTENERROLLERSHUTTER),
+            CHANNEL_ROCKERSWITCH_CHANNELA, CHANNEL_ROCKERSWITCH_CHANNELB, CHANNEL_ROCKERSWITCH_ACTION,
+            CHANNEL_VIRTUALSWITCHA, CHANNEL_VIRTUALROLLERSHUTTERA, CHANNEL_VIRTUALROCKERSWITCHB,
+            CHANNEL_ROCKERSWITCHLISTENERSWITCH, CHANNEL_ROCKERSWITCHLISTENERROLLERSHUTTER),
 
     MechanicalHandle00(RORG.RPS, 0x10, 0x00, false, F6_10_00.class, THING_TYPE_MECHANICALHANDLE,
             CHANNEL_WINDOWHANDLESTATE, CHANNEL_CONTACT),
@@ -192,14 +197,22 @@ public enum EEPType {
             CHANNEL_WINDOWHANDLESTATE, CHANNEL_CONTACT, CHANNEL_BATTERY_VOLTAGE),
     MechanicalHandle03(RORG._4BS, 0x14, 0x0A, false, A5_14_0A.class, THING_TYPE_MECHANICALHANDLE,
             CHANNEL_WINDOWHANDLESTATE, CHANNEL_CONTACT, CHANNEL_VIBRATION, CHANNEL_BATTERY_VOLTAGE),
+    MechanicalHandle04(RORG.VLD, 0x06, 0x01, false, "Soda", 0x0043, D2_06_01.class, THING_TYPE_MECHANICALHANDLE,
+            CHANNEL_WINDOWHANDLESTATE, CHANNEL_WINDOWSASHSTATE, CHANNEL_MOTIONDETECTION, CHANNEL_INDOORAIRTEMPERATURE,
+            CHANNEL_HUMIDITY, CHANNEL_ILLUMINATION, CHANNEL_BATTERY_LEVEL, CHANNEL_WINDOWBREACHEVENT,
+            CHANNEL_PROTECTIONPLUSEVENT, CHANNEL_PUSHBUTTON, CHANNEL_PUSHBUTTON2, CHANNEL_VACATIONMODETOGGLEEVENT),
 
     ContactAndSwitch01(RORG._1BS, 0x00, 0x01, false, D5_00_01.class, THING_TYPE_CONTACT, CHANNEL_CONTACT),
     ContactAndSwitch02(RORG._4BS, 0x14, 0x01, false, A5_14_01.class, THING_TYPE_CONTACT, CHANNEL_BATTERY_VOLTAGE,
             CHANNEL_CONTACT),
-    ContactAndSwitch03(RORG.RPS, 0x10, 0x00, false, "EltakoFPE", ELTAKOID, F6_10_00_EltakoFPE.class, THING_TYPE_CONTACT, CHANNEL_CONTACT),
-    
+    ContactAndSwitch03(RORG.RPS, 0x10, 0x00, false, "EltakoFPE", ELTAKOID, F6_10_00_EltakoFPE.class, THING_TYPE_CONTACT,
+            CHANNEL_CONTACT),
+
+    SmokeDetection(RORG.RPS, 0x05, 0x02, false, F6_05_02.class, null, CHANNEL_SMOKEDETECTION, CHANNEL_BATTERYLOW),
+
     BatteryStatus(RORG._4BS, 0x14, 0x01, false, "ELTAKO", ELTAKOID, A5_14_01_ELTAKO.class, THING_TYPE_CONTACT,
             CHANNEL_BATTERY_VOLTAGE, CHANNEL_ENERGY_STORAGE),
+    SigBatteryStatus(RORG.SIG, 0x06, 0x00, false, D0_06.class, null, CHANNEL_BATTERY_LEVEL),
 
     TemperatureSensor_A5_02_01(RORG._4BS, 0x02, 0x01, false, A5_02_01.class, THING_TYPE_TEMPERATURESENSOR,
             CHANNEL_TEMPERATURE),
@@ -360,10 +373,17 @@ public enum EEPType {
     AutomatedMeterReading_03(RORG._4BS, 0x12, 0x03, false, A5_12_03.class, THING_TYPE_AUTOMATEDMETERSENSOR,
             CHANNEL_CUMULATIVEVALUE, CHANNEL_CURRENTFLOW),
 
+    EnvironmentalSensor_01(RORG._4BS, 0x13, 0x01, false, A5_13_01.class, THING_TYPE_ENVIRONMENTALSENSOR,
+            CHANNEL_ILLUMINATION, CHANNEL_TEMPERATURE, CHANNEL_WINDSPEED, CHANNEL_RAINSTATUS, CHANNEL_ILLUMINATIONWEST,
+            CHANNEL_ILLUMINATIONSOUTHNORTH, CHANNEL_ILLUMINATIONEAST),
+
     Rollershutter_A5(RORG._4BS, 0x11, 0x03, false, A5_11_03.class, THING_TYPE_ROLLERSHUTTER, CHANNEL_ROLLERSHUTTER,
             CHANNEL_ANGLE),
     ExtendedLight_A5(RORG._4BS, 0x11, 0x04, false, A5_11_04.class, THING_TYPE_CENTRALCOMMAND, CHANNEL_GENERAL_SWITCHING,
             CHANNEL_DIMMER, CHANNEL_TOTALUSAGE, CHANNEL_INSTANTPOWER, CHANNEL_COUNTER),
+
+    SmokeDetection4BS(RORG._4BS, 0x30, 0x03, false, "ELTAKO", ELTAKOID, A5_30_03_ELTAKO.class,
+            THING_TYPE_MULTFUNCTIONSMOKEDETECTOR, CHANNEL_TEMPERATURE, CHANNEL_SMOKEDETECTION),
 
     CentralCommandSwitching(RORG._4BS, 0x38, 0x08, false, A5_38_08_Switching.class, THING_TYPE_CENTRALCOMMAND, 0x01,
             CHANNEL_GENERAL_SWITCHING, CHANNEL_TEACHINCMD),
@@ -374,8 +394,8 @@ public enum EEPType {
 
     // UniversalCommand(RORG._4BS, 0x3f, 0x7f, false, A5_3F_7F_Universal.class, THING_TYPE_UNIVERSALACTUATOR,
     // CHANNEL_GENERIC_ROLLERSHUTTER, CHANNEL_GENERIC_LIGHT_SWITCHING, CHANNEL_GENERIC_DIMMER, CHANNEL_TEACHINCMD),
-    EltakoFSB(RORG._4BS, 0x3f, 0x7f, false, "EltakoFSB", 0, A5_3F_7F_EltakoFSB.class, THING_TYPE_ROLLERSHUTTER, 0,
-            new Hashtable<String, Configuration>() {
+    EltakoFSB(RORG._4BS, 0x3f, 0x7f, false, false, "EltakoFSB", 0, A5_3F_7F_EltakoFSB.class, THING_TYPE_ROLLERSHUTTER,
+            0, new Hashtable<String, Configuration>() {
                 private static final long serialVersionUID = 1L;
                 {
                     put(CHANNEL_ROLLERSHUTTER, new Configuration());
@@ -387,10 +407,23 @@ public enum EEPType {
                 }
             }),
 
-    Thermostat(RORG._4BS, 0x20, 0x04, false, A5_20_04.class, THING_TYPE_THERMOSTAT, CHANNEL_VALVE_POSITION,
+    EltakoFRM(RORG._4BS, 0x3f, 0x7f, false, false, "EltakoFRM", 0, A5_3F_7F_EltakoFRM.class, THING_TYPE_ROLLERSHUTTER,
+            0, new Hashtable<String, Configuration>() {
+                private static final long serialVersionUID = 1L;
+                {
+                    put(CHANNEL_ROLLERSHUTTER, new Configuration());
+                    put(CHANNEL_TEACHINCMD, new Configuration() {
+                        {
+                            put(PARAMETER_CHANNEL_TeachInMSG, "fff80d80");
+                        }
+                    });
+                }
+            }),
+
+    Thermostat(RORG._4BS, 0x20, 0x04, false, true, A5_20_04.class, THING_TYPE_THERMOSTAT, CHANNEL_VALVE_POSITION,
             CHANNEL_BUTTON_LOCK, CHANNEL_DISPLAY_ORIENTATION, CHANNEL_TEMPERATURE_SETPOINT, CHANNEL_TEMPERATURE,
             CHANNEL_FEED_TEMPERATURE, CHANNEL_MEASUREMENT_CONTROL, CHANNEL_FAILURE_CODE, CHANNEL_WAKEUPCYCLE,
-            CHANNEL_SERVICECOMMAND, CHANNEL_STATUS_REQUEST_EVENT, CHANNEL_SEND_COMMAND),
+            CHANNEL_SERVICECOMMAND),
 
     SwitchWithEnergyMeasurment_00(RORG.VLD, 0x01, 0x00, true, D2_01_00.class, THING_TYPE_MEASUREMENTSWITCH,
             CHANNEL_GENERAL_SWITCHING, CHANNEL_TOTALUSAGE),
@@ -436,7 +469,53 @@ public enum EEPType {
     SwitchWithEnergyMeasurment_12(RORG.VLD, 0x01, 0x12, true, D2_01_12.class, THING_TYPE_MEASUREMENTSWITCH,
             CHANNEL_GENERAL_SWITCHINGA, CHANNEL_GENERAL_SWITCHINGB),
 
-    Rollershutter_D2(RORG.VLD, 0x05, 0x00, true, D2_05_00.class, THING_TYPE_ROLLERSHUTTER, CHANNEL_ROLLERSHUTTER);
+    Rollershutter_D2(RORG.VLD, 0x05, 0x00, true, D2_05_00.class, THING_TYPE_ROLLERSHUTTER, CHANNEL_ROLLERSHUTTER),
+
+    WindowSashHandleSensor_50(RORG.VLD, 0x06, 0x50, false, "Siegenia", 0x005D, D2_06_50.class,
+            THING_TYPE_WINDOWSASHHANDLESENSOR, CHANNEL_WINDOWHANDLESTATE, CHANNEL_WINDOWSASHSTATE,
+            CHANNEL_BATTERY_LEVEL, CHANNEL_BATTERYLOW, CHANNEL_WINDOWBREACHEVENT, CHANNEL_WINDOWCALIBRATIONSTATE,
+            CHANNEL_WINDOWCALIBRATIONSTEP),
+
+    MultiFunctionSensor_30(RORG.VLD, 0x14, 0x30, false, D2_14_30.class, THING_TYPE_MULTFUNCTIONSMOKEDETECTOR,
+            CHANNEL_SMOKEDETECTION, CHANNEL_SENSORFAULT, CHANNEL_TIMESINCELASTMAINTENANCE, CHANNEL_BATTERY_LEVEL,
+            CHANNEL_REMAININGPLT, CHANNEL_TEMPERATURE, CHANNEL_HUMIDITY, CHANNEL_HYGROCOMFORTINDEX,
+            CHANNEL_INDOORAIRANALYSIS),
+
+    HeatRecoveryVentilation_00(RORG.VLD, 0x50, 0x00, false, D2_50.class, THING_TYPE_HEATRECOVERYVENTILATION,
+            CHANNEL_VENTILATIONOPERATIONMODE, CHANNEL_SUPPLYAIRFLAPSTATUS, CHANNEL_WEEKLYTIMERPROGRAMSTATUS,
+            CHANNEL_EXHAUSTAIRFLAPSTATUS, CHANNEL_DEFROSTMODE, CHANNEL_COOLINGPROTECTIONMODE,
+            CHANNEL_OUTDOORAIRHEATERSTATUS, CHANNEL_SUPPLYAIRHEATERSTATUS, CHANNEL_DRAINHEATERSTATUS,
+            CHANNEL_TIMEROPERATIONMODE, CHANNEL_MAINTENANCESTATUS, CHANNEL_ROOMTEMPERATURECONTROLSTATUS,
+            CHANNEL_AIRQUALITYVALUE1, CHANNEL_AIRQUALITYVALUE2, CHANNEL_OUTDOORAIRTEMPERATURE,
+            CHANNEL_SUPPLYAIRTEMPERATURE, CHANNEL_INDOORAIRTEMPERATURE, CHANNEL_EXHAUSTAIRTEMPERATURE,
+            CHANNEL_SUPPLYAIRFANAIRFLOWRATE, CHANNEL_EXHAUSTAIRFANAIRFLOWRATE, CHANNEL_SUPPLYFANSPEED,
+            CHANNEL_EXHAUSTFANSPEED),
+    HeatRecoveryVentilation_01(RORG.VLD, 0x50, 0x01, false, D2_50.class, THING_TYPE_HEATRECOVERYVENTILATION,
+            CHANNEL_VENTILATIONOPERATIONMODE, CHANNEL_SUPPLYAIRFLAPSTATUS, CHANNEL_WEEKLYTIMERPROGRAMSTATUS,
+            CHANNEL_EXHAUSTAIRFLAPSTATUS, CHANNEL_DEFROSTMODE, CHANNEL_COOLINGPROTECTIONMODE,
+            CHANNEL_OUTDOORAIRHEATERSTATUS, CHANNEL_SUPPLYAIRHEATERSTATUS, CHANNEL_DRAINHEATERSTATUS,
+            CHANNEL_TIMEROPERATIONMODE, CHANNEL_MAINTENANCESTATUS, CHANNEL_ROOMTEMPERATURECONTROLSTATUS,
+            CHANNEL_AIRQUALITYVALUE1, CHANNEL_AIRQUALITYVALUE2, CHANNEL_OUTDOORAIRTEMPERATURE,
+            CHANNEL_SUPPLYAIRTEMPERATURE, CHANNEL_INDOORAIRTEMPERATURE, CHANNEL_EXHAUSTAIRTEMPERATURE,
+            CHANNEL_SUPPLYAIRFANAIRFLOWRATE, CHANNEL_EXHAUSTAIRFANAIRFLOWRATE, CHANNEL_SUPPLYFANSPEED,
+            CHANNEL_EXHAUSTFANSPEED),
+    HeatRecoveryVentilation_10(RORG.VLD, 0x50, 0x10, false, D2_50.class, THING_TYPE_HEATRECOVERYVENTILATION,
+            CHANNEL_VENTILATIONOPERATIONMODE, CHANNEL_DEFROSTMODE, CHANNEL_COOLINGPROTECTIONMODE,
+            CHANNEL_OUTDOORAIRHEATERSTATUS, CHANNEL_SUPPLYAIRHEATERSTATUS, CHANNEL_DRAINHEATERSTATUS,
+            CHANNEL_TIMEROPERATIONMODE, CHANNEL_MAINTENANCESTATUS, CHANNEL_ROOMTEMPERATURECONTROLSTATUS,
+            CHANNEL_AIRQUALITYVALUE1, CHANNEL_AIRQUALITYVALUE2, CHANNEL_OUTDOORAIRTEMPERATURE,
+            CHANNEL_SUPPLYAIRTEMPERATURE, CHANNEL_INDOORAIRTEMPERATURE, CHANNEL_EXHAUSTAIRTEMPERATURE,
+            CHANNEL_SUPPLYAIRFANAIRFLOWRATE, CHANNEL_EXHAUSTAIRFANAIRFLOWRATE, CHANNEL_SUPPLYFANSPEED,
+            CHANNEL_EXHAUSTFANSPEED, CHANNEL_WEEKLYTIMERPROGRAMSTATUS),
+    HeatRecoveryVentilation_11(RORG.VLD, 0x50, 0x11, false, D2_50.class, THING_TYPE_HEATRECOVERYVENTILATION,
+            CHANNEL_VENTILATIONOPERATIONMODE, CHANNEL_FIREPLACESAFETYMODE, CHANNEL_HEATEXCHANGERBYPASSSTATUS,
+            CHANNEL_DEFROSTMODE, CHANNEL_COOLINGPROTECTIONMODE, CHANNEL_OUTDOORAIRHEATERSTATUS,
+            CHANNEL_WEEKLYTIMERPROGRAMSTATUS, CHANNEL_SUPPLYAIRHEATERSTATUS, CHANNEL_DRAINHEATERSTATUS,
+            CHANNEL_TIMEROPERATIONMODE, CHANNEL_MAINTENANCESTATUS, CHANNEL_ROOMTEMPERATURECONTROLSTATUS,
+            CHANNEL_AIRQUALITYVALUE1, CHANNEL_AIRQUALITYVALUE2, CHANNEL_OUTDOORAIRTEMPERATURE,
+            CHANNEL_SUPPLYAIRTEMPERATURE, CHANNEL_INDOORAIRTEMPERATURE, CHANNEL_EXHAUSTAIRTEMPERATURE,
+            CHANNEL_SUPPLYAIRFANAIRFLOWRATE, CHANNEL_EXHAUSTAIRFANAIRFLOWRATE, CHANNEL_SUPPLYFANSPEED,
+            CHANNEL_EXHAUSTFANSPEED);
 
     private RORG rorg;
     private int func;
@@ -449,28 +528,41 @@ public enum EEPType {
 
     private ThingTypeUID thingTypeUID;
 
-    private Hashtable<String, Configuration> channelIdsWithConfig = new Hashtable<String, Configuration>();
-    private Hashtable<String, EnOceanChannelDescription> supportedChannels = new Hashtable<String, EnOceanChannelDescription>();
+    private Hashtable<String, Configuration> channelIdsWithConfig = new Hashtable<>();
+    private Hashtable<String, EnOceanChannelDescription> supportedChannels = new Hashtable<>();
 
     private boolean supportsRefresh;
+
+    private boolean requestsResponse;
 
     EEPType(RORG rorg, int func, int type, boolean supportsRefresh, Class<? extends EEP> eepClass,
             ThingTypeUID thingTypeUID, String... channelIds) {
         this(rorg, func, type, supportsRefresh, eepClass, thingTypeUID, -1, channelIds);
     }
 
+    EEPType(RORG rorg, int func, int type, boolean supportsRefresh, boolean requestsResponse,
+            Class<? extends EEP> eepClass, ThingTypeUID thingTypeUID, String... channelIds) {
+        this(rorg, func, type, supportsRefresh, requestsResponse, eepClass, thingTypeUID, -1, channelIds);
+    }
+
     EEPType(RORG rorg, int func, int type, boolean supportsRefresh, String manufactorSuffix, int manufId,
             Class<? extends EEP> eepClass, ThingTypeUID thingTypeUID, String... channelIds) {
-        this(rorg, func, type, supportsRefresh, manufactorSuffix, manufId, eepClass, thingTypeUID, 0, channelIds);
+        this(rorg, func, type, supportsRefresh, false, manufactorSuffix, manufId, eepClass, thingTypeUID, 0,
+                channelIds);
     }
 
     EEPType(RORG rorg, int func, int type, boolean supportsRefresh, Class<? extends EEP> eepClass,
             ThingTypeUID thingTypeUID, int command, String... channelIds) {
-        this(rorg, func, type, supportsRefresh, "", 0, eepClass, thingTypeUID, command, channelIds);
+        this(rorg, func, type, supportsRefresh, false, "", 0, eepClass, thingTypeUID, command, channelIds);
     }
 
-    EEPType(RORG rorg, int func, int type, boolean supportsRefresh, String manufactorSuffix, int manufId,
+    EEPType(RORG rorg, int func, int type, boolean supportsRefresh, boolean requestsResponse,
             Class<? extends EEP> eepClass, ThingTypeUID thingTypeUID, int command, String... channelIds) {
+        this(rorg, func, type, supportsRefresh, requestsResponse, "", 0, eepClass, thingTypeUID, command, channelIds);
+    }
+
+    EEPType(RORG rorg, int func, int type, boolean supportsRefresh, boolean requestsResponse, String manufactorSuffix,
+            int manufId, Class<? extends EEP> eepClass, ThingTypeUID thingTypeUID, int command, String... channelIds) {
         this.rorg = rorg;
         this.func = func;
         this.type = type;
@@ -480,24 +572,18 @@ public enum EEPType {
         this.manufactorSuffix = manufactorSuffix;
         this.manufactorId = manufId;
         this.supportsRefresh = supportsRefresh;
+        this.requestsResponse = requestsResponse;
 
         for (String id : channelIds) {
             this.channelIdsWithConfig.put(id, new Configuration());
             this.supportedChannels.put(id, CHANNELID2CHANNELDESCRIPTION.get(id));
         }
 
-        this.channelIdsWithConfig.put(CHANNEL_RSSI, new Configuration());
-        this.supportedChannels.put(CHANNEL_RSSI, CHANNELID2CHANNELDESCRIPTION.get(CHANNEL_RSSI));
-
-        this.channelIdsWithConfig.put(CHANNEL_REPEATCOUNT, new Configuration());
-        this.supportedChannels.put(CHANNEL_REPEATCOUNT, CHANNELID2CHANNELDESCRIPTION.get(CHANNEL_REPEATCOUNT));
-
-        this.channelIdsWithConfig.put(CHANNEL_LASTRECEIVED, new Configuration());
-        this.supportedChannels.put(CHANNEL_LASTRECEIVED, CHANNELID2CHANNELDESCRIPTION.get(CHANNEL_LASTRECEIVED));
+        addDefaultChannels();
     }
 
-    EEPType(RORG rorg, int func, int type, boolean supportsRefresh, String manufactorSuffix, int manufId,
-            Class<? extends EEP> eepClass, ThingTypeUID thingTypeUID, int command,
+    EEPType(RORG rorg, int func, int type, boolean supportsRefresh, boolean requestsResponse, String manufactorSuffix,
+            int manufId, Class<? extends EEP> eepClass, ThingTypeUID thingTypeUID, int command,
             Hashtable<String, Configuration> channelConfigs) {
         this.rorg = rorg;
         this.func = func;
@@ -509,9 +595,44 @@ public enum EEPType {
         this.manufactorSuffix = manufactorSuffix;
         this.manufactorId = manufId;
         this.supportsRefresh = supportsRefresh;
+        this.requestsResponse = requestsResponse;
 
         for (String id : channelConfigs.keySet()) {
             this.supportedChannels.put(id, CHANNELID2CHANNELDESCRIPTION.get(id));
+        }
+
+        addDefaultChannels();
+    }
+
+    private void addDefaultChannels() {
+
+        if (THING_TYPE_GENERICTHING.equals(this.thingTypeUID)) {
+            this.channelIdsWithConfig.put(CHANNEL_GENERIC_SWITCH, new EnOceanChannelTransformationConfig());
+            this.supportedChannels.put(CHANNEL_GENERIC_SWITCH,
+                    CHANNELID2CHANNELDESCRIPTION.get(CHANNEL_GENERIC_SWITCH));
+
+            this.channelIdsWithConfig.put(CHANNEL_GENERIC_ROLLERSHUTTER, new EnOceanChannelTransformationConfig());
+            this.supportedChannels.put(CHANNEL_GENERIC_ROLLERSHUTTER,
+                    CHANNELID2CHANNELDESCRIPTION.get(CHANNEL_GENERIC_ROLLERSHUTTER));
+
+            this.channelIdsWithConfig.put(CHANNEL_GENERIC_DIMMER, new EnOceanChannelTransformationConfig());
+            this.supportedChannels.put(CHANNEL_GENERIC_DIMMER,
+                    CHANNELID2CHANNELDESCRIPTION.get(CHANNEL_GENERIC_DIMMER));
+
+            this.channelIdsWithConfig.put(CHANNEL_GENERIC_NUMBER, new EnOceanChannelTransformationConfig());
+            this.supportedChannels.put(CHANNEL_GENERIC_NUMBER,
+                    CHANNELID2CHANNELDESCRIPTION.get(CHANNEL_GENERIC_NUMBER));
+
+            this.channelIdsWithConfig.put(CHANNEL_GENERIC_STRING, new EnOceanChannelTransformationConfig());
+            this.supportedChannels.put(CHANNEL_GENERIC_STRING,
+                    CHANNELID2CHANNELDESCRIPTION.get(CHANNEL_GENERIC_STRING));
+
+            this.channelIdsWithConfig.put(CHANNEL_GENERIC_COLOR, new EnOceanChannelTransformationConfig());
+            this.supportedChannels.put(CHANNEL_GENERIC_COLOR, CHANNELID2CHANNELDESCRIPTION.get(CHANNEL_GENERIC_COLOR));
+
+            this.channelIdsWithConfig.put(CHANNEL_GENERIC_TEACHINCMD, new EnOceanChannelTransformationConfig());
+            this.supportedChannels.put(CHANNEL_GENERIC_TEACHINCMD,
+                    CHANNELID2CHANNELDESCRIPTION.get(CHANNEL_GENERIC_TEACHINCMD));
         }
 
         this.channelIdsWithConfig.put(CHANNEL_RSSI, new Configuration());
@@ -522,6 +643,12 @@ public enum EEPType {
 
         this.channelIdsWithConfig.put(CHANNEL_LASTRECEIVED, new Configuration());
         this.supportedChannels.put(CHANNEL_LASTRECEIVED, CHANNELID2CHANNELDESCRIPTION.get(CHANNEL_LASTRECEIVED));
+
+        if (requestsResponse) {
+            this.channelIdsWithConfig.put(CHANNEL_STATUS_REQUEST_EVENT, new Configuration());
+            this.supportedChannels.put(CHANNEL_STATUS_REQUEST_EVENT,
+                    CHANNELID2CHANNELDESCRIPTION.get(CHANNEL_STATUS_REQUEST_EVENT));
+        }
     }
 
     public Class<? extends EEP> getEEPClass() {
@@ -544,6 +671,10 @@ public enum EEPType {
         return supportsRefresh;
     }
 
+    public boolean getRequstesResponse() {
+        return requestsResponse;
+    }
+
     public Map<String, EnOceanChannelDescription> GetSupportedChannels() {
         return Collections.unmodifiableMap(supportedChannels);
     }
@@ -556,7 +687,7 @@ public enum EEPType {
     }
 
     public boolean isChannelSupported(String channelId, String channelTypeId) {
-        return supportedChannels.containsKey(channelId)
+        return supportedChannels.containsKey(channelId) || VIRTUALCHANNEL_SEND_COMMAND.equals(channelId)
                 || supportedChannels.values().stream().anyMatch(c -> c.channelTypeUID.getId().equals(channelTypeId));
     }
 
@@ -623,5 +754,4 @@ public enum EEPType {
 
         return fallback;
     }
-
 }

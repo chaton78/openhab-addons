@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,14 +12,13 @@
  */
 package org.openhab.binding.rfxcom.internal.messages;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.util.HexUtils;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComException;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComMessageTooLongException;
-import org.openhab.binding.rfxcom.internal.messages.RFXComBaseMessage.PacketType;
+import org.openhab.core.util.HexUtils;
 
 /**
  * Test for RFXCom-binding
@@ -32,16 +31,16 @@ public class RFXComUndecodedRFMessageTest {
 
     private void testMessage(String hexMsg, RFXComUndecodedRFMessage.SubType subType, int seqNbr, String rawPayload)
             throws RFXComException {
-        final RFXComUndecodedRFMessage msg = (RFXComUndecodedRFMessage) RFXComMessageFactory
+        final RFXComUndecodedRFMessage msg = (RFXComUndecodedRFMessage) RFXComMessageFactoryImpl.INSTANCE
                 .createMessage(HexUtils.hexToBytes(hexMsg));
-        assertEquals("SubType", subType, msg.subType);
-        assertEquals("Seq Number", seqNbr, (short) (msg.seqNbr & 0xFF));
-        assertEquals("Device Id", "UNDECODED", msg.getDeviceId());
-        assertEquals("Payload", rawPayload, HexUtils.bytesToHex(msg.rawPayload));
+        assertEquals(subType, msg.subType, "SubType");
+        assertEquals(seqNbr, (short) (msg.seqNbr & 0xFF), "Seq Number");
+        assertEquals("UNDECODED", msg.getDeviceId(), "Device Id");
+        assertEquals(rawPayload, HexUtils.bytesToHex(msg.rawPayload), "Payload");
 
         byte[] decoded = msg.decodeMessage();
 
-        assertEquals("Message converted back", hexMsg, HexUtils.bytesToHex(decoded));
+        assertEquals(hexMsg, HexUtils.bytesToHex(decoded), "Message converted back");
     }
 
     @Test
@@ -49,13 +48,11 @@ public class RFXComUndecodedRFMessageTest {
         testMessage("070301271356ECC0", RFXComUndecodedRFMessage.SubType.ARC, 0x27, "1356ECC0");
     }
 
-    @Test(expected = RFXComMessageTooLongException.class)
+    @Test
     public void testLongMessage() throws RFXComException {
-        RFXComUndecodedRFMessage msg = (RFXComUndecodedRFMessage) RFXComMessageFactory
-                .createMessage(PacketType.UNDECODED_RF_MESSAGE);
-        msg.subType = RFXComUndecodedRFMessage.SubType.ARC;
-        msg.seqNbr = 1;
-        msg.rawPayload = HexUtils.hexToBytes("000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F2021");
-        msg.decodeMessage();
+        assertThrows(RFXComMessageTooLongException.class,
+                () -> testMessage("25030101000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F2021",
+                        RFXComUndecodedRFMessage.SubType.ARC, 0x01,
+                        "000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F2021"));
     }
 }

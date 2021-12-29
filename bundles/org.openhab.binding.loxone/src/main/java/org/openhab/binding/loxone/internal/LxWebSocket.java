@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -35,8 +35,6 @@ import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketError;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
-import org.eclipse.smarthome.core.common.ThreadPoolManager;
-import org.eclipse.smarthome.core.util.HexUtils;
 import org.openhab.binding.loxone.internal.security.LxWsSecurity;
 import org.openhab.binding.loxone.internal.types.LxConfig;
 import org.openhab.binding.loxone.internal.types.LxErrorCode;
@@ -44,6 +42,8 @@ import org.openhab.binding.loxone.internal.types.LxResponse;
 import org.openhab.binding.loxone.internal.types.LxUuid;
 import org.openhab.binding.loxone.internal.types.LxWsBinaryHeader;
 import org.openhab.binding.loxone.internal.types.LxWsSecurityType;
+import org.openhab.core.common.ThreadPoolManager;
+import org.openhab.core.util.HexUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,6 +78,7 @@ public class LxWebSocket {
 
     private Session session;
     private String fwVersion;
+    private boolean httpsSession = false;
     private ScheduledFuture<?> timeout;
     private LxWsBinaryHeader header;
     private LxWsSecurity security;
@@ -240,7 +241,7 @@ public class LxWebSocket {
                         while (length > 0) {
                             Double value = ByteBuffer.wrap(data, offset + 16, 8).order(ByteOrder.LITTLE_ENDIAN)
                                     .getDouble();
-                            thingHandler.updateStateValue(new LxUuid(data, offset), value);
+                            thingHandler.queueStateUpdate(new LxUuid(data, offset), value);
                             offset += 24;
                             length -= 24;
                         }
@@ -251,7 +252,7 @@ public class LxWebSocket {
                             int textLen = ByteBuffer.wrap(data, offset + 32, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
                             String value = new String(data, offset + 36, textLen);
                             int size = 36 + (textLen % 4 > 0 ? textLen + 4 - (textLen % 4) : textLen);
-                            thingHandler.updateStateValue(new LxUuid(data, offset), value);
+                            thingHandler.queueStateUpdate(new LxUuid(data, offset), value);
                             offset += size;
                             length -= size;
                         }
@@ -455,7 +456,18 @@ public class LxWebSocket {
      * @param fwVersion Miniserver firmware version
      */
     void setFwVersion(String fwVersion) {
+        logger.debug("[{}] Firmware version: {}", debugId, fwVersion);
         this.fwVersion = fwVersion;
+    }
+
+    /**
+     * Sets information if session is over HTTPS or HTTP protocol
+     *
+     * @param httpsSession true when HTTPS session
+     */
+    void setHttps(boolean httpsSession) {
+        logger.debug("[{}] HTTPS session: {}", debugId, httpsSession);
+        this.httpsSession = httpsSession;
     }
 
     /**
@@ -536,7 +548,7 @@ public class LxWebSocket {
         try {
             if (session != null) {
                 String encrypted;
-                if (encrypt) {
+                if (encrypt && !httpsSession) {
                     encrypted = security.encrypt(command);
                     logger.debug("[{}] Sending encrypted string: {}", debugId, command);
                     logger.debug("[{}] Encrypted: {}", debugId, encrypted);
@@ -580,7 +592,9 @@ public class LxWebSocket {
         }
         logger.debug("[{}] Response: {}", debugId, message.trim());
         String control = resp.getCommand().trim();
-        control = security.decryptControl(control);
+        if (!httpsSession) {
+            control = security.decryptControl(control);
+        }
         // for some reason the responses to some commands starting with jdev begin with dev, not jdev
         // this seems to be a bug in the Miniserver
         if (control.startsWith("dev/")) {
@@ -594,6 +608,7 @@ public class LxWebSocket {
             }
             if (!awaitingCommand.equals(control)) {
                 logger.warn("[{}] Waiting for another response: {}", debugId, awaitingCommand);
+                return;
             }
             awaitedResponse.subResponse = resp.subResponse;
             if (syncRequest) {
@@ -622,7 +637,6 @@ public class LxWebSocket {
             awaitingConfiguration = true;
             if (sendCmdNoResp(CMD_GET_APP_CONFIG, false)) {
                 startResponseTimeout();
-                // startKeepAlive();
             } else {
                 disconnect(LxErrorCode.INTERNAL_ERROR, "Error sending get config command.");
             }

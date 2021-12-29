@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -41,15 +41,6 @@ import javax.xml.ws.wsaddressing.W3CEndpointReferenceBuilder;
 
 import org.apache.cxf.helpers.DOMUtils;
 import org.apache.cxf.wsn.wsdl.WSNWSDLLocator;
-import org.eclipse.smarthome.core.library.types.DateTimeType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
 import org.oasis_open.docs.wsn.b_2.FilterType;
 import org.oasis_open.docs.wsn.b_2.Notify;
 import org.oasis_open.docs.wsn.b_2.Renew;
@@ -58,7 +49,6 @@ import org.oasis_open.docs.wsn.b_2.Subscribe;
 import org.oasis_open.docs.wsn.b_2.SubscribeResponse;
 import org.oasis_open.docs.wsn.b_2.TopicExpressionType;
 import org.oasis_open.docs.wsn.b_2.Unsubscribe;
-import org.oasis_open.docs.wsn.b_2.UnsubscribeResponse;
 import org.oasis_open.docs.wsn.bw_2.InvalidFilterFault;
 import org.oasis_open.docs.wsn.bw_2.InvalidMessageContentExpressionFault;
 import org.oasis_open.docs.wsn.bw_2.InvalidProducerPropertiesExpressionFault;
@@ -85,6 +75,15 @@ import org.openhab.binding.helios.internal.ws.soap.SOAPEvent;
 import org.openhab.binding.helios.internal.ws.soap.SOAPKeyPressed;
 import org.openhab.binding.helios.internal.ws.soap.SOAPObjectFactory;
 import org.openhab.binding.helios.internal.ws.soap.SOAPSubscriptionActionHandler;
+import org.openhab.core.library.types.DateTimeType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Element;
@@ -347,7 +346,7 @@ public class HeliosHandler27 extends BaseThingHandler implements NotificationCon
     public void unsubscribe() {
         if (subscription != null) {
             try {
-                UnsubscribeResponse response = subscription.unsubscribe(new Unsubscribe());
+                subscription.unsubscribe(new Unsubscribe());
                 logger.debug("Unsubscribing the subscription with ID '{}' for '{}' ", getSubscriptionID(),
                         getThing().getUID());
             } catch (UnableToDestroySubscriptionFault | ResourceUnknownFault e) {
@@ -370,20 +369,18 @@ public class HeliosHandler27 extends BaseThingHandler implements NotificationCon
             topicExp.getContent().add("");
             topicExp.setDialect(DIALECT_URI);
             subscribeRequest.getFilter().getAny()
-                    .add(new JAXBElement<TopicExpressionType>(TOPIC_EXPRESSION, TopicExpressionType.class, topicExp));
+                    .add(new JAXBElement<>(TOPIC_EXPRESSION, TopicExpressionType.class, topicExp));
 
             subscribeRequest.setInitialTerminationTime(
-                    new JAXBElement<String>(INITIAL_TERMINATION_TIME, String.class, SUBSCRIPTION_PERIOD));
+                    new JAXBElement<>(INITIAL_TERMINATION_TIME, String.class, SUBSCRIPTION_PERIOD));
 
             subscribeRequest.setSubscriptionPolicy(new Subscribe.SubscriptionPolicy());
-            subscribeRequest.getSubscriptionPolicy().getAny()
-                    .add(new JAXBElement<Integer>(MAXIMUM_NUMBER, Integer.class, 1));
-            subscribeRequest.getSubscriptionPolicy().getAny()
-                    .add(new JAXBElement<Integer>(SIMPLE_MESSAGES, Integer.class, 1));
+            subscribeRequest.getSubscriptionPolicy().getAny().add(new JAXBElement<>(MAXIMUM_NUMBER, Integer.class, 1));
+            subscribeRequest.getSubscriptionPolicy().getAny().add(new JAXBElement<>(SIMPLE_MESSAGES, Integer.class, 1));
             GregorianCalendar now = new GregorianCalendar();
             SimpleDateFormat pFormatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
             subscribeRequest.getSubscriptionPolicy().getAny()
-                    .add(new JAXBElement<String>(START_TIME_STAMP, String.class, pFormatter.format(now.getTime())));
+                    .add(new JAXBElement<>(START_TIME_STAMP, String.class, pFormatter.format(now.getTime())));
 
             SubscribeResponse response = notificationProducer.subscribe(subscribeRequest);
 

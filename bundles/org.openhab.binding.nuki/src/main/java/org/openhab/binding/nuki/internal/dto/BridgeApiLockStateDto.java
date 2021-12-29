@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,37 +17,10 @@ package org.openhab.binding.nuki.internal.dto;
  * endpoint.
  *
  * @author Markus Katter - Initial contribution
+ * @contributer Christian Hoefler - Door sensor integration
  */
-public class BridgeApiLockStateDto {
-
-    private int state;
-    private String stateName;
-    private boolean batteryCritical;
+public class BridgeApiLockStateDto extends BridgeApiDeviceStateDto {
     private boolean success;
-
-    public int getState() {
-        return state;
-    }
-
-    public void setState(int state) {
-        this.state = state;
-    }
-
-    public String getStateName() {
-        return stateName;
-    }
-
-    public void setStateName(String stateName) {
-        this.stateName = stateName;
-    }
-
-    public boolean isBatteryCritical() {
-        return batteryCritical;
-    }
-
-    public void setBatteryCritical(boolean batteryCritical) {
-        this.batteryCritical = batteryCritical;
-    }
 
     public boolean isSuccess() {
         return success;
@@ -56,5 +29,4 @@ public class BridgeApiLockStateDto {
     public void setSuccess(boolean success) {
         this.success = success;
     }
-
 }

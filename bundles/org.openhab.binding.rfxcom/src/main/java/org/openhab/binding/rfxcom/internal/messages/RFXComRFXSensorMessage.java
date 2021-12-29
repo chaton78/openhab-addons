@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,22 +12,23 @@
  */
 package org.openhab.binding.rfxcom.internal.messages;
 
-import static java.math.BigDecimal.*;
-import static java.math.RoundingMode.HALF_DOWN;
+import static java.math.RoundingMode.*;
 import static org.openhab.binding.rfxcom.internal.RFXComBindingConstants.*;
 import static org.openhab.binding.rfxcom.internal.messages.ByteEnumUtil.fromByte;
 
 import java.math.BigDecimal;
 
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.Type;
-import org.eclipse.smarthome.core.types.UnDefType;
-import org.eclipse.smarthome.core.util.HexUtils;
+import org.openhab.binding.rfxcom.internal.config.RFXComDeviceConfiguration;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComException;
+import org.openhab.binding.rfxcom.internal.exceptions.RFXComInvalidStateException;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComUnsupportedChannelException;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComUnsupportedValueException;
 import org.openhab.binding.rfxcom.internal.handler.DeviceState;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.types.State;
+import org.openhab.core.types.Type;
+import org.openhab.core.types.UnDefType;
+import org.openhab.core.util.HexUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -180,7 +181,6 @@ public class RFXComRFXSensorMessage extends RFXComDeviceMessageImpl<RFXComRFXSen
         short miliVoltageTimesTenShort = this.miliVoltageTimesTen.shortValueExact();
         data[5] = (byte) ((miliVoltageTimesTenShort >> 8) & 0xFF);
         data[6] = (byte) (miliVoltageTimesTenShort & 0xFF);
-
     }
 
     private void decodeStatusMessage(byte[] data) {
@@ -203,7 +203,8 @@ public class RFXComRFXSensorMessage extends RFXComDeviceMessageImpl<RFXComRFXSen
     }
 
     @Override
-    public State convertToState(String channelId, DeviceState deviceState) throws RFXComUnsupportedChannelException {
+    public State convertToState(String channelId, RFXComDeviceConfiguration config, DeviceState deviceState)
+            throws RFXComUnsupportedChannelException, RFXComInvalidStateException {
         switch (channelId) {
             case CHANNEL_TEMPERATURE:
                 return subType == SubType.TEMPERATURE ? getTemperature() : null;
@@ -221,7 +222,7 @@ public class RFXComRFXSensorMessage extends RFXComDeviceMessageImpl<RFXComRFXSen
                 return subType == SubType.A_D ? handlePressure(deviceState) : null;
 
             default:
-                return super.convertToState(channelId, deviceState);
+                return super.convertToState(channelId, config, deviceState);
         }
     }
 
@@ -258,12 +259,12 @@ public class RFXComRFXSensorMessage extends RFXComDeviceMessageImpl<RFXComRFXSen
         BigDecimal supplyVoltage = ((DecimalType) referenceVoltageState).toBigDecimal();
 
         // RH = (((A/D voltage / supply voltage) - 0.16) / 0.0062) / (1.0546 - 0.00216 * temperature)
-        BigDecimal belowTheDivider = adVoltage.divide(supplyVoltage, 4, ROUND_HALF_DOWN)
-                .subtract(HUMIDITY_VOLTAGE_SUBTRACTION).divide(HUMIDITY_VOLTAGE_DIVIDER, 4, ROUND_HALF_DOWN);
+        BigDecimal belowTheDivider = adVoltage.divide(supplyVoltage, 4, HALF_DOWN)
+                .subtract(HUMIDITY_VOLTAGE_SUBTRACTION).divide(HUMIDITY_VOLTAGE_DIVIDER, 4, HALF_DOWN);
         BigDecimal underTheDivider = HUMIDITY_TEMPERATURE_CORRECTION
                 .subtract(HUMIDITY_TEMPERATURE_MULTIPLIER.multiply(temperature));
 
-        return new DecimalType(belowTheDivider.divide(underTheDivider, 4, ROUND_HALF_DOWN));
+        return new DecimalType(belowTheDivider.divide(underTheDivider, 4, HALF_DOWN));
     }
 
     private State handlePressure(DeviceState deviceState) {
@@ -278,14 +279,14 @@ public class RFXComRFXSensorMessage extends RFXComDeviceMessageImpl<RFXComRFXSen
 
         // hPa = ((A/D voltage / supply voltage) + 0.095) / 0.0009
         return new DecimalType((adVoltage.divide(supplyVoltage, 4, HALF_DOWN).add(PRESSURE_ADDITION))
-                .divide(PRESSURE_DIVIDER, 4, ROUND_HALF_DOWN));
+                .divide(PRESSURE_DIVIDER, 4, HALF_DOWN));
     }
 
     private BigDecimal getVoltage() {
         if (miliVoltageTimesTen == null) {
             return null;
         }
-        return miliVoltageTimesTen.divide(ONE_HUNDRED, 100, ROUND_CEILING);
+        return miliVoltageTimesTen.divide(ONE_HUNDRED, 100, CEILING);
     }
 
     @Override

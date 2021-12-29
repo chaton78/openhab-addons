@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -24,7 +24,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.io.neeo.internal.NeeoConstants;
 import org.openhab.io.neeo.internal.NeeoUtil;
@@ -60,7 +59,7 @@ public class NeeoBrainSearchService extends DefaultServletService {
     private final ServiceContext context;
 
     /** The last search results */
-    private final ConcurrentHashMap<Integer, NeeoThingUID> lastSearchResults = new ConcurrentHashMap<>();
+    private final Map<Integer, NeeoThingUID> lastSearchResults = new ConcurrentHashMap<>();
 
     /**
      * Constructs the service from the given {@link ServiceContext}.
@@ -85,7 +84,7 @@ public class NeeoBrainSearchService extends DefaultServletService {
      */
     @Override
     public boolean canHandleRoute(String[] paths) {
-        return paths.length >= 1 && StringUtils.equalsIgnoreCase(paths[0], "db");
+        return paths.length >= 1 && paths[0].equalsIgnoreCase("db");
     }
 
     /**
@@ -103,14 +102,17 @@ public class NeeoBrainSearchService extends DefaultServletService {
         Objects.requireNonNull(paths, "paths cannot be null");
         Objects.requireNonNull(resp, "resp cannot be null");
         if (paths.length < 2) {
-            throw new IllegalArgumentException("paths must have atleast 2 elements: " + StringUtils.join(paths));
+            throw new IllegalArgumentException("paths must have atleast 2 elements: " + String.join("", paths));
         }
 
-        final String path = StringUtils.lowerCase(paths[1]);
+        final String path = paths[1].toLowerCase();
 
-        if (StringUtils.equalsIgnoreCase(path, "search")) {
-            doSearch(req.getQueryString(), resp);
-        } else if (StringUtils.equalsIgnoreCase(path, "adapterdefinition") && paths.length >= 3) {
+        if (path.equalsIgnoreCase("search")) {
+            String queryString = req.getQueryString();
+            if (queryString != null) {
+                doSearch(queryString, resp);
+            }
+        } else if (path.equalsIgnoreCase("adapterdefinition") && paths.length >= 3) {
             doAdapterDefinition(paths[2], resp);
         } else {
             doQuery(path, resp);
@@ -121,14 +123,14 @@ public class NeeoBrainSearchService extends DefaultServletService {
      * Does the search of all things and returns the results
      *
      * @param queryString the non-null, possibly empty query string
-     * @param resp        the non-null response to write to
+     * @param resp the non-null response to write to
      * @throws IOException Signals that an I/O exception has occurred.
      */
     private void doSearch(String queryString, HttpServletResponse resp) throws IOException {
         Objects.requireNonNull(queryString, "queryString cannot be null");
         Objects.requireNonNull(resp, "resp cannot be null");
 
-        final int idx = StringUtils.indexOf(queryString, '=');
+        final int idx = queryString.indexOf("=");
 
         if (idx >= 0 && idx + 1 < queryString.length()) {
             final String search = NeeoUtil.decodeURIComponent(queryString.substring(idx + 1));
@@ -154,7 +156,7 @@ public class NeeoBrainSearchService extends DefaultServletService {
     /**
      * Does a query for the NEEO device definition
      *
-     * @param id   the non-empty (last) search identifier
+     * @param id the non-empty (last) search identifier
      * @param resp the non-null response to write to
      * @throws IOException Signals that an I/O exception has occurred.
      */
@@ -184,7 +186,7 @@ public class NeeoBrainSearchService extends DefaultServletService {
     /**
      * Does a query for the NEEO device definition
      *
-     * @param id   the non-empty (last) search identifier
+     * @param id the non-empty (last) search identifier
      * @param resp the non-null response to write to
      * @throws IOException Signals that an I/O exception has occurred.
      */

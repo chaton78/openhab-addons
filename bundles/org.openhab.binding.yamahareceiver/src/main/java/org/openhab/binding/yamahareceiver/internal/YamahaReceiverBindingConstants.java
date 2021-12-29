@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingTypeUID;
 
 /**
  * The {@link YamahaReceiverBindingConstants} class defines common constants, which are
@@ -48,6 +48,8 @@ public class YamahaReceiverBindingConstants {
     public static final String CHANNEL_MUTE = "mute";
     public static final String CHANNEL_SCENE = "scene";
     public static final String CHANNEL_DIALOGUE_LEVEL = "dialogueLevel";
+    public static final String CHANNEL_HDMI1OUT = "hdmi1Out";
+    public static final String CHANNEL_HDMI2OUT = "hdmi2Out";
 
     public static final String CHANNEL_PARTY_MODE = "party_mode";
     public static final String CHANNEL_PARTY_MODE_MUTE = "party_mode_mute";

@@ -6,8 +6,7 @@
 MQTT is a server/client architecture.
 
 A server, also called broker is not provided within this binding.
-You can use any of the freely available MQTT Brokers like [Mosquitto](https://mosquitto.org/)
-or [Moquette](https://moquette-io.github.io/moquette/) or install the [included Moquette broker](https://www.openhab.org/addons/integrations/mqttembeddedbroker/) as add-on.
+You can use any of the freely available MQTT Brokers like [Mosquitto](https://mosquitto.org/).
 
 This particular binding allows to configure connections to brokers via openHAB Things.
 This binding does NOT allow you to link Channels to MQTT topics or perform auto-discovery of available
@@ -54,6 +53,11 @@ For more security, the following optional parameters can be altered:
 * __certificate__: The certificate hash. If **certificatepin** is set this hash is used to verify the connection. Clear to allow a new certificate pinning on the next connection attempt. If empty will be filled automatically by the next successful connection. An example input would be `SHA-256:83F9171E06A313118889F7D79302BD1B7A2042EE0CFD029ABF8DD06FFA6CD9D3`.
 * __publickey__: The public key hash. If **publickeypin** is set this hash is used to verify the connection. Clear to allow a new public key pinning on the next connection attempt. If empty will be filled automatically by the next successful connection. An example input would be `SHA-256:83F9171E06A313118889F7D79302BD1B7A2042EE0CFD029ABF8DD06FFA6CD9D3`.
 
+By default discovery services (like homie or homeassistant) are enabled on a broker.
+This behaviour can be controlled with a configuration parameter.
+
+* __enableDiscovery__:If set to true, enables discovery on this broker, if set to false, disables discovery services on this broker.
+
 ## Supported Channels
 
 You can extend your broker connection bridges with a channel:
@@ -65,3 +69,4 @@ Configuration parameters are:
 * __stateTopic__: This channel will trigger on this MQTT topic. This topic can contain wildcards like + and # for example "all/in/#" or "sensors/+/config".
 * __payload__: An optional condition on the value of the MQTT topic that must match before this channel is triggered.
 
+Note for new users - direct broker Bridge channels are rarely needed. You almost certainly will want to be using one of the binding extensions, or the generic Things and Channels features for most devices or services.

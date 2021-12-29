@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,26 +12,35 @@
  */
 package org.openhab.binding.hue.internal.discovery;
 
-import static org.eclipse.smarthome.core.thing.Thing.PROPERTY_SERIAL_NUMBER;
 import static org.openhab.binding.hue.internal.HueBindingConstants.*;
+import static org.openhab.core.thing.Thing.PROPERTY_SERIAL_NUMBER;
 
+import java.io.IOException;
 import java.util.Collections;
+import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.config.discovery.DiscoveryResult;
-import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
-import org.eclipse.smarthome.config.discovery.upnp.UpnpDiscoveryParticipant;
-import org.eclipse.smarthome.config.discovery.upnp.internal.UpnpDiscoveryService;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.ThingUID;
 import org.jupnp.model.meta.DeviceDetails;
 import org.jupnp.model.meta.ModelDetails;
 import org.jupnp.model.meta.RemoteDevice;
+import org.openhab.binding.hue.internal.HueBindingConstants;
+import org.openhab.core.config.discovery.DiscoveryResult;
+import org.openhab.core.config.discovery.DiscoveryResultBuilder;
+import org.openhab.core.config.discovery.upnp.UpnpDiscoveryParticipant;
+import org.openhab.core.config.discovery.upnp.internal.UpnpDiscoveryService;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
+import org.osgi.service.cm.Configuration;
+import org.osgi.service.cm.ConfigurationAdmin;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@link HueBridgeDiscoveryParticipant} is responsible for discovering new and
@@ -41,8 +50,20 @@ import org.osgi.service.component.annotations.Component;
  * @author Thomas Höfer - Added representation
  */
 @NonNullByDefault
-@Component(service = UpnpDiscoveryParticipant.class, immediate = true)
+@Component(service = UpnpDiscoveryParticipant.class)
 public class HueBridgeDiscoveryParticipant implements UpnpDiscoveryParticipant {
+
+    private final Logger logger = LoggerFactory.getLogger(HueBridgeDiscoveryParticipant.class);
+
+    // Hue bridges have maxAge 100 seconds, so set the default grace period to half of that
+    private long removalGracePeriodSeconds = 50;
+
+    private final ConfigurationAdmin configAdmin;
+
+    @Activate
+    public HueBridgeDiscoveryParticipant(final @Reference ConfigurationAdmin configAdmin) {
+        this.configAdmin = configAdmin;
+    }
 
     @Override
     public Set<ThingTypeUID> getSupportedThingTypeUIDs() {
@@ -57,11 +78,18 @@ public class HueBridgeDiscoveryParticipant implements UpnpDiscoveryParticipant {
             properties.put(HOST, device.getDetails().getBaseURL().getHost());
             properties.put(PORT, device.getDetails().getBaseURL().getPort());
             properties.put(PROTOCOL, device.getDetails().getBaseURL().getProtocol());
-            properties.put(PROPERTY_SERIAL_NUMBER, device.getDetails().getSerialNumber());
+            String serialNumber = device.getDetails().getSerialNumber();
+            DiscoveryResult result;
+            if (serialNumber != null && !serialNumber.isBlank()) {
+                properties.put(PROPERTY_SERIAL_NUMBER, serialNumber.toLowerCase());
 
-            DiscoveryResult result = DiscoveryResultBuilder.create(uid).withProperties(properties)
-                    .withLabel(device.getDetails().getFriendlyName()).withRepresentationProperty(PROPERTY_SERIAL_NUMBER)
-                    .build();
+                result = DiscoveryResultBuilder.create(uid).withProperties(properties)
+                        .withLabel(device.getDetails().getFriendlyName())
+                        .withRepresentationProperty(PROPERTY_SERIAL_NUMBER).build();
+            } else {
+                result = DiscoveryResultBuilder.create(uid).withProperties(properties)
+                        .withLabel(device.getDetails().getFriendlyName()).build();
+            }
             return result;
         } else {
             return null;
@@ -73,11 +101,12 @@ public class HueBridgeDiscoveryParticipant implements UpnpDiscoveryParticipant {
         DeviceDetails details = device.getDetails();
         if (details != null) {
             ModelDetails modelDetails = details.getModelDetails();
-            if (modelDetails != null) {
+            String serialNumber = details.getSerialNumber();
+            if (modelDetails != null && serialNumber != null && !serialNumber.isBlank()) {
                 String modelName = modelDetails.getModelName();
                 if (modelName != null) {
                     if (modelName.startsWith("Philips hue bridge")) {
-                        return new ThingUID(THING_TYPE_BRIDGE, details.getSerialNumber());
+                        return new ThingUID(THING_TYPE_BRIDGE, serialNumber.toLowerCase());
                     }
                 }
             }
@@ -85,4 +114,21 @@ public class HueBridgeDiscoveryParticipant implements UpnpDiscoveryParticipant {
         return null;
     }
 
+    @Override
+    public long getRemovalGracePeriodSeconds(RemoteDevice device) {
+        try {
+            Configuration conf = configAdmin.getConfiguration("binding.hue");
+            Dictionary<String, @Nullable Object> properties = conf.getProperties();
+            if (properties != null) {
+                Object property = properties.get(HueBindingConstants.REMOVAL_GRACE_PERIOD);
+                if (property != null) {
+                    removalGracePeriodSeconds = Long.parseLong(property.toString());
+                }
+            }
+        } catch (IOException | IllegalStateException | NumberFormatException e) {
+            // fall through to pre-initialised (default) value
+        }
+        logger.trace("getRemovalGracePeriodSeconds={}", removalGracePeriodSeconds);
+        return removalGracePeriodSeconds;
+    }
 }

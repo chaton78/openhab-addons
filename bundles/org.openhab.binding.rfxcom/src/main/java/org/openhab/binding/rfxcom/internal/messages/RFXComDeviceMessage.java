@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,14 +12,15 @@
  */
 package org.openhab.binding.rfxcom.internal.messages;
 
-import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.State;
 import org.openhab.binding.rfxcom.internal.config.RFXComDeviceConfiguration;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComException;
+import org.openhab.binding.rfxcom.internal.exceptions.RFXComInvalidStateException;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComUnsupportedChannelException;
 import org.openhab.binding.rfxcom.internal.exceptions.RFXComUnsupportedValueException;
 import org.openhab.binding.rfxcom.internal.handler.DeviceState;
+import org.openhab.core.config.discovery.DiscoveryResultBuilder;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.State;
 
 /**
  * An interface for message about devices, so interface message do not (have to) implement this
@@ -30,22 +31,28 @@ public interface RFXComDeviceMessage<T> extends RFXComMessage {
     /**
      * Procedure for converting RFXCOM value to openHAB command.
      *
-     * @param channelId   id of the channel
+     * @param channelId id of the channel
+     * @param config Configuration of the thing being handled
      * @param deviceState
      * @return openHAB command.
      * @throws RFXComUnsupportedChannelException if the channel is not supported
+     * @throws RFXComInvalidStateException if the channel is supported, but the device is not configured for the value
      */
-    Command convertToCommand(String channelId, DeviceState deviceState) throws RFXComUnsupportedChannelException;
+    Command convertToCommand(String channelId, RFXComDeviceConfiguration config, DeviceState deviceState)
+            throws RFXComUnsupportedChannelException, RFXComInvalidStateException;
 
     /**
      * Procedure for converting RFXCOM value to openHAB state.
      *
-     * @param channelId   id of the channel
+     * @param channelId id of the channel
+     * @param config configuration of the thing being handled
      * @param deviceState
      * @return openHAB state.
      * @throws RFXComUnsupportedChannelException if the channel is not supported
+     * @throws RFXComInvalidStateException if the channel is supported, but the device is not configured for the value
      */
-    State convertToState(String channelId, DeviceState deviceState) throws RFXComUnsupportedChannelException;
+    State convertToState(String channelId, RFXComDeviceConfiguration config, DeviceState deviceState)
+            throws RFXComUnsupportedChannelException, RFXComInvalidStateException;
 
     /**
      * Procedure to get device id.

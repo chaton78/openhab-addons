@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -23,27 +23,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.concurrent.Future;
 
-import org.apache.commons.lang.ObjectUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
-import org.eclipse.smarthome.config.core.Configuration;
-import org.eclipse.smarthome.config.core.validation.ConfigValidationException;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.StopMoveType;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.thing.binding.builder.ChannelBuilder;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.State;
 import org.openhab.binding.homematic.internal.HomematicBindingConstants;
 import org.openhab.binding.homematic.internal.common.HomematicConfig;
 import org.openhab.binding.homematic.internal.communicator.HomematicGateway;
@@ -59,9 +41,28 @@ import org.openhab.binding.homematic.internal.model.HmDatapointConfig;
 import org.openhab.binding.homematic.internal.model.HmDatapointInfo;
 import org.openhab.binding.homematic.internal.model.HmDevice;
 import org.openhab.binding.homematic.internal.model.HmParamsetType;
+import org.openhab.binding.homematic.internal.type.HomematicChannelTypeProvider;
 import org.openhab.binding.homematic.internal.type.HomematicTypeGeneratorImpl;
 import org.openhab.binding.homematic.internal.type.MetadataUtils;
 import org.openhab.binding.homematic.internal.type.UidUtils;
+import org.openhab.core.config.core.Configuration;
+import org.openhab.core.config.core.validation.ConfigValidationException;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.StopMoveType;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.thing.binding.builder.ChannelBuilder;
+import org.openhab.core.thing.type.ChannelType;
+import org.openhab.core.thing.type.ChannelTypeUID;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,12 +73,14 @@ import org.slf4j.LoggerFactory;
  */
 public class HomematicThingHandler extends BaseThingHandler {
     private final Logger logger = LoggerFactory.getLogger(HomematicThingHandler.class);
+    private final HomematicChannelTypeProvider channelTypeProvider;
     private Future<?> initFuture;
     private final Object initLock = new Object();
     private volatile boolean deviceDeletionPending = false;
 
-    public HomematicThingHandler(Thing thing) {
+    public HomematicThingHandler(Thing thing, HomematicChannelTypeProvider channelTypeProvider) {
         super(thing);
+        this.channelTypeProvider = channelTypeProvider;
     }
 
     @Override
@@ -105,8 +108,7 @@ public class HomematicThingHandler extends BaseThingHandler {
         });
     }
 
-    private void doInitializeInBackground()
-            throws GatewayNotAvailableException, HomematicClientException, IOException {
+    private void doInitializeInBackground() throws GatewayNotAvailableException, HomematicClientException, IOException {
         HomematicGateway gateway = getHomematicGateway();
         HmDevice device = gateway.getDevice(UidUtils.getHomematicAddress(getThing()));
         HmChannel channelZero = device.getChannel(0);
@@ -145,12 +147,60 @@ public class HomematicThingHandler extends BaseThingHandler {
         }
         updateConfiguration(config);
 
+        boolean channelsChanged = false;
+
         // update thing channel list for reconfigurable channels (relies on the new value of the
         // CHANNEL_FUNCTION datapoint fetched during configuration update)
         List<Channel> thingChannels = new ArrayList<>(getThing().getChannels());
+
+        if (thingChannels.isEmpty()) {
+            for (HmChannel channel : device.getChannels()) {
+                for (HmDatapoint dp : channel.getDatapoints()) {
+                    if (HomematicTypeGeneratorImpl.isIgnoredDatapoint(dp)
+                            || dp.getParamsetType() != HmParamsetType.VALUES) {
+                        continue;
+                    }
+                    ChannelUID channelUID = UidUtils.generateChannelUID(dp, getThing().getUID());
+                    if (containsChannel(thingChannels, channelUID)) {
+                        // Channel is already present
+                        continue;
+                    }
+
+                    ChannelTypeUID channelTypeUID = UidUtils.generateChannelTypeUID(dp);
+                    ChannelType channelType = channelTypeProvider.getInternalChannelType(channelTypeUID);
+                    if (channelType == null) {
+                        channelType = HomematicTypeGeneratorImpl.createChannelType(dp, channelTypeUID);
+                        channelTypeProvider.addChannelType(channelType);
+                    }
+
+                    Channel thingChannel = ChannelBuilder.create(channelUID, MetadataUtils.getItemType(dp))
+                            .withLabel(MetadataUtils.getLabel(dp))
+                            .withDescription(MetadataUtils.getDatapointDescription(dp)).withType(channelType.getUID())
+                            .build();
+                    thingChannels.add(thingChannel);
+
+                    logger.debug(
+                            "Updated value datapoints for channel {} of device '{}' (function {}), now has {} datapoints",
+                            channel, channel.getDevice().getAddress(), channel.getCurrentFunction(),
+                            channel.getDatapoints().size());
+                }
+            }
+            channelsChanged = true;
+        }
+
         if (updateDynamicChannelList(device, thingChannels)) {
+            channelsChanged = true;
+        }
+
+        if (channelsChanged) {
             updateThing(editThing().withChannels(thingChannels).build());
         }
+
+        thingChannels.forEach(channel -> {
+            if (isLinked(channel.getUID())) {
+                channelLinked(channel.getUID());
+            }
+        });
     }
 
     /**
@@ -193,10 +243,17 @@ public class HomematicThingHandler extends BaseThingHandler {
                 Map<String, String> channelProps = new HashMap<>();
                 channelProps.put(propertyName, expectedFunction);
 
+                ChannelTypeUID channelTypeUID = UidUtils.generateChannelTypeUID(dp);
+                ChannelType channelType = channelTypeProvider.getInternalChannelType(channelTypeUID);
+                if (channelType == null) {
+                    channelType = HomematicTypeGeneratorImpl.createChannelType(dp, channelTypeUID);
+                    channelTypeProvider.addChannelType(channelType);
+                }
+
                 Channel thingChannel = ChannelBuilder.create(channelUID, MetadataUtils.getItemType(dp))
                         .withProperties(channelProps).withLabel(MetadataUtils.getLabel(dp))
-                        .withDescription(MetadataUtils.getDatapointDescription(dp))
-                        .withType(UidUtils.generateChannelTypeUID(dp)).build();
+                        .withDescription(MetadataUtils.getDatapointDescription(dp)).withType(channelType.getUID())
+                        .build();
                 thingChannels.add(thingChannel);
                 changed = true;
             }
@@ -211,8 +268,8 @@ public class HomematicThingHandler extends BaseThingHandler {
     private static boolean containsChannel(List<Channel> channels, ChannelUID channelUID) {
         for (Channel channel : channels) {
             ChannelUID uid = channel.getUID();
-            if (StringUtils.equals(channelUID.getGroupId(), uid.getGroupId())
-                    && StringUtils.equals(channelUID.getId(), uid.getId())) {
+            if (Objects.equals(channelUID.getGroupId(), uid.getGroupId())
+                    && Objects.equals(channelUID.getId(), uid.getId())) {
                 return true;
             }
         }
@@ -227,7 +284,7 @@ public class HomematicThingHandler extends BaseThingHandler {
         HmDatapoint dp = channelZero
                 .getDatapoint(new HmDatapointInfo(HmParamsetType.VALUES, channelZero, datapointName));
         if (dp != null) {
-            properties.put(propertyName, ObjectUtils.toString(dp.getValue()));
+            properties.put(propertyName, Objects.toString(dp.getValue(), ""));
         }
     }
 
@@ -311,7 +368,7 @@ public class HomematicThingHandler extends BaseThingHandler {
      * Returns the rx mode that shall be used for transmitting a new value of a datapoint to the device. The
      * HomematicThingHandler always uses the default rx mode; custom thing handlers can override this method to
      * adjust the rx mode.
-     * 
+     *
      * @param datapointName The datapoint that will be updated on the device
      * @param currentValue The current value of the datapoint
      * @param newValue The value that will be sent to the device
@@ -368,10 +425,10 @@ public class HomematicThingHandler extends BaseThingHandler {
      */
     private void updateChannelState(final HmDatapoint dp, Channel channel)
             throws IOException, GatewayNotAvailableException, ConverterException {
-
         if (dp.isTrigger()) {
-            if (dp.getValue() != null) {
-                triggerChannel(channel.getUID(), ObjectUtils.toString(dp.getValue()));
+            final Object value = dp.getValue();
+            if (value != null && !value.equals(dp.getPreviousValue())) {
+                triggerChannel(channel.getUID(), value.toString());
             }
         } else if (isLinked(channel)) {
             loadHomematicChannelValues(dp.getChannel());
@@ -389,8 +446,7 @@ public class HomematicThingHandler extends BaseThingHandler {
     /**
      * Loads all values for the given Homematic channel if it is not initialized.
      */
-    private void loadHomematicChannelValues(HmChannel hmChannel)
-            throws GatewayNotAvailableException, IOException {
+    private void loadHomematicChannelValues(HmChannel hmChannel) throws GatewayNotAvailableException, IOException {
         if (!hmChannel.isInitialized()) {
             synchronized (this) {
                 if (!hmChannel.isInitialized()) {
@@ -416,10 +472,13 @@ public class HomematicThingHandler extends BaseThingHandler {
         loadHomematicChannelValues(device.getChannel(0));
 
         ThingStatus oldStatus = thing.getStatus();
+        if (oldStatus == ThingStatus.UNINITIALIZED) {
+            return;
+        }
         ThingStatus newStatus = ThingStatus.ONLINE;
         ThingStatusDetail newDetail = ThingStatusDetail.NONE;
 
-        if (getBridge().getStatus() == ThingStatus.OFFLINE) {
+        if ((getBridge() != null) && (getBridge().getStatus() == ThingStatus.OFFLINE)) {
             newStatus = ThingStatus.OFFLINE;
             newDetail = ThingStatusDetail.BRIDGE_OFFLINE;
         } else if (device.isFirmwareUpdating()) {
@@ -492,9 +551,10 @@ public class HomematicThingHandler extends BaseThingHandler {
                 Object newValue = configurationParameter.getValue();
 
                 if (key.startsWith("HMP_")) {
-                    key = StringUtils.removeStart(key, "HMP_");
-                    Integer channelNumber = NumberUtils.toInt(StringUtils.substringBefore(key, "_"));
-                    String dpName = StringUtils.substringAfter(key, "_");
+                    key = key.substring(4);
+                    int sepPos = key.indexOf("_");
+                    Integer channelNumber = Integer.valueOf(key.substring(0, sepPos));
+                    String dpName = key.substring(sepPos + 1);
 
                     HmDatapointInfo dpInfo = new HmDatapointInfo(device.getAddress(), HmParamsetType.MASTER,
                             channelNumber, dpName);
@@ -511,8 +571,7 @@ public class HomematicThingHandler extends BaseThingHandler {
                                         newValue = decimal.doubleValue();
                                     }
                                 }
-                                if (ObjectUtils.notEqual(dp.isEnumType() ? dp.getOptionValue() : dp.getValue(),
-                                        newValue)) {
+                                if (!Objects.equals(dp.isEnumType() ? dp.getOptionValue() : dp.getValue(), newValue)) {
                                     sendDatapoint(dp, new HmDatapointConfig(), newValue);
                                 }
                             }
@@ -560,7 +619,7 @@ public class HomematicThingHandler extends BaseThingHandler {
     public synchronized void deviceRemoved() {
         deviceDeletionPending = false;
         if (getThing().getStatus() == ThingStatus.REMOVING) {
-            // thing removal was initiated on ESH side
+            // thing removal was initiated
             updateStatus(ThingStatus.REMOVED);
         } else {
             // device removal was initiated on homematic side, thing is not removed

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -15,11 +15,12 @@ package org.openhab.binding.denonmarantz.internal.connector.telnet;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openhab.binding.denonmarantz.internal.DenonMarantzState;
 import org.openhab.binding.denonmarantz.internal.config.DenonMarantzConfiguration;
 import org.openhab.binding.denonmarantz.internal.connector.DenonMarantzConnector;
@@ -45,7 +46,7 @@ public class DenonMarantzTelnetConnector extends DenonMarantzConnector implement
 
     private static final BigDecimal NINETYNINE = new BigDecimal("99");
 
-    private DenonMarantzTelnetClient telnetClient;
+    private DenonMarantzTelnetClientThread telnetClientThread;
 
     private boolean displayNowplaying = false;
 
@@ -53,13 +54,14 @@ public class DenonMarantzTelnetConnector extends DenonMarantzConnector implement
 
     private Future<?> telnetStateRequest;
 
-    private Future<?> telnetRunnable;
+    private String thingUID;
 
     public DenonMarantzTelnetConnector(DenonMarantzConfiguration config, DenonMarantzState state,
-            ScheduledExecutorService scheduler) {
+            ScheduledExecutorService scheduler, String thingUID) {
         this.config = config;
         this.scheduler = scheduler;
         this.state = state;
+        this.thingUID = thingUID;
     }
 
     /**
@@ -67,8 +69,9 @@ public class DenonMarantzTelnetConnector extends DenonMarantzConnector implement
      */
     @Override
     public void connect() {
-        telnetClient = new DenonMarantzTelnetClient(config, this);
-        telnetRunnable = scheduler.submit(telnetClient);
+        telnetClientThread = new DenonMarantzTelnetClientThread(config, this);
+        telnetClientThread.setName("OH-binding-" + thingUID);
+        telnetClientThread.start();
     }
 
     @Override
@@ -97,16 +100,19 @@ public class DenonMarantzTelnetConnector extends DenonMarantzConnector implement
             telnetStateRequest = null;
         }
 
-        if (telnetClient != null && !telnetRunnable.isDone()) {
-            telnetRunnable.cancel(true);
-            telnetClient.shutdown();
+        if (telnetClientThread != null) {
+            telnetClientThread.interrupt();
+            // Invoke a shutdown after interrupting the thread to close the socket immediately,
+            // otherwise the client keeps running until a line was received from the telnet connection
+            telnetClientThread.shutdown();
+            telnetClientThread = null;
         }
     }
 
     private void refreshState() {
         // Sends a series of state query commands over the telnet connection
         telnetStateRequest = scheduler.submit(() -> {
-            ArrayList<String> cmds = new ArrayList<String>(Arrays.asList("PW?", "MS?", "MV?", "ZM?", "MU?", "SI?"));
+            List<String> cmds = new ArrayList<>(Arrays.asList("PW?", "MS?", "MV?", "ZM?", "MU?", "SI?"));
             if (config.getZoneCount() > 1) {
                 cmds.add("Z2?");
                 cmds.add("Z2MU?");
@@ -121,6 +127,7 @@ public class DenonMarantzTelnetConnector extends DenonMarantzConnector implement
                     Thread.sleep(300);
                 } catch (InterruptedException e) {
                     logger.trace("requestStateOverTelnet() - Interrupted while requesting state.");
+                    Thread.currentThread().interrupt();
                 }
             }
         });
@@ -193,6 +200,17 @@ public class DenonMarantzTelnetConnector extends DenonMarantzConnector implement
                         state.setZone3Input(value);
                     }
                     break;
+                case "Z4": // Zone 4
+                    if (value.equals("ON") || value.equals("OFF")) {
+                        state.setZone4Power(value.equals("ON"));
+                    } else if (value.equals("MUON") || value.equals("MUOFF")) {
+                        state.setZone4Mute(value.equals("MUON"));
+                    } else if (StringUtils.isNumeric(value)) {
+                        state.setZone4Volume(fromDenonValue(value));
+                    } else {
+                        state.setZone4Input(value);
+                    }
+                    break;
                 case "ZM": // Main zone
                     if (value.equals("ON") || value.equals("OFF")) {
                         state.setMainZonePower(value.equals("ON"));
@@ -246,11 +264,11 @@ public class DenonMarantzTelnetConnector extends DenonMarantzConnector implement
     @Override
     protected void internalSendCommand(String command) {
         logger.debug("Sending command '{}'", command);
-        if (StringUtils.isBlank(command)) {
+        if (command == null || command.isBlank()) {
             logger.warn("Trying to send empty command");
             return;
         }
-        telnetClient.sendCommand(command);
+        telnetClientThread.sendCommand(command);
     }
 
     /**

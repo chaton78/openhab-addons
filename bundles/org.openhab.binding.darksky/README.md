@@ -2,6 +2,11 @@
 
 This binding integrates the [Dark Sky API](https://darksky.net/dev/docs).
 
+::: tip Note
+The Dark Sky API service for existing customers will continue until the end of 2022.
+They do no longer accept new signups.
+:::
+
 ## Supported Things
 
 There are two supported things.
@@ -29,14 +34,14 @@ Once the system location will be changed, the background discovery updates the c
 ### Dark Sky Account
 
 | Parameter       | Description                                                                                                                                                                                                                                                                       |
-| apikey          | API key to access the Dark Sky API. **Mandatory**                                                                                                                                                                                                                                                                                                                                                   |
 |-----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| apikey          | API key to access the Dark Sky API. **Mandatory**                                                                                                                                                                                                                                                                                                                                                   |
 | refreshInterval | Specifies the refresh interval (in minutes). Optional, the default value is 60, the minimum value is 1. Note: when using a free API key (1000 calls/day), do not use an interval less than 2.                                                                                                                                                                                                       |
 | language        | Language to be used by the Dark Sky API. Optional, valid values are: `ar`, `az`, `be`, `bg`, `bn`, `bs`, `ca`, `cs`, `da`, `de`, `el`, `en`, `eo`, `es`, `et`, `fi`, `fr`, `he`, `hi`, `hr`, `hu`, `id`, `is`, `it`, `ja`, `ka`, `ko`, `kn`, `kw`, `lv`, `mr`, `nb`, `nl`, `no`, `pa`, `pl`, `pt`, `ro`, `ru`, `sk`, `sl`, `sr`, `sv`, `ta`, `te`, `tet`, `tr`, `uk`, `x-pig-latin`, `zh`, `zh-tw`. |
 
 ### Current Weather And Forecast
 
-| Parameter      | Description                                                                                                                   |
+| Parameter      | Description                                                                                                                    |
 |----------------|-------------------------------------------------------------------------------------------------------------------------------|
 | location       | Location of weather in geographical coordinates (latitude/longitude/altitude). **Mandatory**                                  |
 | forecastHours  | Number of hours for hourly forecast. Optional, the default value is 24 (min="0", max="48", step="1").                         |
@@ -200,7 +205,7 @@ Number:Speed localCurrentSnowIntensity "Current snow intensity [%.2f mm/h]" <sno
 Number:Speed localCurrentPrecipitationIntensity "Current precipitation intensity [%.2f mm/h]" <rain> { channel="darksky:weather-and-forecast:api:local:current#precip-intensity" }
 Number:Dimensionless localCurrentPrecipitationProbability "Current precipitation probability [%d %unit%]" <rain> { channel="darksky:weather-and-forecast:api:local:current#precip-probability" }
 String localCurrentPrecipitationType "Current precipitation type [%s]" <rain> { channel="darksky:weather-and-forecast:api:local:current#precip-type" }
-Number localCurrentUVIndex "Current precipitation probability [%d]" <none> { channel="darksky:weather-and-forecast:api:local:current#uvindex" }
+Number localCurrentUVIndex "Current UV index [%d]" <none> { channel="darksky:weather-and-forecast:api:local:current#uvindex" }
 Number:ArealDensity localCurrentOzone "Current ozone [%.1f %unit%]" <none> { channel="darksky:weather-and-forecast:api:local:current#ozone" }
 DateTime localSunrise "Sunrise [%1$tY-%1$tm-%1$tdT%1$tH:%1$tM:%1$tS]" <sun> { channel="darksky:weather-and-forecast:api:local:current#sunrise" }
 DateTime localSunset "Sunset [%1$tY-%1$tm-%1$tdT%1$tH:%1$tM:%1$tS]" <sun> { channel="darksky:weather-and-forecast:api:local:current#sunset" }
@@ -234,11 +239,11 @@ Number:Temperature localDailyForecastDay2MinTemperature "Minimum temperature in 
 Number:Temperature localDailyForecastDay2MaxTemperature "Maximum temperature in 2 days [%.1f %unit%]" <temperature> { channel="darksky:weather-and-forecast:api:local:forecastDay2#max-temperature" }
 ...
 
-String localAlert1Title "Weather warning! [%s]" <error> { channel="darksky:weather-and-forecast:api:local:alert1#title" }
-String localAlert1Description "Description [%s]" <error> { channel="darksky:weather-and-forecast:api:local:alert1#description" }
-String localAlert1Severity "Severity [%s]" <error> { channel="darksky:weather-and-forecast:api:local:alert1#severity" }
-DateTime localAlert1Issued "Issued [%1$tY-%1$tm-%1$tdT%1$tH:%1$tM]" <time> { channel="darksky:weather-and-forecast:api:local:alert1#issued" }
-DateTime localAlert1Expires "Expires [%1$tY-%1$tm-%1$tdT%1$tH:%1$tM]" <time> { channel="darksky:weather-and-forecast:api:local:alert1#expires" }
+String localAlert1Title "Weather warning! [%s]" <error> { channel="darksky:weather-and-forecast:api:local:alerts1#title" }
+String localAlert1Description "Description [%s]" <error> { channel="darksky:weather-and-forecast:api:local:alerts1#description" }
+String localAlert1Severity "Severity [%s]" <error> { channel="darksky:weather-and-forecast:api:local:alerts1#severity" }
+DateTime localAlert1Issued "Issued [%1$tY-%1$tm-%1$tdT%1$tH:%1$tM]" <time> { channel="darksky:weather-and-forecast:api:local:alerts1#issued" }
+DateTime localAlert1Expires "Expires [%1$tY-%1$tm-%1$tdT%1$tH:%1$tM]" <time> { channel="darksky:weather-and-forecast:api:local:alerts1#expires" }
 
 String miamiCurrentCondition "Current condition in Miami [%s]" <sun_clouds> { channel="darksky:weather-and-forecast:api:miami:current#condition" }
 Image miamiCurrentConditionIcon "Icon" { channel="darksky:weather-and-forecast:api:miami:current#icon" }
@@ -294,8 +299,8 @@ sitemap demo label="Dark Sky" {
         Image item=localDailyForecastTodayConditionIcon
         Text item=localDailyForecastTodayMinTemperature
         Text item=localDailyForecastTodayMaxTemperature
-        Text item=localDailyForecastTodayMinApprentTemperature
-        Text item=localDailyForecastTodayMaxApprentTemperature
+        Text item=localDailyForecastTodayMinApparentTemperature
+        Text item=localDailyForecastTodayMaxApparentTemperature
         Text item=localDailyForecastTodayPressure
         Text item=localDailyForecastTodayHumidity
         Text item=localDailyForecastTodayWindSpeed

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,6 +13,7 @@
 package org.openhab.binding.knx.internal.dpt;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
@@ -25,19 +26,19 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-import org.eclipse.smarthome.core.library.types.DateTimeType;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.HSBType;
-import org.eclipse.smarthome.core.library.types.IncreaseDecreaseType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.OpenClosedType;
-import org.eclipse.smarthome.core.library.types.PercentType;
-import org.eclipse.smarthome.core.library.types.StopMoveType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.library.types.UpDownType;
-import org.eclipse.smarthome.core.types.Type;
-import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.knx.internal.KNXTypeMapper;
+import org.openhab.core.library.types.DateTimeType;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.HSBType;
+import org.openhab.core.library.types.IncreaseDecreaseType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.OpenClosedType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.StopMoveType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.library.types.UpDownType;
+import org.openhab.core.types.Type;
+import org.openhab.core.types.UnDefType;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,7 +109,6 @@ public class KNXCoreTypeMapper implements KNXTypeMapper {
     private final Map<Class<? extends Type>, String> defaultDptMap;
 
     public KNXCoreTypeMapper() {
-
         @SuppressWarnings("unused")
         final List<Class<?>> xlators = Arrays.<Class<?>> asList(DPTXlator1BitControlled.class,
                 DPTXlator2ByteFloat.class, DPTXlator2ByteUnsigned.class, DPTXlator3BitControlled.class,
@@ -118,8 +118,8 @@ public class KNXCoreTypeMapper implements KNXTypeMapper {
                 DPTXlatorSceneControl.class, DPTXlatorSceneNumber.class, DPTXlatorString.class, DPTXlatorTime.class,
                 DPTXlatorUtf8.class);
 
-        dptTypeMap = new HashMap<String, Class<? extends Type>>();
-        dptMainTypeMap = new HashMap<Integer, Class<? extends Type>>();
+        dptTypeMap = new HashMap<>();
+        dptMainTypeMap = new HashMap<>();
 
         /**
          * MainType: 1
@@ -558,7 +558,7 @@ public class KNXCoreTypeMapper implements KNXTypeMapper {
         /** Exceptions Datapoint Types "RGB Color", Main number 232 */
         // Example: dptTypeMap.put(DPTXlatorRGB.DPT_RGB.getID(), HSBType.class);
 
-        defaultDptMap = new HashMap<Class<? extends Type>, String>();
+        defaultDptMap = new HashMap<>();
         defaultDptMap.put(OnOffType.class, DPTXlatorBoolean.DPT_SWITCH.getID());
         defaultDptMap.put(UpDownType.class, DPTXlatorBoolean.DPT_UPDOWN.getID());
         defaultDptMap.put(StopMoveType.class, DPTXlatorBoolean.DPT_START.getID());
@@ -573,7 +573,6 @@ public class KNXCoreTypeMapper implements KNXTypeMapper {
 
     @Override
     public String toDPTValue(Type type, String dptID) {
-
         DPT dpt;
         int mainNumber = getMainNumber(dptID);
         if (mainNumber == -1) {
@@ -945,7 +944,7 @@ public class KNXCoreTypeMapper implements KNXTypeMapper {
      * @throws IllegalArgumentException if none of the datapoint types DPT_DATE or
      *             DPT_TIMEOFDAY has been used.
      */
-    static private String formatDateTime(DateTimeType dateType, String dpt) {
+    private static String formatDateTime(DateTimeType dateType, String dpt) {
         if (DPTXlatorDate.DPT_DATE.getID().equals(dpt)) {
             return dateType.format("%tF");
         } else if (DPTXlatorTime.DPT_TIMEOFDAY.getID().equals(dpt)) {
@@ -1019,6 +1018,6 @@ public class KNXCoreTypeMapper implements KNXTypeMapper {
      */
     private int convertPercentToByte(PercentType percent) {
         return percent.toBigDecimal().multiply(BigDecimal.valueOf(255))
-                .divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP).intValue();
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP).intValue();
     }
 }

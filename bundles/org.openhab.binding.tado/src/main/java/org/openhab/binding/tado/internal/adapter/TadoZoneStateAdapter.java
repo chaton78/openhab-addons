@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,17 +13,8 @@
 package org.openhab.binding.tado.internal.adapter;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.OffsetDateTime;
-
-import org.eclipse.smarthome.core.library.types.DateTimeType;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.QuantityType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.library.unit.ImperialUnits;
-import org.eclipse.smarthome.core.library.unit.SIUnits;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.UnDefType;
 
 import org.openhab.binding.tado.internal.TadoBindingConstants.HvacMode;
 import org.openhab.binding.tado.internal.TadoBindingConstants.OperationMode;
@@ -43,13 +34,22 @@ import org.openhab.binding.tado.internal.api.model.TemperatureDataPoint;
 import org.openhab.binding.tado.internal.api.model.TemperatureObject;
 import org.openhab.binding.tado.internal.api.model.TimerTerminationCondition;
 import org.openhab.binding.tado.internal.api.model.ZoneState;
+import org.openhab.core.library.types.DateTimeType;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.library.unit.ImperialUnits;
+import org.openhab.core.library.unit.SIUnits;
+import org.openhab.core.types.State;
+import org.openhab.core.types.UnDefType;
 
 /**
  * Adapter from API-level zone state to the binding's item-based zone state.
  *
  * @author Dennis Frommknecht - Initial contribution
  * @author Andrew Fiddian-Green - Added Low Battery Alarm, A/C Power and Open Window channels
- *  
+ *
  */
 public class TadoZoneStateAdapter {
     private ZoneState zoneState;
@@ -200,7 +200,7 @@ public class TadoZoneStateAdapter {
     }
 
     private static DecimalType toDecimalType(double value) {
-        BigDecimal decimal = new BigDecimal(value).setScale(2, BigDecimal.ROUND_HALF_UP);
+        BigDecimal decimal = new BigDecimal(value).setScale(2, RoundingMode.HALF_UP);
         return new DecimalType(decimal);
     }
 
@@ -233,7 +233,6 @@ public class TadoZoneStateAdapter {
         if (openWindowDetected != null) {
             return OnOffType.from(openWindowDetected);
         }
-        return UnDefType.UNDEF;
+        return OnOffType.OFF;
     }
-        
 }

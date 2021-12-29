@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,9 +14,10 @@ package org.openhab.binding.lutron.internal.handler;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.thing.Thing;
 import org.openhab.binding.lutron.internal.KeypadComponent;
 import org.openhab.binding.lutron.internal.discovery.project.ComponentType;
+import org.openhab.binding.lutron.internal.protocol.lip.TargetType;
+import org.openhab.core.thing.Thing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +28,9 @@ import org.slf4j.LoggerFactory;
  */
 @NonNullByDefault
 public class VirtualKeypadHandler extends BaseKeypadHandler {
+
+    private static final String MODEL_OPTION_CASETA = "Caseta";
+    private static final String MODEL_OPTION_OTHER = "Other";
 
     private class Component implements KeypadComponent {
         private final int id;
@@ -81,11 +85,15 @@ public class VirtualKeypadHandler extends BaseKeypadHandler {
 
     @Override
     protected void configureComponents(@Nullable String model) {
-        logger.debug("Configuring components for virtual keypad");
+        String mod = model == null ? MODEL_OPTION_OTHER : model;
+        logger.debug("Configuring components for virtual keypad for model {}", mod);
+        boolean caseta = mod.equalsIgnoreCase(MODEL_OPTION_CASETA);
 
         for (int x = 1; x <= 100; x++) {
             buttonList.add(new Component(x, String.format("button%d", x), "Virtual Button", ComponentType.BUTTON));
-            ledList.add(new Component(x + 100, String.format("led%d", x), "Virtual LED", ComponentType.LED));
+            if (!caseta) { // Caseta scene buttons have no virtual LEDs
+                ledList.add(new Component(x + 100, String.format("led%d", x), "Virtual LED", ComponentType.LED));
+            }
         }
     }
 
@@ -93,6 +101,6 @@ public class VirtualKeypadHandler extends BaseKeypadHandler {
         super(thing);
         // Mark all channels "Advanced" since most are unlikely to be used in any particular config
         advancedChannels = true;
+        commandTargetType = TargetType.VIRTUALKEYPAD; // For the LEAP bridge
     }
-
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,6 +17,11 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
+import java.util.Base64;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -27,7 +32,8 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.transform.TransformationException;
+import org.openhab.core.cache.ExpiringCacheMap;
+import org.openhab.core.transform.TransformationException;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,8 +41,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Simple cache for compiled JavaScript files.
  *
+ * @author Thomas Kordelle - Initial contribution
  * @author Thomas Kordelle - pre compiled scripts
- *
  */
 @NonNullByDefault
 @Component(service = JavaScriptEngineManager.class)
@@ -46,6 +52,8 @@ public class JavaScriptEngineManager {
     private final ScriptEngineManager manager = new ScriptEngineManager();
     /* keep memory foot print low. max 2 concurrent threads are estimated */
     private final Map<String, CompiledScript> compiledScriptMap = new ConcurrentHashMap<>(4, 0.5f, 2);
+    private final ExpiringCacheMap<String, CompiledScript> cacheForInlineScripts = new ExpiringCacheMap<>(
+            Duration.ofDays(1));
 
     /**
      * Get a pre compiled script {@link CompiledScript} from cache. If it is not in the cache, then load it from
@@ -55,11 +63,12 @@ public class JavaScriptEngineManager {
      * @return a pre compiled script {@link CompiledScript}
      * @throws TransformationException if compile of JavaScript failed
      */
-    protected CompiledScript getScript(final String filename) throws TransformationException {
+    protected CompiledScript getCompiledScriptByFilename(final String filename) throws TransformationException {
         synchronized (compiledScriptMap) {
-            if (compiledScriptMap.containsKey(filename)) {
+            CompiledScript compiledScript = compiledScriptMap.get(filename);
+            if (compiledScript != null) {
                 logger.debug("Loading JavaScript {} from cache.", filename);
-                return compiledScriptMap.get(filename);
+                return compiledScript;
             } else {
                 final String path = TransformationScriptWatcher.TRANSFORM_FOLDER + File.separator + filename;
                 logger.debug("Loading script {} from storage ", path);
@@ -78,6 +87,35 @@ public class JavaScriptEngineManager {
     }
 
     /**
+     * Get a pre compiled script {@link CompiledScript} from cache. If it is not in the cache, then compile
+     * it and put a pre compiled version into the cache.
+     *
+     * @param script JavaScript which should be returned as a pre compiled
+     * @return a pre compiled script {@link CompiledScript}
+     * @throws TransformationException if compile of JavaScript failed
+     */
+    protected CompiledScript getCompiledScriptByInlineScript(final String script) throws TransformationException {
+        synchronized (cacheForInlineScripts) {
+            try {
+                final String hash = calcHash(script);
+                final CompiledScript compiledScript = cacheForInlineScripts.get(hash);
+                if (compiledScript != null) {
+                    logger.debug("Loading JavaScript from cache.");
+                    return compiledScript;
+                } else {
+                    logger.debug("Compiling script {}", script);
+                    final ScriptEngine engine = manager.getEngineByName("javascript");
+                    final CompiledScript cScript = ((Compilable) engine).compile(script);
+                    cacheForInlineScripts.put(hash, () -> cScript);
+                    return cScript;
+                }
+            } catch (ScriptException | NoSuchAlgorithmException e) {
+                throw new TransformationException("An error occurred while compiling JavaScript. " + e.getMessage(), e);
+            }
+        }
+    }
+
+    /**
      * remove a pre compiled script from cache.
      *
      * @param fileName name of the script file to remove
@@ -85,5 +123,11 @@ public class JavaScriptEngineManager {
     protected void removeFromCache(String fileName) {
         logger.debug("Removing JavaScript {} from cache.", fileName);
         compiledScriptMap.remove(fileName);
+    }
+
+    private String calcHash(final String script) throws NoSuchAlgorithmException {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(script.getBytes(StandardCharsets.UTF_8));
+        return Base64.getEncoder().encodeToString(hash);
     }
 }

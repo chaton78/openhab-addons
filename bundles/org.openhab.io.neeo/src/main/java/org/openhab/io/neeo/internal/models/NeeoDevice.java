@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -23,14 +23,13 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.items.Item;
-import org.eclipse.smarthome.core.items.ItemNotFoundException;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.type.ChannelType;
+import org.openhab.core.items.Item;
+import org.openhab.core.items.ItemNotFoundException;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.type.ChannelType;
 import org.openhab.io.neeo.internal.NeeoConstants;
 import org.openhab.io.neeo.internal.NeeoUtil;
 import org.openhab.io.neeo.internal.ServiceContext;
@@ -72,14 +71,13 @@ public class NeeoDevice {
     /**
      * The specific name for the device, if null - NEEO will default it based on the type (ie "ACCESSORY", etc)
      */
-    @Nullable
-    private final String specificName;
+
+    private final @Nullable String specificName;
 
     /**
      * The icon name to assign. If null, NEEO will default it to a standard icon based on the type
      */
-    @Nullable
-    private final String iconName;
+    private final @Nullable String iconName;
 
     /**
      * The driver version for the device
@@ -89,10 +87,10 @@ public class NeeoDevice {
     /**
      * Creates the device from the given parameters
      *
-     * @param thing    the non-null thing
+     * @param thing the non-null thing
      * @param channels the non-null, possibly empty channels
-     * @param type     the device type
-     * @param timing   the possibly null device timings
+     * @param type the device type
+     * @param timing the possibly null device timings
      */
     public NeeoDevice(Thing thing, List<NeeoDeviceChannel> channels, NeeoDeviceType type,
             @Nullable NeeoDeviceTiming timing) {
@@ -103,16 +101,16 @@ public class NeeoDevice {
     /**
      * Creates the device from the given parameters
      *
-     * @param uid                the non-null uid
-     * @param driverVersion      the driver version for the device
-     * @param type               the non-null device type
-     * @param manufacturer       the non-empty manufacturer
-     * @param name               the non-empty name
-     * @param channels           the non-null, possibly empty list of channels
-     * @param deviceTiming       a possibly null device timings
+     * @param uid the non-null uid
+     * @param driverVersion the driver version for the device
+     * @param type the non-null device type
+     * @param manufacturer the non-empty manufacturer
+     * @param name the non-empty name
+     * @param channels the non-null, possibly empty list of channels
+     * @param deviceTiming a possibly null device timings
      * @param deviceCapabilities a possibly null, possibly empty list of device capabilities
-     * @param specificName       a possibly null, possibly empty specific name
-     * @param iconName           a possibly null, possibly empty custom icon name
+     * @param specificName a possibly null, possibly empty specific name
+     * @param iconName a possibly null, possibly empty custom icon name
      */
     public NeeoDevice(NeeoThingUID uid, int driverVersion, NeeoDeviceType type, String manufacturer,
             @Nullable String name, List<NeeoDeviceChannel> channels, @Nullable NeeoDeviceTiming deviceTiming,
@@ -128,8 +126,8 @@ public class NeeoDevice {
 
         for (NeeoDeviceChannel channel : channels) {
             final String itemName = channel.getItemName();
-            final Entry<String, ItemSubType> key = new AbstractMap.SimpleEntry<String, ItemSubType>(
-                    channel.getItemName(), channel.getSubType());
+            final Entry<String, ItemSubType> key = new AbstractMap.SimpleEntry<>(channel.getItemName(),
+                    channel.getSubType());
 
             if (!uniqueIds.containsKey(key)) {
                 uniqueIds.put(key, new HashSet<>());
@@ -173,7 +171,7 @@ public class NeeoDevice {
         this.driverVersion = driverVersion;
         this.type = type;
         this.manufacturer = manufacturer;
-        this.name = name == null || StringUtils.isEmpty(name) ? "(N/A)" : name;
+        this.name = name == null || name.isEmpty() ? "(N/A)" : name;
         this.specificName = specificName;
         this.iconName = iconName;
         this.channels.addAll(channels);
@@ -224,8 +222,7 @@ public class NeeoDevice {
      *
      * @return a possibly null, possibly empty specific name
      */
-    @Nullable
-    public String getSpecificName() {
+    public @Nullable String getSpecificName() {
         return specificName;
     }
 
@@ -234,8 +231,7 @@ public class NeeoDevice {
      *
      * @return a possibly null, possibly empty icon name
      */
-    @Nullable
-    public String getIconName() {
+    public @Nullable String getIconName() {
         return iconName;
     }
 
@@ -262,8 +258,7 @@ public class NeeoDevice {
      *
      * @return a possibly null {@link NeeoDeviceTiming}
      */
-    @Nullable
-    public NeeoDeviceTiming getDeviceTiming() {
+    public @Nullable NeeoDeviceTiming getDeviceTiming() {
         if (supportTiming(this)) {
             return timing;
         }
@@ -287,8 +282,7 @@ public class NeeoDevice {
     public NeeoDeviceChannel[] getExposedChannels() {
         final List<NeeoDeviceChannel> exposedChannels = new ArrayList<>(channels.size());
         for (NeeoDeviceChannel channel : channels) {
-            if (channel.getType() != NeeoCapabilityType.EXCLUDE
-                    && StringUtils.isNotEmpty(channel.getType().toString())) {
+            if (channel.getType() != NeeoCapabilityType.EXCLUDE && !channel.getType().toString().isEmpty()) {
                 exposedChannels.add(channel);
             }
         }
@@ -308,8 +302,8 @@ public class NeeoDevice {
         for (NeeoDeviceChannel channel : channels) {
 
             final boolean notExcluded = channel.getType() != NeeoCapabilityType.EXCLUDE;
-            final boolean notEmpty = StringUtils.isNotEmpty(channel.getType().toString());
-            final boolean isItemMatch = StringUtils.equalsIgnoreCase(itemName, channel.getItemName());
+            final boolean notEmpty = !channel.getType().toString().isEmpty();
+            final boolean isItemMatch = itemName.equalsIgnoreCase(channel.getItemName());
 
             logger.trace("isExposed(channel): {} --- notExcluded({}) -- notEmpty({}) -- isItemMatch({}) -- {}",
                     itemName, notExcluded, notEmpty, isItemMatch, channel);
@@ -325,18 +319,17 @@ public class NeeoDevice {
     /**
      * Gets the channel for the given item name (and channel number)
      *
-     * @param itemName   the non-empty item name
-     * @param subType    the non-null sub type
+     * @param itemName the non-empty item name
+     * @param subType the non-null sub type
      * @param channelNbr the channel nbr
      * @return the channel or null if none found
      */
-    @Nullable
-    public NeeoDeviceChannel getChannel(String itemName, ItemSubType subType, int channelNbr) {
+    public @Nullable NeeoDeviceChannel getChannel(String itemName, ItemSubType subType, int channelNbr) {
         NeeoUtil.requireNotEmpty(itemName, "itemName cannot be empty");
         Objects.requireNonNull(subType, "subType cannot be null");
 
         for (NeeoDeviceChannel channel : channels) {
-            if (StringUtils.equalsIgnoreCase(itemName, channel.getItemName()) && channel.getSubType() == subType
+            if (itemName.equalsIgnoreCase(channel.getItemName()) && channel.getSubType() == subType
                     && channel.getChannelNbr() == channelNbr) {
                 return channel;
             }
@@ -351,11 +344,10 @@ public class NeeoDevice {
      * @param context the non-null service context
      * @return the new {@link NeeoDevice} or null if the {@link Thing} doesn't exist anymore
      */
-    @Nullable
-    public NeeoDevice merge(ServiceContext context) {
+    public @Nullable NeeoDevice merge(ServiceContext context) {
         Objects.requireNonNull(context, "context cannot be null");
 
-        if (StringUtils.equalsIgnoreCase(NeeoConstants.NEEOIO_BINDING_ID, uid.getBindingId())) {
+        if (NeeoConstants.NEEOIO_BINDING_ID.equals(uid.getBindingId())) {
             return this;
         }
 

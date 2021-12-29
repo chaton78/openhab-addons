@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -26,7 +26,6 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.util.Arrays;
 import java.util.Optional;
 
-import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.yamahareceiver.internal.protocol.AbstractConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +45,8 @@ public class XMLConnection extends AbstractConnection {
     private static final String XML_PUT = "<?xml version=\"1.0\" encoding=\"utf-8\"?><YAMAHA_AV cmd=\"PUT\">";
     private static final String XML_END = "</YAMAHA_AV>";
     private static final String HEADER_CHARSET_PART = "charset=";
+
+    private static final int CONNECTION_TIMEOUT_MS = 5000;
 
     public XMLConnection(String host) {
         super(host);
@@ -74,7 +75,9 @@ public class XMLConnection extends AbstractConnection {
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Length", Integer.toString(message.length()));
 
-            connection.setConnectTimeout(5); // set a timeout in case the device is not reachable (went offline)
+            // Set a timeout in case the device is not reachable (went offline)
+            connection.setConnectTimeout(CONNECTION_TIMEOUT_MS);
+
             connection.setUseCaches(false);
             connection.setDoInput(true);
             connection.setDoOutput(true);
@@ -140,7 +143,6 @@ public class XMLConnection extends AbstractConnection {
     }
 
     public String getResponse(String path) throws IOException {
-
         URL url = createBaseUrl(path);
         logger.debug("Making GET to {}", url);
 
@@ -166,7 +168,6 @@ public class XMLConnection extends AbstractConnection {
     }
 
     private Charset getResponseCharset(HttpURLConnection connection, Charset defaultCharset) {
-
         // See https://stackoverflow.com/a/3934280/1906057
 
         Charset charset = defaultCharset;
@@ -181,7 +182,7 @@ public class XMLConnection extends AbstractConnection {
                 .filter(x -> x.toLowerCase().startsWith(HEADER_CHARSET_PART))
                 .map(x -> x.substring(HEADER_CHARSET_PART.length() + 1, x.length() - 1)).findFirst();
 
-        if (charsetName.isPresent() && !StringUtils.isEmpty(charsetName.get())) {
+        if (charsetName.isPresent() && !charsetName.get().isEmpty()) {
             try {
                 charset = Charset.forName(charsetName.get());
             } catch (UnsupportedCharsetException | IllegalCharsetNameException e) {

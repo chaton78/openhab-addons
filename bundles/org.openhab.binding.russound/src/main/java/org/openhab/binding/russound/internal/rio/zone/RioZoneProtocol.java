@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,15 +14,11 @@ package org.openhab.binding.russound.internal.rio.zone;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.PercentType;
-import org.eclipse.smarthome.core.library.types.StringType;
 import org.openhab.binding.russound.internal.net.SocketSession;
 import org.openhab.binding.russound.internal.net.SocketSessionListener;
 import org.openhab.binding.russound.internal.rio.AbstractRioProtocol;
@@ -32,6 +28,10 @@ import org.openhab.binding.russound.internal.rio.RioPresetsProtocol;
 import org.openhab.binding.russound.internal.rio.RioSystemFavoritesProtocol;
 import org.openhab.binding.russound.internal.rio.models.GsonUtilities;
 import org.openhab.binding.russound.internal.rio.models.RioFavorite;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.StringType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -142,7 +142,6 @@ class RioZoneProtocol extends AbstractRioProtocol
 
         this.zoneFavorites[0] = new RioFavorite(1);
         this.zoneFavorites[1] = new RioFavorite(2);
-
     }
 
     /**
@@ -530,7 +529,7 @@ class RioZoneProtocol extends AbstractRioProtocol
      * @return a non-null {@link Runnable} that should be run after the call
      */
     Runnable setZoneFavorites(String favJson) {
-        if (StringUtils.isEmpty(favJson)) {
+        if (favJson.isEmpty()) {
             return () -> {
             };
         }
@@ -551,7 +550,7 @@ class RioZoneProtocol extends AbstractRioProtocol
                     final boolean favValid = fav.isValid();
                     final String favName = fav.getName();
 
-                    if (!StringUtils.equals(myFav.getName(), favName) || myFav.isValid() != favValid) {
+                    if (!Objects.equals(myFav.getName(), favName) || myFav.isValid() != favValid) {
                         myFav.setName(favName);
                         myFav.setValid(favValid);
                         if (favValid) {
@@ -824,7 +823,6 @@ class RioZoneProtocol extends AbstractRioProtocol
         } else {
             logger.warn("Invalid Zone Notification response: '{}'", resp);
         }
-
     }
 
     /**
@@ -925,7 +923,7 @@ class RioZoneProtocol extends AbstractRioProtocol
      */
     @Override
     public void responseReceived(String response) {
-        if (StringUtils.isEmpty(response)) {
+        if (response == null || response.isEmpty()) {
             return;
         }
 
@@ -938,7 +936,6 @@ class RioZoneProtocol extends AbstractRioProtocol
         if (m.matches()) {
             handleZoneFavoriteNotification(m, response);
         }
-
     }
 
     /**
@@ -950,5 +947,4 @@ class RioZoneProtocol extends AbstractRioProtocol
         favoritesProtocol.removeListener(this);
         super.dispose();
     }
-
 }

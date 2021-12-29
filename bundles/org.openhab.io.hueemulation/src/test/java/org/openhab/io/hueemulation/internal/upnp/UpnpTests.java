@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,7 +13,8 @@
 package org.openhab.io.hueemulation.internal.upnp;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 
 import java.io.IOException;
@@ -24,6 +25,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.core.Response;
 
 import org.glassfish.grizzly.osgi.httpservice.HttpServiceImpl;
@@ -31,11 +33,11 @@ import org.glassfish.grizzly.osgi.httpservice.OSGiMainHandler;
 import org.glassfish.grizzly.osgi.httpservice.util.Logger;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.hamcrest.CoreMatchers;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.openhab.io.hueemulation.internal.rest.CommonSetup;
@@ -57,7 +59,7 @@ public class UpnpTests {
 
     LightsAndGroups lightsAndGroups = new LightsAndGroups();
 
-    @BeforeClass
+    @BeforeAll
     public static void setupHttpParts() throws IOException {
         commonSetup = new CommonSetup(true);
         commonSetup.start(new ResourceConfig());
@@ -72,7 +74,7 @@ public class UpnpTests {
         httpServiceImpl = new HttpServiceImpl(mock(Bundle.class), logger);
     }
 
-    @Before
+    @BeforeEach
     public void setup() {
         Executor executor = mock(Executor.class);
         Mockito.doAnswer(a -> {
@@ -80,6 +82,7 @@ public class UpnpTests {
             return null;
         }).when(executor).execute(ArgumentMatchers.any());
         subject = new UpnpServer(executor);
+        subject.clientBuilder = ClientBuilder.newBuilder();
         subject.httpService = httpServiceImpl;
         subject.cs = commonSetup.cs;
         subject.overwriteReadyToFalse = true;
@@ -87,13 +90,13 @@ public class UpnpTests {
         subject.overwriteReadyToFalse = false;
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         subject.deactivate();
     }
 
-    @AfterClass
-    public static void tearDownHttp() {
+    @AfterAll
+    public static void tearDownHttp() throws Exception {
         mainHttpHandler.unregisterAll();
         commonSetup.dispose();
     }
@@ -120,7 +123,7 @@ public class UpnpTests {
         }
 
         // UDP thread started?
-        r.startNow(r).get(5, TimeUnit.SECONDS);
+        r.startNow().get(5, TimeUnit.SECONDS);
         assertThat(subject.upnpAnnouncementThreadRunning(), is(true));
 
         // Send M-SEARCH UPNP "packet" and check if the result contains our bridge ID

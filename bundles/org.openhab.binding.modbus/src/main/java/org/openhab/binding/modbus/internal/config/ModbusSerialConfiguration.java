@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -23,26 +23,20 @@ import org.eclipse.jdt.annotation.Nullable;
  */
 @NonNullByDefault
 public class ModbusSerialConfiguration {
-    @Nullable
-    private String port;
-    private int id;
+    private @Nullable String port;
+    private int id = 1;
     private int baud;
-    @Nullable
-    private String stopBits;
-    @Nullable
-    private String parity;
+    private @Nullable String stopBits;
+    private @Nullable String parity;
     private int dataBits;
-    @Nullable
-    private String encoding;
+    private String encoding = "rtu";
     private boolean echo;
-    private int receiveTimeoutMillis;
-    @Nullable
-    private String flowControlIn;
-    @Nullable
-    private String flowControlOut;
-    private int timeBetweenTransactionsMillis;
-    private int connectMaxTries;
-    private int connectTimeoutMillis;
+    private int receiveTimeoutMillis = 1500;
+    private String flowControlIn = "none";
+    private String flowControlOut = "none";
+    private int timeBetweenTransactionsMillis = 35;
+    private int connectMaxTries = 1;
+    private int connectTimeoutMillis = 10_000;
     private boolean enableDiscovery;
 
     public @Nullable String getPort() {

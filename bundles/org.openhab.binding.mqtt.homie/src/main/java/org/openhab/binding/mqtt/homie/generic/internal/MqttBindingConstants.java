@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,7 +13,7 @@
 package org.openhab.binding.mqtt.homie.generic.internal;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingTypeUID;
 
 /**
  * The {@link MqttBindingConstants} class defines common constants, which are
@@ -29,8 +29,12 @@ public class MqttBindingConstants {
     // List of all Thing Type UIDs
     public static final ThingTypeUID HOMIE300_MQTT_THING = new ThingTypeUID(BINDING_ID, "homie300");
 
-    public static final String CONFIG_HOMIE_CHANNEL = "mqtt:homie_channel";
+    public static final String CONFIG_HOMIE_CHANNEL = "channel-type:mqtt:homie-channel";
 
     public static final String HOMIE_PROPERTY_VERSION = "homieversion";
     public static final String HOMIE_PROPERTY_HEARTBEAT_INTERVAL = "heartbeat_interval";
+
+    public static final int HOMIE_DEVICE_TIMEOUT_MS = 30000;
+    public static final int HOMIE_SUBSCRIBE_TIMEOUT_MS = 500;
+    public static final int HOMIE_ATTRIBUTE_TIMEOUT_MS = 200;
 }

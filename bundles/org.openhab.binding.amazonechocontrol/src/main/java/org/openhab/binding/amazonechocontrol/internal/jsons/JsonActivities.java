@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,7 +12,9 @@
  */
 package org.openhab.binding.amazonechocontrol.internal.jsons;
 
-import org.apache.commons.lang.StringUtils;
+import java.util.List;
+import java.util.Objects;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 
@@ -20,14 +22,14 @@ import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 
 /**
- * The {@link JsonActivity} encapsulate the GSON data of the push command for push activity
+ * The {@link JsonActivities} encapsulate the GSON data of the push command for push activity
  *
  * @author Michael Geramb - Initial contribution
  */
 @NonNullByDefault
 public class JsonActivities {
 
-    public @Nullable Activity @Nullable [] activities;
+    public @Nullable List<Activity> activities;
 
     public static class Activity {
         public @Nullable String activityStatus;
@@ -41,33 +43,36 @@ public class JsonActivities {
         public @Nullable String providerInfoDescription;
         public @Nullable String registeredCustomerId;
         public @Nullable Object sourceActiveUsers;
-        public @Nullable SourceDeviceId @Nullable [] sourceDeviceIds;
+        public @Nullable List<SourceDeviceId> sourceDeviceIds;
         public @Nullable String utteranceId;
         public @Nullable Long version;
+
+        public List<SourceDeviceId> getSourceDeviceIds() {
+            return Objects.requireNonNullElse(sourceDeviceIds, List.of());
+        }
 
         public static class SourceDeviceId {
             public @Nullable String deviceAccountId;
             public @Nullable String deviceType;
             public @Nullable String serialNumber;
-
         }
 
         public static class Description {
-
             public @Nullable String summary;
             public @Nullable String firstUtteranceId;
             public @Nullable String firstStreamId;
-
         }
 
-        public Description ParseDescription() {
+        public Description parseDescription() {
             String description = this.description;
-            if (StringUtils.isEmpty(description) || !description.startsWith("{") || !description.endsWith("}")) {
+            if (description == null || description.isEmpty() || !description.startsWith("{")
+                    || !description.endsWith("}")) {
                 return new Description();
             }
             Gson gson = new Gson();
             try {
-                return gson.fromJson(description, Description.class);
+                Description description1 = gson.fromJson(description, Description.class);
+                return description1 != null ? description1 : new Description();
             } catch (JsonSyntaxException e) {
                 return new Description();
             }

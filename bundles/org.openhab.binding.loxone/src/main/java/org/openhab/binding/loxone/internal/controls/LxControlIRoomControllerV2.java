@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -18,17 +18,15 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.type.ChannelTypeUID;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.StateDescriptionFragment;
-import org.eclipse.smarthome.core.types.StateDescriptionFragmentBuilder;
 import org.openhab.binding.loxone.internal.types.LxTags;
 import org.openhab.binding.loxone.internal.types.LxUuid;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.type.ChannelTypeUID;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.State;
+import org.openhab.core.types.StateDescriptionFragment;
+import org.openhab.core.types.StateDescriptionFragmentBuilder;
 
 /**
  * An Intelligent Room Controller V2.
@@ -72,8 +70,6 @@ class LxControlIRoomControllerV2 extends LxControl {
     private static final String CMD_SET_ABSENT_MIN_TEMPERATURE = "setAbsentMinTemperature/";
     private static final String CMD_SET_ABSENT_MAX_TEMPERATURE = "setAbsentMaxTemperature/";
     private static final String CMD_SET_MANUAL_TEMPERATURE = "setManualTemperature/";
-
-    private final Logger logger = LoggerFactory.getLogger(LxControlIRoomControllerV2.class);
 
     private LxControlIRoomControllerV2(LxUuid uuid) {
         super(uuid);

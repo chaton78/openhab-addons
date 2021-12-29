@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,15 +12,15 @@
  */
 package org.openhab.binding.elerotransmitterstick.internal.stick;
 
-import org.eclipse.smarthome.core.util.HexUtils;
+import org.openhab.core.util.HexUtils;
 
 /**
  * @author Volker Bier - Initial contribution
  */
 public class CommandPacket {
-    public final static byte EASY_CHECK = (byte) 0x4A;
-    public final static byte EASY_SEND = (byte) 0x4C;
-    public final static byte EASY_INFO = (byte) 0x4E;
+    public static final byte EASY_CHECK = (byte) 0x4A;
+    public static final byte EASY_SEND = (byte) 0x4C;
+    public static final byte EASY_INFO = (byte) 0x4E;
 
     byte[] data;
 
@@ -28,7 +28,7 @@ public class CommandPacket {
         data = new byte[bytes.length + 1];
         System.arraycopy(bytes, 0, data, 0, bytes.length);
 
-        data[bytes.length] = checksum(data);
+        data[bytes.length] = checksum(bytes);
     }
 
     public byte[] getBytes() {
@@ -36,7 +36,7 @@ public class CommandPacket {
     }
 
     public long getResponseTimeout() {
-        if (data[2] == EASY_CHECK) {
+        if (isEasyCheck()) {
             return 1000;
         }
 
@@ -54,9 +54,12 @@ public class CommandPacket {
         return (byte) (256 - val);
     }
 
+    public boolean isEasyCheck() {
+        return data[2] == EASY_CHECK;
+    }
+
     @Override
     public String toString() {
         return HexUtils.bytesToHex(data);
     }
-
 }

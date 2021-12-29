@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,6 +16,8 @@ import java.io.File;
 import java.io.Reader;
 import java.net.URL;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.lutron.internal.discovery.project.Area;
 import org.openhab.binding.lutron.internal.discovery.project.Component;
 import org.openhab.binding.lutron.internal.discovery.project.Device;
@@ -37,6 +39,7 @@ import com.thoughtworks.xstream.io.xml.StaxDriver;
  * @author Bob Adair - Added support for reading XML from a file. Requires using XStream directly
  *         instead of XmlDocumentReader.
  */
+@NonNullByDefault
 public class DbXmlInfoReader {
 
     private final XStream xstream;
@@ -46,15 +49,24 @@ public class DbXmlInfoReader {
 
         xstream = new XStream(driver);
 
-        setClassLoader(Project.class.getClassLoader());
-        registerAliases(this.xstream);
+        configureSecurity(xstream);
+        ClassLoader classLoader = Project.class.getClassLoader();
+        if (classLoader == null) {
+            throw new UnknownError("Cannot find classloader");
+        }
+        setClassLoader(classLoader);
+        registerAliases(xstream);
     }
 
-    public void setClassLoader(ClassLoader classLoader) {
+    private void configureSecurity(XStream xstream) {
+        xstream.allowTypesByWildcard(new String[] { Project.class.getPackageName() + ".**" });
+    }
+
+    private void setClassLoader(ClassLoader classLoader) {
         xstream.setClassLoader(classLoader);
     }
 
-    public void registerAliases(XStream xstream) {
+    private void registerAliases(XStream xstream) {
         xstream.alias("Project", Project.class);
         xstream.aliasField("AppVer", Project.class, "appVersion");
         xstream.aliasField("XMLVer", Project.class, "xmlVersion");
@@ -65,6 +77,8 @@ public class DbXmlInfoReader {
         xstream.alias("Area", Area.class);
         xstream.aliasField("Name", Area.class, "name");
         xstream.useAttributeFor(Area.class, "name");
+        xstream.aliasField("IntegrationID", Area.class, "integrationId");
+        xstream.useAttributeFor(Area.class, "integrationId");
         xstream.aliasField("DeviceGroups", Area.class, "deviceNodes");
         xstream.aliasField("Outputs", Area.class, "outputs");
         xstream.aliasField("Areas", Area.class, "areas");
@@ -115,7 +129,7 @@ public class DbXmlInfoReader {
         xstream.ignoreUnknownElements();
     }
 
-    public Project readFromXML(URL xmlURL) throws ConversionException {
+    public @Nullable Project readFromXML(@Nullable URL xmlURL) throws ConversionException {
         if (xmlURL != null) {
             return (Project) xstream.fromXML(xmlURL);
         }
@@ -123,7 +137,7 @@ public class DbXmlInfoReader {
         return null;
     }
 
-    public Project readFromXML(File xmlFile) throws ConversionException {
+    public @Nullable Project readFromXML(@Nullable File xmlFile) throws ConversionException {
         if (xmlFile != null) {
             return (Project) xstream.fromXML(xmlFile);
         }
@@ -131,7 +145,7 @@ public class DbXmlInfoReader {
         return null;
     }
 
-    public Project readFromXML(Reader xmlReader) throws ConversionException {
+    public @Nullable Project readFromXML(@Nullable Reader xmlReader) throws ConversionException {
         if (xmlReader != null) {
             return (Project) xstream.fromXML(xmlReader);
         }
@@ -139,7 +153,7 @@ public class DbXmlInfoReader {
         return null;
     }
 
-    public Project readFromXML(String xmlString) throws ConversionException {
+    public @Nullable Project readFromXML(@Nullable String xmlString) throws ConversionException {
         if (xmlString != null) {
             return (Project) xstream.fromXML(xmlString);
         }

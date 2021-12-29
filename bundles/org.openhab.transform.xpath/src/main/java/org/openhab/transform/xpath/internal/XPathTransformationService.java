@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -23,8 +23,8 @@ import javax.xml.xpath.XPathFactory;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.transform.TransformationException;
-import org.eclipse.smarthome.core.transform.TransformationService;
+import org.openhab.core.transform.TransformationException;
+import org.openhab.core.transform.TransformationService;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +38,7 @@ import org.xml.sax.InputSource;
  * @author Thomas.Eichstaedt-Engelen
  */
 @NonNullByDefault
-@Component(immediate = true, property = { "smarthome.transform=XPATH" })
+@Component(property = { "openhab.transform=XPATH" })
 public class XPathTransformationService implements TransformationService {
 
     private final Logger logger = LoggerFactory.getLogger(XPathTransformationService.class);
@@ -55,6 +55,12 @@ public class XPathTransformationService implements TransformationService {
 
         try {
             DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
+            // see https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html
+            domFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            domFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            domFactory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+            domFactory.setXIncludeAware(false);
+            domFactory.setExpandEntityReferences(false);
             domFactory.setNamespaceAware(true);
             domFactory.setValidating(false);
             DocumentBuilder builder = domFactory.newDocumentBuilder();
@@ -81,5 +87,4 @@ public class XPathTransformationService implements TransformationService {
             }
         }
     }
-
 }

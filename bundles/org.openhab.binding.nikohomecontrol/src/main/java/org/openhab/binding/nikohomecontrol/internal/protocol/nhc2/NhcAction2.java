@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -11,6 +11,8 @@
  * SPDX-License-Identifier: EPL-2.0
  */
 package org.openhab.binding.nikohomecontrol.internal.protocol.nhc2;
+
+import static org.openhab.binding.nikohomecontrol.internal.protocol.NikoHomeControlConstants.*;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -88,14 +90,19 @@ public class NhcAction2 extends NhcAction {
      * Sets state of action. This version is used for Niko Home Control II.
      *
      * @param state - The allowed values depend on the action type.
-     *                  switch action: 0 or 100
-     *                  dimmer action: between 0 and 100
-     *                  rollershutter action: between 0 and 100
+     *            switch action: 0 or 100
+     *            dimmer action: between 0 and 100
+     *            rollershutter action: between 0 and 100
      */
     @Override
     public void setState(int state) {
         this.state = state;
-        if (booleanState) { // only send the update to the event handler if on
+        if (getType().equals(ActionType.DIMMER)) { // for dimmers, only send the update to the event
+                                                   // handler if on
+            if (booleanState) {
+                updateState();
+            }
+        } else {
             updateState();
         }
     }
@@ -104,15 +111,22 @@ public class NhcAction2 extends NhcAction {
      * Sends action to Niko Home Control. This version is used for Niko Home Control II, that has extra status options.
      *
      * @param command - The allowed values depend on the action type.
-     *                    switch action: On or Off
-     *                    dimmer action: between 0 and 100, On or Off
-     *                    rollershutter action: between 0 and 100, Up, Down or Stop
+     *            switch action: On or Off
+     *            dimmer action: between 0 and 100, On or Off
+     *            rollershutter action: between 0 and 100, Up, Down or Stop
      */
     @Override
     public void execute(String command) {
-        logger.debug("Niko Home Control: execute action {} of type {} for {}", command, type, id);
+        logger.debug("execute action {} of type {} for {}", command, type, id);
 
-        nhcComm.executeAction(id, command);
+        String cmd;
+        if ("flag".equals(model)) {
+            cmd = NHCON.equals(command) ? NHCTRUE : NHCFALSE;
+        } else {
+            cmd = command;
+        }
+
+        nhcComm.executeAction(id, cmd);
     }
 
     /**

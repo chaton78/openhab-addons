@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -20,15 +20,15 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  * @author Markus Wehrle - Initial contribution
  */
 @NonNullByDefault
-public class SonyProjectorException extends Exception {
+public class SonyProjectorException extends RuntimeException {
+
     private static final long serialVersionUID = 1L;
 
-    // Parameterless Constructor
-    public SonyProjectorException() {
-    }
-
-    // Constructor that accepts a message
     public SonyProjectorException(String message) {
         super(message);
+    }
+
+    public SonyProjectorException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

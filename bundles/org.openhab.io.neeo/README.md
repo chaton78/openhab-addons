@@ -47,8 +47,8 @@ If you change the primary address option, this binding will de-register the old 
 ## Mappings
 
 For openHAB things/items to appear on the NEEO system, you must create mappings between openHAB and NEEO.
-To accomplish this, go to the main openHAB dashboard (typically http://localhost:8080/start/index) and press the NEEO Integration dashboard tile.
-This tile will open up a screen similar to the following
+To accomplish this, go to the NEEO Integration dashboard (typically http://localhost:8080/neeo/index.html).
+This will open up a screen similar to the following
 
 ![Configuration](doc/dashboardmain.png)
 
@@ -396,9 +396,7 @@ The following changes have occurred:
 
 ## Configuration
 
-After installing this add-on, you will find configuration options in the Paper UI under _Configuration->Services->IO->NEEO Integration_:
-
-![Configuration](doc/cfg.png)
+After installing this add-on, you can configure the integration using the "NEEO Integration" settings in the UI.
 
 Alternatively, you can configure the settings in the file `conf/services/neeo.cfg`:
 

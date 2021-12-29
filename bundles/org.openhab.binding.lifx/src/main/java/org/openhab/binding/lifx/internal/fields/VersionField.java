@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,7 +17,7 @@ import java.nio.ByteBuffer;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 /**
- * @author Wouter Born - Add Thing properties
+ * @author Wouter Born - Initial contribution
  */
 @NonNullByDefault
 public class VersionField extends Field<Version> {
@@ -39,5 +39,4 @@ public class VersionField extends Field<Version> {
     public ByteBuffer bytesInternal(Version value) {
         return ByteBuffer.allocate(4).putInt((int) (((value.getMajor() << 16) | value.getMinor()) & 0xFFFFFFFFL));
     }
-
 }

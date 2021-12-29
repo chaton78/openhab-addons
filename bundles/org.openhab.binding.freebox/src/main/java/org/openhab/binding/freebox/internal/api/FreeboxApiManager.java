@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -28,9 +28,6 @@ import java.util.concurrent.TimeUnit;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.apache.commons.codec.binary.Hex;
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.smarthome.io.net.http.HttpUtil;
 import org.openhab.binding.freebox.internal.api.model.FreeboxAirMediaConfig;
 import org.openhab.binding.freebox.internal.api.model.FreeboxAirMediaConfigResponse;
 import org.openhab.binding.freebox.internal.api.model.FreeboxAirMediaReceiver;
@@ -49,6 +46,7 @@ import org.openhab.binding.freebox.internal.api.model.FreeboxDiscoveryResponse;
 import org.openhab.binding.freebox.internal.api.model.FreeboxEmptyResponse;
 import org.openhab.binding.freebox.internal.api.model.FreeboxFtpConfig;
 import org.openhab.binding.freebox.internal.api.model.FreeboxFtpConfigResponse;
+import org.openhab.binding.freebox.internal.api.model.FreeboxFtthStatusResponse;
 import org.openhab.binding.freebox.internal.api.model.FreeboxLanConfigResponse;
 import org.openhab.binding.freebox.internal.api.model.FreeboxLanHost;
 import org.openhab.binding.freebox.internal.api.model.FreeboxLanHostsResponse;
@@ -71,6 +69,8 @@ import org.openhab.binding.freebox.internal.api.model.FreeboxUPnPAVConfigRespons
 import org.openhab.binding.freebox.internal.api.model.FreeboxWifiGlobalConfig;
 import org.openhab.binding.freebox.internal.api.model.FreeboxWifiGlobalConfigResponse;
 import org.openhab.binding.freebox.internal.api.model.FreeboxXdslStatusResponse;
+import org.openhab.core.io.net.http.HttpUtil;
+import org.openhab.core.util.HexUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,7 +121,8 @@ public class FreeboxApiManager {
         }
     }
 
-    public boolean authorize(boolean useHttps, String fqdn, String apiBaseUrl, String apiVersion, String appToken) {
+    public boolean authorize(boolean useHttps, String fqdn, String apiBaseUrl, String apiVersion, String appToken)
+            throws InterruptedException {
         String[] versionSplit = apiVersion.split("\\.");
         String majorVersion = "5";
         if (versionSplit.length > 0) {
@@ -132,19 +133,12 @@ public class FreeboxApiManager {
         boolean granted = false;
         try {
             String token = appToken;
-            if (StringUtils.isEmpty(token)) {
+            if (token == null || token.isEmpty()) {
                 FreeboxAuthorizeRequest request = new FreeboxAuthorizeRequest(appId, appName, appVersion, deviceName);
                 FreeboxAuthorizeResult response = executePostUrl("login/authorize/", gson.toJson(request),
-                        FreeboxAuthorizeResponse.class, false);
+                        FreeboxAuthorizeResponse.class, false, false, true);
                 token = response.getAppToken();
                 int trackId = response.getTrackId();
-
-                logger.info("####################################################################");
-                logger.info("# Please accept activation request directly on your freebox        #");
-                logger.info("# Once done, record Apptoken in the Freebox thing configuration    #");
-                logger.info("# {} #", token);
-                logger.info("####################################################################");
-
                 FreeboxAuthorizationStatus result;
                 do {
                     Thread.sleep(2000);
@@ -162,7 +156,7 @@ public class FreeboxApiManager {
             this.appToken = token;
             openSession();
             return true;
-        } catch (FreeboxException | InterruptedException e) {
+        } catch (FreeboxException e) {
             logger.debug("Error while opening a session", e);
             return false;
         }
@@ -189,6 +183,10 @@ public class FreeboxApiManager {
         }
     }
 
+    public String getAppToken() {
+        return appToken;
+    }
+
     public synchronized String getSessionToken() {
         return sessionToken;
     }
@@ -199,6 +197,10 @@ public class FreeboxApiManager {
 
     public String getxDslStatus() throws FreeboxException {
         return executeGetUrl("connection/xdsl/", FreeboxXdslStatusResponse.class).getStatus();
+    }
+
+    public boolean getFtthPresent() throws FreeboxException {
+        return executeGetUrl("connection/ftth/", FreeboxFtthStatusResponse.class).getSfpPresent();
     }
 
     public boolean isWifiEnabled() throws FreeboxException {
@@ -346,7 +348,7 @@ public class FreeboxApiManager {
         FreeboxAirMediaReceiverRequest request = new FreeboxAirMediaReceiverRequest();
         request.setStartAction();
         request.setVideoMediaType();
-        if (StringUtils.isNotEmpty(airPlayPassword)) {
+        if (airPlayPassword != null && !airPlayPassword.isEmpty()) {
             request.setPassword(airPlayPassword);
         }
         request.setMedia(url);
@@ -358,7 +360,7 @@ public class FreeboxApiManager {
         FreeboxAirMediaReceiverRequest request = new FreeboxAirMediaReceiverRequest();
         request.setStopAction();
         request.setVideoMediaType();
-        if (StringUtils.isNotEmpty(airPlayPassword)) {
+        if (airPlayPassword != null && !airPlayPassword.isEmpty()) {
             request.setPassword(airPlayPassword);
         }
         executePostUrl("airmedia/receivers/" + encodeUrl(airPlayName) + "/", gson.toJson(request),
@@ -475,7 +477,7 @@ public class FreeboxApiManager {
         }
     }
 
-    private static String hmacSha1(String key, String value) throws FreeboxException {
+    public static String hmacSha1(String key, String value) throws FreeboxException {
         try {
             // Get an hmac_sha1 key from the raw key bytes
             byte[] keyBytes = key.getBytes();
@@ -488,14 +490,10 @@ public class FreeboxApiManager {
             // Compute the hmac on input data bytes
             byte[] rawHmac = mac.doFinal(value.getBytes());
 
-            // Convert raw bytes to Hex
-            byte[] hexBytes = new Hex().encode(rawHmac);
-
-            // Covert array of Hex bytes to a String
-            return new String(hexBytes, StandardCharsets.UTF_8);
+            // Convert raw bytes to a String
+            return HexUtils.bytesToHex(rawHmac).toLowerCase();
         } catch (IllegalArgumentException | NoSuchAlgorithmException | InvalidKeyException | IllegalStateException e) {
             throw new FreeboxException("Computing the hmac-sha1 of the challenge and the app token failed", e);
         }
     }
-
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,46 +14,76 @@ package org.openhab.binding.neohub.internal;
 
 import static org.openhab.binding.neohub.internal.NeoHubBindingConstants.*;
 
+import java.io.IOException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.measure.Unit;
+
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseBridgeHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.types.Command;
-
-import org.openhab.binding.neohub.internal.NeoHubInfoResponse.DeviceInfo;
-
+import org.openhab.binding.neohub.internal.NeoHubAbstractDeviceData.AbstractRecord;
+import org.openhab.binding.neohub.internal.NeoHubBindingConstants.NeoHubReturnResult;
+import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.library.unit.SIUnits;
+import org.openhab.core.library.unit.Units;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseBridgeHandler;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.State;
+import org.openhab.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.gson.JsonSyntaxException;
 
 /**
  * The {@link NeoHubHandler} is the openHAB Handler for NeoHub devices
  *
  * @author Andrew Fiddian-Green - Initial contribution (v2.x binding code)
  * @author Sebastian Prehn - Initial contribution (v1.x hub communication)
- * 
+ *
  */
+@NonNullByDefault
 public class NeoHubHandler extends BaseBridgeHandler {
 
     private final Logger logger = LoggerFactory.getLogger(NeoHubHandler.class);
 
-    private NeoHubConfiguration config;
-    private NeoHubSocket socket;
+    private final Map<String, Boolean> connectionStates = new HashMap<>();
 
-    private NeoHubInfoResponse lastInfoResponse = null;
-
-    private ScheduledFuture<?> lazyPollingScheduler;
-    private ScheduledFuture<?> fastPollingScheduler;
+    private @Nullable NeoHubConfiguration config;
+    private @Nullable NeoHubSocket socket;
+    private @Nullable ScheduledFuture<?> lazyPollingScheduler;
+    private @Nullable ScheduledFuture<?> fastPollingScheduler;
 
     private final AtomicInteger fastPollingCallsToGo = new AtomicInteger();
+
+    private @Nullable NeoHubReadDcbResponse systemData = null;
+
+    private enum ApiVersion {
+        LEGACY("legacy"),
+        NEW("new");
+
+        public final String label;
+
+        private ApiVersion(String label) {
+            this.label = label;
+        }
+    }
+
+    private ApiVersion apiVersion = ApiVersion.LEGACY;
+    private boolean isApiOnline = false;
 
     public NeoHubHandler(Bridge bridge) {
         super(bridge);
@@ -66,32 +96,29 @@ public class NeoHubHandler extends BaseBridgeHandler {
 
     @Override
     public void initialize() {
-        config = getConfigAs(NeoHubConfiguration.class);
+        NeoHubConfiguration config = getConfigAs(NeoHubConfiguration.class);
 
-        if (config == null) {
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
-                    "parameter(s) hostName, portNumber, pollingInterval must be set!");
-            return;
+        if (logger.isDebugEnabled()) {
+            logger.debug("hub '{}' hostname={}", getThing().getUID(), config.hostName);
         }
 
-        if (logger.isDebugEnabled())
-            logger.debug("hostname={}", config.hostName);
-
-        if (config.hostName.isEmpty()) {
+        if (!MATCHER_IP_ADDRESS.matcher(config.hostName).matches()) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, "parameter hostName must be set!");
             return;
         }
 
-        if (logger.isDebugEnabled())
-            logger.debug("port={}", config.portNumber);
+        if (logger.isDebugEnabled()) {
+            logger.debug("hub '{}' port={}", getThing().getUID(), config.portNumber);
+        }
 
         if (config.portNumber <= 0 || config.portNumber > 0xFFFF) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, "portNumber is invalid!");
             return;
         }
 
-        if (logger.isDebugEnabled())
-            logger.debug("polling interval={}", config.pollingInterval);
+        if (logger.isDebugEnabled()) {
+            logger.debug("hub '{}' polling interval={}", getThing().getUID(), config.pollingInterval);
+        }
 
         if (config.pollingInterval < FAST_POLL_INTERVAL || config.pollingInterval > LAZY_POLL_INTERVAL) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, String
@@ -99,21 +126,39 @@ public class NeoHubHandler extends BaseBridgeHandler {
             return;
         }
 
-        socket = new NeoHubSocket(config.hostName, config.portNumber);
+        if (logger.isDebugEnabled()) {
+            logger.debug("hub '{}' socketTimeout={}", getThing().getUID(), config.socketTimeout);
+        }
 
-        if (logger.isDebugEnabled())
-            logger.debug("start background polling..");
+        if (config.socketTimeout < 5 || config.socketTimeout > 20) {
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
+                    String.format("socketTimeout must be in range [%d..%d]!", 5, 20));
+            return;
+        }
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("hub '{}' preferLegacyApi={}", getThing().getUID(), config.preferLegacyApi);
+        }
+
+        socket = new NeoHubSocket(config.hostName, config.portNumber, config.socketTimeout);
+        this.config = config;
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("hub '{}' start background polling..", getThing().getUID());
+        }
 
         // create a "lazy" polling scheduler
-        if (lazyPollingScheduler == null || lazyPollingScheduler.isCancelled()) {
-            lazyPollingScheduler = scheduler.scheduleWithFixedDelay(this::lazyPollingSchedulerExecute,
+        ScheduledFuture<?> lazy = this.lazyPollingScheduler;
+        if (lazy == null || lazy.isCancelled()) {
+            this.lazyPollingScheduler = scheduler.scheduleWithFixedDelay(this::lazyPollingSchedulerExecute,
                     config.pollingInterval, config.pollingInterval, TimeUnit.SECONDS);
         }
 
         // create a "fast" polling scheduler
         fastPollingCallsToGo.set(FAST_POLL_CYCLES);
-        if (fastPollingScheduler == null || fastPollingScheduler.isCancelled()) {
-            fastPollingScheduler = scheduler.scheduleWithFixedDelay(this::fastPollingSchedulerExecute,
+        ScheduledFuture<?> fast = this.fastPollingScheduler;
+        if (fast == null || fast.isCancelled()) {
+            this.fastPollingScheduler = scheduler.scheduleWithFixedDelay(this::fastPollingSchedulerExecute,
                     FAST_POLL_INTERVAL, FAST_POLL_INTERVAL, TimeUnit.SECONDS);
         }
 
@@ -125,19 +170,22 @@ public class NeoHubHandler extends BaseBridgeHandler {
 
     @Override
     public void dispose() {
-        if (logger.isDebugEnabled())
-            logger.debug("stop background polling..");
+        if (logger.isDebugEnabled()) {
+            logger.debug("hub '{}' stop background polling..", getThing().getUID());
+        }
 
         // clean up the lazy polling scheduler
-        if (lazyPollingScheduler != null && !lazyPollingScheduler.isCancelled()) {
-            lazyPollingScheduler.cancel(true);
-            lazyPollingScheduler = null;
+        ScheduledFuture<?> lazy = this.lazyPollingScheduler;
+        if (lazy != null && !lazy.isCancelled()) {
+            lazy.cancel(true);
+            this.lazyPollingScheduler = null;
         }
 
         // clean up the fast polling scheduler
-        if (fastPollingScheduler != null && !fastPollingScheduler.isCancelled()) {
-            fastPollingScheduler.cancel(true);
-            fastPollingScheduler = null;
+        ScheduledFuture<?> fast = this.fastPollingScheduler;
+        if (fast != null && !fast.isCancelled()) {
+            fast.cancel(true);
+            this.fastPollingScheduler = null;
         }
     }
 
@@ -153,8 +201,9 @@ public class NeoHubHandler extends BaseBridgeHandler {
      * device handlers call this method to issue commands to the NeoHub
      */
     public synchronized NeoHubReturnResult toNeoHubSendChannelValue(String commandStr) {
+        NeoHubSocket socket = this.socket;
+
         if (socket == null || config == null) {
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.NONE);
             return NeoHubReturnResult.ERR_INITIALIZATION;
         }
 
@@ -167,37 +216,127 @@ public class NeoHubHandler extends BaseBridgeHandler {
             return NeoHubReturnResult.SUCCEEDED;
         } catch (Exception e) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR);
-            logger.warn("set value error \"{}\"", e.getMessage());
+            logger.warn(MSG_FMT_SET_VALUE_ERR, getThing().getUID(), commandStr, e.getMessage());
             return NeoHubReturnResult.ERR_COMMUNICATION;
         }
     }
 
     /**
-     * sends a JSON "INFO" request to the NeoHub
-     * 
+     * sends a JSON request to the NeoHub to read the device data
+     *
      * @return a class that contains the full status of all devices
-     * 
      */
-    protected NeoHubInfoResponse fromNeoHubFetchPollingResponse() {
+    protected @Nullable NeoHubAbstractDeviceData fromNeoHubGetDeviceData() {
+        NeoHubSocket socket = this.socket;
+
         if (socket == null || config == null) {
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.NONE);
+            logger.warn(MSG_HUB_CONFIG, getThing().getUID());
             return null;
         }
 
         try {
-            @Nullable
-            String response = socket.sendMessage(CMD_CODE_INFO);
+            String responseJson;
+            NeoHubAbstractDeviceData deviceData;
 
-            lastInfoResponse = NeoHubInfoResponse.createInfoResponse(response);
+            if (apiVersion == ApiVersion.LEGACY) {
+                responseJson = socket.sendMessage(CMD_CODE_INFO);
+                deviceData = NeoHubInfoResponse.createDeviceData(responseJson);
+            } else {
+                responseJson = socket.sendMessage(CMD_CODE_GET_LIVE_DATA);
+                deviceData = NeoHubLiveDeviceData.createDeviceData(responseJson);
+            }
+
+            if (deviceData == null) {
+                logger.warn(MSG_FMT_DEVICE_POLL_ERR, getThing().getUID(), "failed to create device data response");
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR);
+                return null;
+            }
+
+            @Nullable
+            List<? extends AbstractRecord> devices = deviceData.getDevices();
+            if (devices == null || devices.isEmpty()) {
+                logger.warn(MSG_FMT_DEVICE_POLL_ERR, getThing().getUID(), "no devices found");
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR);
+                return null;
+            }
 
             if (getThing().getStatus() != ThingStatus.ONLINE) {
                 updateStatus(ThingStatus.ONLINE, ThingStatusDetail.NONE);
             }
 
-            return lastInfoResponse;
+            // check if we also need to discard and update systemData
+            NeoHubReadDcbResponse systemData = this.systemData;
+            if (systemData != null) {
+                if (deviceData instanceof NeoHubLiveDeviceData) {
+                    /*
+                     * note: time-stamps are measured in seconds from 1970-01-01T00:00:00Z
+                     *
+                     * new API: discard systemData if its time-stamp is older than the system
+                     * time-stamp on the hub
+                     */
+                    if (systemData.timeStamp < ((NeoHubLiveDeviceData) deviceData).getTimestampSystem()) {
+                        this.systemData = null;
+                    }
+                } else {
+                    /*
+                     * note: time-stamps are measured in seconds from 1970-01-01T00:00:00Z
+                     *
+                     * legacy API: discard systemData if its time-stamp is older than one hour
+                     */
+                    if (systemData.timeStamp < Instant.now().minus(1, ChronoUnit.HOURS).getEpochSecond()) {
+                        this.systemData = null;
+                    }
+                }
+            }
+
+            return deviceData;
         } catch (Exception e) {
-            logger.warn("set value error \"{}\"", e.getMessage());
+            logger.warn(MSG_FMT_DEVICE_POLL_ERR, getThing().getUID(), e.getMessage());
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR);
+            return null;
+        }
+    }
+
+    /**
+     * sends a JSON request to the NeoHub to read the system data
+     *
+     * @return a class that contains the status of the system
+     */
+    protected @Nullable NeoHubReadDcbResponse fromNeoHubReadSystemData() {
+        NeoHubSocket socket = this.socket;
+
+        if (socket == null) {
+            return null;
+        }
+
+        try {
+            String responseJson;
+            NeoHubReadDcbResponse systemData;
+
+            if (apiVersion == ApiVersion.LEGACY) {
+                responseJson = socket.sendMessage(CMD_CODE_READ_DCB);
+                systemData = NeoHubReadDcbResponse.createSystemData(responseJson);
+            } else {
+                responseJson = socket.sendMessage(CMD_CODE_GET_SYSTEM);
+                systemData = NeoHubReadDcbResponse.createSystemData(responseJson);
+            }
+
+            if (systemData == null) {
+                logger.warn(MSG_FMT_SYSTEM_POLL_ERR, getThing().getUID(), "failed to create system data response");
+                return null;
+            }
+
+            String physicalFirmware = systemData.getFirmwareVersion();
+            if (physicalFirmware != null) {
+                String thingFirmware = getThing().getProperties().get(PROPERTY_FIRMWARE_VERSION);
+                if (!physicalFirmware.equals(thingFirmware)) {
+                    getThing().setProperty(PROPERTY_FIRMWARE_VERSION, physicalFirmware);
+                }
+            }
+
+            return systemData;
+        } catch (Exception e) {
+            logger.warn(MSG_FMT_SYSTEM_POLL_ERR, getThing().getUID(), e.getMessage());
             return null;
         }
     }
@@ -208,20 +347,61 @@ public class NeoHubHandler extends BaseBridgeHandler {
      * handlers
      */
     private synchronized void lazyPollingSchedulerExecute() {
-        fromNeoHubFetchPollingResponse();
+        // check which API is supported
+        if (!isApiOnline) {
+            selectApi();
+        }
 
-        if (lastInfoResponse != null) {
+        NeoHubAbstractDeviceData deviceData = fromNeoHubGetDeviceData();
+        if (deviceData != null) {
+            // dispatch deviceData to each of the hub's owned devices ..
             List<Thing> children = getThing().getThings();
-
-            // dispatch the infoResponse to each of the hub's owned devices ..
             for (Thing child : children) {
                 ThingHandler device = child.getHandler();
                 if (device instanceof NeoBaseHandler) {
-                    ((NeoBaseHandler) device).toBaseSendPollResponse(this, lastInfoResponse);
+                    ((NeoBaseHandler) device).toBaseSendPollResponse(deviceData);
                 }
             }
-        }
 
+            // evaluate and update the state of our RF mesh QoS channel
+            List<? extends AbstractRecord> devices = deviceData.getDevices();
+            State state;
+            String property;
+
+            if (devices == null || devices.isEmpty()) {
+                state = UnDefType.UNDEF;
+                property = "[?/?]";
+            } else {
+                int totalDeviceCount = devices.size();
+                int onlineDeviceCount = 0;
+
+                for (AbstractRecord device : devices) {
+                    String deviceName = device.getDeviceName();
+                    Boolean online = !device.offline();
+
+                    @Nullable
+                    Boolean onlineBefore = connectionStates.put(deviceName, online);
+                    /*
+                     * note: we use logger.info() here to log changes; reason is that the average user does really need
+                     * to know if a device (very occasionally) drops out of the normally reliable RF mesh; however we
+                     * only log it if 1) the state has changed, and 2) either 2a) the device has already been discovered
+                     * by the bridge handler, or 2b) logger debug mode is set
+                     */
+                    if (!online.equals(onlineBefore) && ((onlineBefore != null) || logger.isDebugEnabled())) {
+                        logger.info("hub '{}' device \"{}\" has {} the RF mesh network", getThing().getUID(),
+                                deviceName, online.booleanValue() ? "joined" : "left");
+                    }
+
+                    if (online.booleanValue()) {
+                        onlineDeviceCount++;
+                    }
+                }
+                property = String.format("[%d/%d]", onlineDeviceCount, totalDeviceCount);
+                state = new QuantityType<>((100.0 * onlineDeviceCount) / totalDeviceCount, Units.PERCENT);
+            }
+            getThing().setProperty(PROPERTY_API_DEVICEINFO, property);
+            updateState(CHAN_MESH_NETWORK_QOS, state);
+        }
         if (fastPollingCallsToGo.get() > 0) {
             fastPollingCallsToGo.decrementAndGet();
         }
@@ -237,28 +417,93 @@ public class NeoHubHandler extends BaseBridgeHandler {
         }
     }
 
-    /**
-     * determine if the particular device name is configured in the hub
-     * 
-     * @return the device is fully configured
-     * 
+    /*
+     * select whether to use the old "deprecated" API or the new API
      */
-    public boolean isConfigured(String deviceName) {
-        if (lastInfoResponse == null) {
-            fromNeoHubFetchPollingResponse();
+    private void selectApi() {
+        boolean supportsLegacyApi = false;
+        boolean supportsFutureApi = false;
+
+        NeoHubSocket socket = this.socket;
+        if (socket != null) {
+            String responseJson;
+            NeoHubReadDcbResponse systemData;
+
+            try {
+                responseJson = socket.sendMessage(CMD_CODE_READ_DCB);
+                systemData = NeoHubReadDcbResponse.createSystemData(responseJson);
+                supportsLegacyApi = systemData != null;
+                if (!supportsLegacyApi) {
+                    throw new NeoHubException("legacy API not supported");
+                }
+            } catch (JsonSyntaxException | NeoHubException | IOException e) {
+                // we learned that this API is not currently supported; no big deal
+                logger.debug("hub '{}' legacy API is not supported!", getThing().getUID());
+            }
+            try {
+                responseJson = socket.sendMessage(CMD_CODE_GET_SYSTEM);
+                systemData = NeoHubReadDcbResponse.createSystemData(responseJson);
+                supportsFutureApi = systemData != null;
+                if (!supportsFutureApi) {
+                    throw new NeoHubException(String.format("hub '%s' new API not supported", getThing().getUID()));
+                }
+            } catch (JsonSyntaxException | NeoHubException | IOException e) {
+                // we learned that this API is not currently supported; no big deal
+                logger.debug("hub '{}' new API is not supported!", getThing().getUID());
+            }
         }
-        return lastInfoResponse != null && lastInfoResponse.getDeviceInfo(deviceName) != null;
+
+        if (!supportsLegacyApi && !supportsFutureApi) {
+            logger.warn("hub '{}' currently neither legacy nor new API are supported!", getThing().getUID());
+            isApiOnline = false;
+            return;
+        }
+
+        NeoHubConfiguration config = this.config;
+        ApiVersion apiVersion = (supportsLegacyApi && config != null && config.preferLegacyApi) ? ApiVersion.LEGACY
+                : ApiVersion.NEW;
+        if (apiVersion != this.apiVersion) {
+            logger.debug("hub '{}' changing API version: '{}' => '{}'", getThing().getUID(), this.apiVersion.label,
+                    apiVersion.label);
+            this.apiVersion = apiVersion;
+        }
+
+        if (!apiVersion.label.equals(getThing().getProperties().get(PROPERTY_API_VERSION))) {
+            getThing().setProperty(PROPERTY_API_VERSION, apiVersion.label);
+        }
+
+        this.isApiOnline = true;
     }
 
-    /**
-     * determine if the particular device name is communicating with the hub
-     * 
-     * @return the device is fully configured and talking to the hub
-     * 
+    /*
+     * get the Engineers data
      */
-    public boolean isOnline(String deviceName) {
-        DeviceInfo deviceInfo;
-        return isConfigured(deviceName) && (deviceInfo = lastInfoResponse.getDeviceInfo(deviceName)) != null
-                && !deviceInfo.isOffline();
+    public @Nullable NeoHubGetEngineersData fromNeoHubGetEngineersData() {
+        NeoHubSocket socket = this.socket;
+        if (socket != null) {
+            String responseJson;
+            try {
+                responseJson = socket.sendMessage(CMD_CODE_GET_ENGINEERS);
+                return NeoHubGetEngineersData.createEngineersData(responseJson);
+            } catch (JsonSyntaxException | IOException | NeoHubException e) {
+                logger.warn(MSG_FMT_ENGINEERS_POLL_ERR, getThing().getUID(), e.getMessage());
+            }
+        }
+        return null;
+    }
+
+    public boolean isLegacyApiSelected() {
+        return apiVersion == ApiVersion.LEGACY;
+    }
+
+    public Unit<?> getTemperatureUnit() {
+        NeoHubReadDcbResponse systemData = this.systemData;
+        if (systemData == null) {
+            this.systemData = systemData = fromNeoHubReadSystemData();
+        }
+        if (systemData != null) {
+            return systemData.getTemperatureUnit();
+        }
+        return SIUnits.CELSIUS;
     }
 }

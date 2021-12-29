@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,11 +13,12 @@
 package org.openhab.binding.lgwebos.internal;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.library.types.PlayPauseType;
-import org.eclipse.smarthome.core.library.types.RewindFastforwardType;
-import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.lgwebos.internal.handler.LGWebOSHandler;
 import org.openhab.binding.lgwebos.internal.handler.core.CommandConfirmation;
+import org.openhab.core.library.types.PlayPauseType;
+import org.openhab.core.library.types.RewindFastforwardType;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +34,9 @@ public class MediaControlPlayer extends BaseChannelHandler<CommandConfirmation> 
 
     @Override
     public void onReceiveCommand(String channelId, LGWebOSHandler handler, Command command) {
-        if (PlayPauseType.PLAY == command) {
+        if (RefreshType.REFRESH == command) {
+            // nothing to do
+        } else if (PlayPauseType.PLAY == command) {
             handler.getSocket().play(getDefaultResponseListener());
         } else if (PlayPauseType.PAUSE == command) {
             handler.getSocket().pause(getDefaultResponseListener());
@@ -42,7 +45,8 @@ public class MediaControlPlayer extends BaseChannelHandler<CommandConfirmation> 
         } else if (RewindFastforwardType.REWIND == command) {
             handler.getSocket().rewind(getDefaultResponseListener());
         } else {
-            logger.warn("Only accept PlayPauseType, RewindFastforwardType. Type was {}.", command.getClass());
+            logger.info("Only accept PlayPauseType, RewindFastforwardType, RefreshType. Type was {}.",
+                    command.getClass());
         }
     }
 

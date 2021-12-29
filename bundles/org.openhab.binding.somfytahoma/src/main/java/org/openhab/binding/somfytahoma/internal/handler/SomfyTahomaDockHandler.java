@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,17 +14,13 @@ package org.openhab.binding.somfytahoma.internal.handler;
 
 import static org.openhab.binding.somfytahoma.internal.SomfyTahomaBindingConstants.*;
 
-import java.util.HashMap;
-
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
 
 /**
  * The {@link SomfyTahomaDockHandler} is responsible for handling commands,
@@ -35,20 +31,18 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class SomfyTahomaDockHandler extends SomfyTahomaBaseThingHandler {
 
-    private final Logger logger = LoggerFactory.getLogger(SomfyTahomaDockHandler.class);
-
     public SomfyTahomaDockHandler(Thing thing) {
         super(thing);
         stateNames.put(BATTERY_STATUS, BATTERY_STATUS_STATE);
-        stateNames.put(BATTERY_LEVEL, "core:BatteryLevelState");
-        stateNames.put(SIREN_STATUS, "internal:SirenStatusState");
+        stateNames.put(BATTERY_LEVEL, BATTERY_LEVEL_STATE);
+        stateNames.put(SIREN_STATUS, SIREN_STATUS_STATE);
     }
 
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
-        logger.debug("Received command {} for channel {}", command, channelUID);
-        if (RefreshType.REFRESH.equals(command)) {
-            updateChannelState(channelUID);
+        super.handleCommand(channelUID, command);
+        if (command instanceof RefreshType) {
+            return;
         }
 
         if (SIREN_STATUS.equals(channelUID.getId()) && command instanceof StringType) {

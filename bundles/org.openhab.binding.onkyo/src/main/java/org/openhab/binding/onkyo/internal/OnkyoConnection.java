@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -24,12 +24,11 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import org.apache.commons.io.IOUtils;
-import org.eclipse.smarthome.core.util.HexUtils;
 import org.openhab.binding.onkyo.internal.eiscp.EiscpCommand;
 import org.openhab.binding.onkyo.internal.eiscp.EiscpException;
 import org.openhab.binding.onkyo.internal.eiscp.EiscpMessage;
 import org.openhab.binding.onkyo.internal.eiscp.EiscpProtocol;
+import org.openhab.core.util.HexUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -222,17 +221,26 @@ public class OnkyoConnection {
                 logger.debug("closed connection tester!");
             }
             if (inStream != null) {
-                IOUtils.closeQuietly(inStream);
+                try {
+                    inStream.close();
+                } catch (IOException e) {
+                }
                 inStream = null;
                 logger.debug("closed input stream!");
             }
             if (outStream != null) {
-                IOUtils.closeQuietly(outStream);
+                try {
+                    outStream.close();
+                } catch (IOException e) {
+                }
                 outStream = null;
                 logger.debug("closed output stream!");
             }
             if (eiscpSocket != null) {
-                IOUtils.closeQuietly(eiscpSocket);
+                try {
+                    eiscpSocket.close();
+                } catch (IOException e) {
+                }
                 eiscpSocket = null;
                 logger.debug("closed socket!");
             }

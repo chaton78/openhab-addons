@@ -2,7 +2,7 @@
 	"deviceMapping": {
 		"id": [
 			"philips.light.moonlight"
-			],
+		],
 		"channels": [
 			{
 				"property": "pow",
@@ -10,7 +10,6 @@
 				"channel": "power",
 				"type": "Switch",
 				"refresh": true,
-				"ChannelGroup": "",
 				"actions": [
 					{
 						"command": "set_power",
@@ -22,21 +21,36 @@
 				"property": "bright",
 				"friendlyName": "Brightness",
 				"channel": "brightness",
-				"type": "Number",
+				"type": "Dimmer",
 				"refresh": true,
 				"ChannelGroup": "actions",
 				"actions": [
 					{
 						"command": "set_bright",
-						"parameterType": "NUMBER"
+						"parameterType": "NUMBER",
+						"condition": {
+							"name": "BrightnessExisting"
+						}
+					},
+					{
+						"command": "set_power",
+						"parameterType": "ONOFF",
+						"condition": {
+							"name": "BrightnessOnOff"
+						}
 					}
+				],
+				"category": "light",
+				"tags": [
+					"Control",
+					"Light"
 				]
 			},
 			{
 				"property": "cct",
 				"friendlyName": "Correlated Color Temperature",
 				"channel": "cct",
-				"type": "Number",
+				"type": "Dimmer",
 				"refresh": true,
 				"ChannelGroup": "actions",
 				"actions": [
@@ -69,7 +83,7 @@
 				"ChannelGroup": "actions",
 				"actions": [
 					{
-						
+						"parameterType": "EMPTY"
 					}
 				]
 			},

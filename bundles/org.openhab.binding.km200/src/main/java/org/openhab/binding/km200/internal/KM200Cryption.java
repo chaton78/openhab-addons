@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -23,7 +23,8 @@ import java.util.Base64;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.apache.commons.lang.StringUtils;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +33,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Markus Eckhardt - Initial contribution
  */
+@NonNullByDefault
 public class KM200Cryption {
 
     private final Logger logger = LoggerFactory.getLogger(KM200Cryption.class);
@@ -71,7 +73,7 @@ public class KM200Cryption {
      * This function does the decoding for a new message from the device
      *
      */
-    public String decodeMessage(byte[] encoded) {
+    public @Nullable String decodeMessage(byte[] encoded) {
         String retString = null;
         byte[] decodedB64 = null;
 
@@ -93,7 +95,7 @@ public class KM200Cryption {
             byte[] decryptedDataWOZP = removeZeroPadding(decryptedData);
             return (new String(decryptedDataWOZP, remoteDevice.getCharSet()));
         } catch (UnsupportedEncodingException | GeneralSecurityException e) {
-            logger.debug("Exception on encoding", e);
+            logger.warn("Exception on encoding", e);
             return null;
         }
     }
@@ -102,22 +104,22 @@ public class KM200Cryption {
      * This function does the encoding for a new message to the device
      *
      */
-    public byte[] encodeMessage(String data) {
+    public byte @Nullable [] encodeMessage(String data) {
         try {
             // --- create cipher
             byte[] bdata = data.getBytes(remoteDevice.getCharSet());
             final Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
             cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(remoteDevice.getCryptKeyPriv(), "AES"));
             int bsize = cipher.getBlockSize();
-            logger.debug("Add Padding, encrypt AES and B64..");
+            /* Add Padding, encrypt AES and B64 */
             byte[] encryptedData = cipher.doFinal(addZeroPadding(bdata, bsize, remoteDevice.getCharSet()));
             try {
                 return (Base64.getMimeEncoder().encode(encryptedData));
             } catch (IllegalArgumentException e) {
-                logger.info("Base64encoding not possible: {}", e.getMessage());
+                logger.debug("Base64encoding not possible: {}", e.getMessage());
             }
         } catch (UnsupportedEncodingException | GeneralSecurityException e) {
-            logger.error("Exception on encoding", e);
+            logger.warn("Exception on encoding", e);
         }
         return null;
     }
@@ -128,8 +130,8 @@ public class KM200Cryption {
      * @author Markus Eckhardt
      */
     public void recreateKeys() {
-        if (StringUtils.isNotBlank(remoteDevice.getGatewayPassword())
-                && StringUtils.isNotBlank(remoteDevice.getPrivatePassword()) && remoteDevice.getMD5Salt() != null) {
+        if (!remoteDevice.getGatewayPassword().isBlank() && !remoteDevice.getPrivatePassword().isBlank()
+                && remoteDevice.getMD5Salt().length > 0) {
             byte[] md5K1 = null;
             byte[] md5K2Init = null;
             byte[] md5K2Private = null;
@@ -143,7 +145,7 @@ public class KM200Cryption {
             try {
                 md = MessageDigest.getInstance("MD5");
             } catch (NoSuchAlgorithmException e) {
-                logger.error("No such algorithm, MD5: {}", e.getMessage());
+                logger.warn("No such algorithm, MD5: {}", e.getMessage());
                 return;
             }
 

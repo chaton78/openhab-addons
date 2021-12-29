@@ -12,22 +12,47 @@
 				"channel": "power",
 				"type": "Switch",
 				"refresh": true,
-				"ChannelGroup": "",
 				"actions": [
 					{
 						"command": "set_power",
 						"parameterType": "ONOFF"
 					}
+				],
+				"category": "switch",
+				"tags": [
+					"Switch"
 				]
 			},
 			{
 				"property": "temperature",
 				"friendlyName": "Temperature",
 				"channel": "temperature",
-				"type": "Number",
+				"type": "Number:Temperature",
+				"unit": "CELSIUS",
+				"stateDescription": {
+					"pattern": "%.1f %unit%",
+					"readOnly": true
+				},
 				"refresh": true,
-				"ChannelGroup": "",
-				"actions": []
+				"actions": [],
+				"category": "temperature",
+				"tags": [
+					"Measurement",
+					"Temperature"
+				]
+			},
+			{
+				"property": "wifi_led",
+				"friendlyName": "Indicator light",
+				"channel": "led",
+				"type": "Switch",
+				"refresh": true,
+				"actions": [
+					{
+						"command": "set_wifi_led",
+						"parameterType": "ONOFF"
+					}
+				]
 			}
 		]
 	}

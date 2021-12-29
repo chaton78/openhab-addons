@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -28,13 +28,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.config.core.status.ConfigStatusMessage;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.ConfigStatusBridgeHandler;
-import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.sinope.SinopeBindingConstants;
 import org.openhab.binding.sinope.internal.SinopeConfigStatusMessage;
 import org.openhab.binding.sinope.internal.config.SinopeConfig;
@@ -47,6 +40,13 @@ import org.openhab.binding.sinope.internal.core.base.SinopeDataRequest;
 import org.openhab.binding.sinope.internal.core.base.SinopeRequest;
 import org.openhab.binding.sinope.internal.discovery.SinopeThingsDiscoveryService;
 import org.openhab.binding.sinope.internal.util.ByteUtil;
+import org.openhab.core.config.core.status.ConfigStatusMessage;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.ConfigStatusBridgeHandler;
+import org.openhab.core.types.Command;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +63,6 @@ public class SinopeGatewayHandler extends ConfigStatusBridgeHandler {
     private @Nullable ScheduledFuture<?> pollFuture;
     private long refreshInterval; // In seconds
     private final List<SinopeThermostatHandler> thermostatHandlers = new CopyOnWriteArrayList<>();
-    private final List<SinopeDimmerHandler> dimmerHandlers = new CopyOnWriteArrayList<>();
     private int seq = 1;
     private @Nullable Socket clientSocket;
     private boolean searching; // In searching mode..
@@ -98,7 +97,6 @@ public class SinopeGatewayHandler extends ConfigStatusBridgeHandler {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_OFFLINE,
                     "Can't connect to gateway. Please make sure that another instance is not connected.");
         }
-
     }
 
     @Override
@@ -134,17 +132,13 @@ public class SinopeGatewayHandler extends ConfigStatusBridgeHandler {
     }
 
     private synchronized void poll() {
-        if (thermostatHandlers.size() > 0 || dimmerHandlers.size() > 0) {
+        if (!thermostatHandlers.isEmpty()) {
             logger.debug("Polling for state");
             try {
                 if (connectToBridge()) {
                     logger.debug("Connected to bridge");
                     for (SinopeThermostatHandler sinopeThermostatHandler : thermostatHandlers) {
                         sinopeThermostatHandler.update();
-                    }
-
-                    for (SinopeDimmerHandler sinopeDimmerHandler : dimmerHandlers) {
-                        sinopeDimmerHandler.update();
                     }
                 }
             } catch (IOException e) {
@@ -182,7 +176,6 @@ public class SinopeGatewayHandler extends ConfigStatusBridgeHandler {
         SinopeAnswer answ = command.getReplyAnswer(inputStream);
 
         return answ;
-
     }
 
     synchronized SinopeAnswer execute(SinopeDataRequest command) throws UnknownHostException, IOException {
@@ -214,17 +207,8 @@ public class SinopeGatewayHandler extends ConfigStatusBridgeHandler {
         return thermostatHandlers.remove(thermostatHandler);
     }
 
-    public boolean registerDimmerHandler(SinopeDimmerHandler dimmerHandler) {
-        return dimmerHandlers.add(dimmerHandler);
-    }
-
-    public boolean unregisterDimmerHandler(SinopeThermostatHandler dimmerHandler) {
-        return dimmerHandlers.remove(dimmerHandler);
-    }
-
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
-
     }
 
     @Override
@@ -265,7 +249,6 @@ public class SinopeGatewayHandler extends ConfigStatusBridgeHandler {
         this.searching = true;
         pollSearch = scheduler.schedule(() -> search(sinopeThingsDiscoveryService), FIRST_POLL_INTERVAL,
                 TimeUnit.SECONDS);
-
     }
 
     private void search(final SinopeThingsDiscoveryService sinopeThingsDiscoveryService) {
@@ -290,7 +273,6 @@ public class SinopeGatewayHandler extends ConfigStatusBridgeHandler {
         } catch (UnknownHostException e) {
             logger.warn("Unexpected error when searching for new devices", e);
         } catch (IOException e) {
-
             logger.debug("Network connection error, expected when ending search", e);
         } finally {
             schedulePoll();
@@ -326,6 +308,5 @@ public class SinopeGatewayHandler extends ConfigStatusBridgeHandler {
             updateStatus(ThingStatus.ONLINE);
             schedulePoll();
         }
-
     }
 }

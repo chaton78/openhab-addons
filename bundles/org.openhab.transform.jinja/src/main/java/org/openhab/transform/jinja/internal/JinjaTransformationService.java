@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -22,8 +22,8 @@ import java.util.Map.Entry;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.transform.TransformationException;
-import org.eclipse.smarthome.core.transform.TransformationService;
+import org.openhab.core.transform.TransformationException;
+import org.openhab.core.transform.TransformationService;
 import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +31,8 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hubspot.jinjava.Jinjava;
+import com.hubspot.jinjava.JinjavaConfig;
+import com.hubspot.jinjava.interpret.FatalTemplateErrorsException;
 
 /**
  * <p>
@@ -40,25 +42,28 @@ import com.hubspot.jinjava.Jinjava;
  *
  */
 @NonNullByDefault
-@Component(immediate = true, property = { "smarthome.transform=JINJA" })
+@Component(property = { "openhab.transform=JINJA" })
 public class JinjaTransformationService implements TransformationService {
 
     private final Logger logger = LoggerFactory.getLogger(JinjaTransformationService.class);
 
-    private Jinjava jinjava = new Jinjava();
+    private final JinjavaConfig config = JinjavaConfig.newBuilder().withFailOnUnknownTokens(true).build();
+    private final Jinjava jinjava = new Jinjava(config);
 
     /**
      * Transforms the input <code>value</code> by Jinja template.
      *
      * @param template Jinja template
-     * @param value    String may contain JSON
+     * @param value String may contain JSON
      * @throws TransformationException
      */
     @Override
     public @Nullable String transform(String template, String value) throws TransformationException {
+        String transformationResult;
+        Map<String, @Nullable Object> bindings = new HashMap<>();
+
         logger.debug("about to transform '{}' by the function '{}'", value, template);
 
-        Map<String, @Nullable Object> bindings = new HashMap<>();
         bindings.put("value", value);
 
         try {
@@ -68,7 +73,11 @@ public class JinjaTransformationService implements TransformationService {
             // ok, then value_json is null...
         }
 
-        String transformationResult = jinjava.render(template, bindings);
+        try {
+            transformationResult = jinjava.render(template, bindings);
+        } catch (FatalTemplateErrorsException e) {
+            throw new TransformationException("An error occurred while transformation. " + e.getMessage(), e);
+        }
 
         logger.debug("transformation resulted in '{}'", transformationResult);
 

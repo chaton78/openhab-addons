@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,12 +12,11 @@
  */
 package org.openhab.io.imperihome.internal.action;
 
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.smarthome.core.events.EventPublisher;
-import org.eclipse.smarthome.core.items.Item;
-import org.eclipse.smarthome.core.items.events.ItemCommandEvent;
-import org.eclipse.smarthome.core.items.events.ItemEventFactory;
-import org.eclipse.smarthome.core.library.types.OnOffType;
+import org.openhab.core.events.EventPublisher;
+import org.openhab.core.items.Item;
+import org.openhab.core.items.events.ItemCommandEvent;
+import org.openhab.core.items.events.ItemEventFactory;
+import org.openhab.core.library.types.OnOffType;
 import org.openhab.io.imperihome.internal.model.device.AbstractDevice;
 import org.openhab.io.imperihome.internal.model.device.DeviceType;
 import org.openhab.io.imperihome.internal.processor.DeviceRegistry;
@@ -39,7 +38,8 @@ public class StopShutterAction extends Action {
 
     @Override
     public boolean supports(AbstractDevice device, Item item) {
-        return device.getType() == DeviceType.SHUTTER && StringUtils.isNotBlank(device.getLinks().get("stopper"));
+        String stopper = device.getLinks().get("stopper");
+        return device.getType() == DeviceType.SHUTTER && stopper != null && !stopper.isBlank();
     }
 
     @Override
@@ -47,7 +47,8 @@ public class StopShutterAction extends Action {
         String modeDeviceName = device.getLinks().get("stopper");
         AbstractDevice modeDevice = deviceRegistry.getDevice(ItemProcessor.getDeviceId(modeDeviceName));
         if (modeDevice == null) {
-            logger.error("Couldn't resolve linked Stopper device '{}', make sure the Item has iss tags", modeDeviceName);
+            logger.error("Couldn't resolve linked Stopper device '{}', make sure the Item has iss tags",
+                    modeDeviceName);
             return;
         }
 
@@ -56,5 +57,4 @@ public class StopShutterAction extends Action {
         ItemCommandEvent event = ItemEventFactory.createCommandEvent(modeItem.getName(), OnOffType.ON, COMMAND_SOURCE);
         eventPublisher.post(event);
     }
-
 }

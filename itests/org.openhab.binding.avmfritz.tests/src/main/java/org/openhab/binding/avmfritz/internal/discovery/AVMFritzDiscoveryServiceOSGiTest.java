@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,92 +12,107 @@
  */
 package org.openhab.binding.avmfritz.internal.discovery;
 
-import static org.eclipse.smarthome.core.thing.Thing.*;
-import static org.junit.Assert.*;
-import static org.openhab.binding.avmfritz.internal.BindingConstants.*;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.openhab.binding.avmfritz.internal.AVMFritzBindingConstants.*;
+import static org.openhab.core.thing.Thing.*;
 
 import java.io.StringReader;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
 
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 
-import org.eclipse.smarthome.config.discovery.DiscoveryListener;
-import org.eclipse.smarthome.config.discovery.DiscoveryResult;
-import org.eclipse.smarthome.config.discovery.DiscoveryResultFlag;
-import org.eclipse.smarthome.config.discovery.DiscoveryService;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.ThingUID;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.openhab.binding.avmfritz.internal.ahamodel.AVMFritzBaseModel;
-import org.openhab.binding.avmfritz.internal.ahamodel.DeviceListModel;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.openhab.binding.avmfritz.internal.dto.AVMFritzBaseModel;
+import org.openhab.binding.avmfritz.internal.dto.DeviceListModel;
 import org.openhab.binding.avmfritz.internal.handler.AVMFritzThingHandlerOSGiTest;
 import org.openhab.binding.avmfritz.internal.util.JAXBUtils;
+import org.openhab.core.config.discovery.DiscoveryListener;
+import org.openhab.core.config.discovery.DiscoveryResult;
+import org.openhab.core.config.discovery.DiscoveryResultFlag;
+import org.openhab.core.config.discovery.DiscoveryService;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
 
 /**
  * Tests for {@link AVMFritzDiscoveryService}.
  *
  * @author Christoph Weitkamp - Initial contribution
+ * @author Ulrich Mertin - Added support for HAN-FUN blinds
  */
+@NonNullByDefault
 public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTest {
 
     private static final ThingUID BRIGE_THING_ID = new ThingUID("avmfritz:fritzbox:1");
 
-    private DiscoveryListener listener;
-    private DiscoveryResult discoveryResult;
+    private @Nullable DiscoveryResult discoveryResult;
+    private @NonNullByDefault({}) AVMFritzDiscoveryService discovery;
 
-    private AVMFritzDiscoveryService discovery;
+    private final DiscoveryListener listener = new DiscoveryListener() {
+        @Override
+        public void thingRemoved(DiscoveryService source, ThingUID thingUID) {
+            discoveryResult = null;
+        }
+
+        @Override
+        public void thingDiscovered(DiscoveryService source, DiscoveryResult result) {
+            discoveryResult = result;
+        }
+
+        @Override
+        public @Nullable Collection<ThingUID> removeOlderResults(DiscoveryService source, long timestamp,
+                @Nullable Collection<ThingTypeUID> thingTypeUIDs, @Nullable ThingUID bridgeUID) {
+            return List.of();
+        }
+    };
 
     @Override
-    @Before
+    @BeforeEach
     public void setUp() {
         super.setUp();
-        discovery = new AVMFritzDiscoveryService(bridgeHandler);
-        listener = new DiscoveryListener() {
-            @Override
-            public void thingRemoved(DiscoveryService source, ThingUID thingUID) {
-            }
-
-            @Override
-            public void thingDiscovered(DiscoveryService source, DiscoveryResult result) {
-                discoveryResult = result;
-            }
-
-            @Override
-            public Collection<ThingUID> removeOlderResults(DiscoveryService source, long timestamp,
-                    Collection<ThingTypeUID> thingTypeUIDs, ThingUID bridgeUID) {
-                return Collections.emptyList();
-            }
-        };
+        discovery = new AVMFritzDiscoveryService();
+        discovery.setThingHandler(bridgeHandler);
         discovery.addDiscoveryListener(listener);
     }
 
-    @After
+    @AfterEach
     public void cleanUp() {
         discoveryResult = null;
     }
 
     @Test
     public void correctSupportedTypes() {
-        assertEquals(11, discovery.getSupportedThingTypes().size());
+        assertEquals(18, discovery.getSupportedThingTypes().size());
         assertTrue(discovery.getSupportedThingTypes().contains(DECT100_THING_TYPE));
         assertTrue(discovery.getSupportedThingTypes().contains(DECT200_THING_TYPE));
         assertTrue(discovery.getSupportedThingTypes().contains(DECT210_THING_TYPE));
         assertTrue(discovery.getSupportedThingTypes().contains(DECT300_THING_TYPE));
         assertTrue(discovery.getSupportedThingTypes().contains(DECT301_THING_TYPE));
-        assertTrue(discovery.getSupportedThingTypes().contains(PL546E_THING_TYPE));
+        assertTrue(discovery.getSupportedThingTypes().contains(DECT400_THING_TYPE));
+        assertTrue(discovery.getSupportedThingTypes().contains(DECT440_THING_TYPE));
+        assertTrue(discovery.getSupportedThingTypes().contains(DECT500_THING_TYPE));
+        assertTrue(discovery.getSupportedThingTypes().contains(POWERLINE546E_THING_TYPE));
         assertTrue(discovery.getSupportedThingTypes().contains(COMETDECT_THING_TYPE));
         assertTrue(discovery.getSupportedThingTypes().contains(HAN_FUN_CONTACT_THING_TYPE));
         assertTrue(discovery.getSupportedThingTypes().contains(HAN_FUN_SWITCH_THING_TYPE));
+        assertTrue(discovery.getSupportedThingTypes().contains(HAN_FUN_ON_OFF_THING_TYPE));
+        assertTrue(discovery.getSupportedThingTypes().contains(HAN_FUN_BLINDS_THING_TYPE));
+        assertTrue(discovery.getSupportedThingTypes().contains(HAN_FUN_COLOR_BULB_THING_TYPE));
+        assertTrue(discovery.getSupportedThingTypes().contains(HAN_FUN_DIMMABLE_BULB_THING_TYPE));
         assertTrue(discovery.getSupportedThingTypes().contains(GROUP_HEATING_THING_TYPE));
         assertTrue(discovery.getSupportedThingTypes().contains(GROUP_SWITCH_THING_TYPE));
     }
 
+    @SuppressWarnings("null")
     @Test
-    public void invalidDiscoveryResult() throws JAXBException {
+    public void invalidDiscoveryResult() throws JAXBException, XMLStreamException {
         // attribute productname is important for a valid discovery result
         //@formatter:off
         String xml =
@@ -113,22 +128,25 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
                 "</devicelist>";
         //@formatter:on
 
+        XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(xml));
         Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
-        DeviceListModel devices = (DeviceListModel) u.unmarshal(new StringReader(xml));
+        DeviceListModel devices = u.unmarshal(xsr, DeviceListModel.class).getValue();
+
         assertNotNull(devices);
         assertEquals(1, devices.getDevicelist().size());
 
         AVMFritzBaseModel device = devices.getDevicelist().get(0);
         assertNotNull(device);
 
-        discovery.onDeviceAddedInternal(device);
+        discovery.onDeviceAdded(device);
         assertNull(discoveryResult);
     }
 
+    @SuppressWarnings("null")
     @Test
-    public void validDECTRepeater100Result() throws JAXBException {
+    public void validDECTRepeater100Result() throws JAXBException, XMLStreamException {
         //@formatter:off
-        String xml =
+        final String xml =
                 "<devicelist version=\"1\">" +
                     "<device identifier=\"08761 0954669\" id=\"20\" functionbitmask=\"1280\" fwversion=\"03.86\" manufacturer=\"AVM\" productname=\"FRITZ!DECT Repeater 100\">" +
                         "<present>1</present>" +
@@ -141,15 +159,18 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
                 "</devicelist>";
         //@formatter:on
 
+        XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(xml));
         Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
-        DeviceListModel devices = (DeviceListModel) u.unmarshal(new StringReader(xml));
+        DeviceListModel devices = u.unmarshal(xsr, DeviceListModel.class).getValue();
+
         assertNotNull(devices);
         assertEquals(1, devices.getDevicelist().size());
 
         AVMFritzBaseModel device = devices.getDevicelist().get(0);
         assertNotNull(device);
+        assertEquals(1, device.getPresent());
 
-        discovery.onDeviceAddedInternal(device);
+        discovery.onDeviceAdded(device);
         assertNotNull(discoveryResult);
 
         assertEquals(DiscoveryResultFlag.NEW, discoveryResult.getFlag());
@@ -158,14 +179,27 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
         assertEquals(BRIGE_THING_ID, discoveryResult.getBridgeUID());
         assertEquals("087610954669", discoveryResult.getProperties().get(CONFIG_AIN));
         assertEquals("AVM", discoveryResult.getProperties().get(PROPERTY_VENDOR));
-        assertEquals("20", discoveryResult.getProperties().get(PROPERTY_MODEL_ID));
+        assertEquals("FRITZ!DECT Repeater 100", discoveryResult.getProperties().get(PRODUCT_NAME));
         assertEquals("087610954669", discoveryResult.getProperties().get(PROPERTY_SERIAL_NUMBER));
         assertEquals("03.86", discoveryResult.getProperties().get(PROPERTY_FIRMWARE_VERSION));
         assertEquals(CONFIG_AIN, discoveryResult.getRepresentationProperty());
+
+        final String deviceNotPresentXml = xml.replace("<present>1</present>", "<present>0</present>");
+        devices = (DeviceListModel) u.unmarshal(new StringReader(deviceNotPresentXml));
+        assertNotNull(devices);
+        assertEquals(1, devices.getDevicelist().size());
+
+        device = devices.getDevicelist().get(0);
+        assertNotNull(device);
+        assertEquals(0, device.getPresent());
+
+        discovery.onDeviceAdded(device);
+        assertNull(discoveryResult);
     }
 
+    @SuppressWarnings("null")
     @Test
-    public void validDECT200DiscoveryResult() throws JAXBException {
+    public void validDECT200DiscoveryResult() throws JAXBException, XMLStreamException {
         //@formatter:off
         String xml =
                 "<devicelist version=\"1\">" +
@@ -191,15 +225,17 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
                 "</devicelist>";
         //@formatter:on
 
+        XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(xml));
         Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
-        DeviceListModel devices = (DeviceListModel) u.unmarshal(new StringReader(xml));
+        DeviceListModel devices = u.unmarshal(xsr, DeviceListModel.class).getValue();
+
         assertNotNull(devices);
         assertEquals(1, devices.getDevicelist().size());
 
         AVMFritzBaseModel device = devices.getDevicelist().get(0);
         assertNotNull(device);
 
-        discovery.onDeviceAddedInternal(device);
+        discovery.onDeviceAdded(device);
         assertNotNull(discoveryResult);
 
         assertEquals(DiscoveryResultFlag.NEW, discoveryResult.getFlag());
@@ -208,14 +244,15 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
         assertEquals(BRIGE_THING_ID, discoveryResult.getBridgeUID());
         assertEquals("087610000434", discoveryResult.getProperties().get(CONFIG_AIN));
         assertEquals("AVM", discoveryResult.getProperties().get(PROPERTY_VENDOR));
-        assertEquals("17", discoveryResult.getProperties().get(PROPERTY_MODEL_ID));
+        assertEquals("FRITZ!DECT 200", discoveryResult.getProperties().get(PRODUCT_NAME));
         assertEquals("087610000434", discoveryResult.getProperties().get(PROPERTY_SERIAL_NUMBER));
         assertEquals("03.83", discoveryResult.getProperties().get(PROPERTY_FIRMWARE_VERSION));
         assertEquals(CONFIG_AIN, discoveryResult.getRepresentationProperty());
     }
 
+    @SuppressWarnings("null")
     @Test
-    public void validDECT210DiscoveryResult() throws JAXBException {
+    public void validDECT210DiscoveryResult() throws JAXBException, XMLStreamException {
         //@formatter:off
         String xml =
                 "<devicelist version=\"1\">" +
@@ -241,15 +278,17 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
                 "</devicelist>";
         //@formatter:on
 
+        XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(xml));
         Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
-        DeviceListModel devices = (DeviceListModel) u.unmarshal(new StringReader(xml));
+        DeviceListModel devices = u.unmarshal(xsr, DeviceListModel.class).getValue();
+
         assertNotNull(devices);
         assertEquals(1, devices.getDevicelist().size());
 
         AVMFritzBaseModel device = devices.getDevicelist().get(0);
         assertNotNull(device);
 
-        discovery.onDeviceAddedInternal(device);
+        discovery.onDeviceAdded(device);
         assertNotNull(discoveryResult);
 
         assertEquals(DiscoveryResultFlag.NEW, discoveryResult.getFlag());
@@ -258,14 +297,15 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
         assertEquals(BRIGE_THING_ID, discoveryResult.getBridgeUID());
         assertEquals("087610000434", discoveryResult.getProperties().get(CONFIG_AIN));
         assertEquals("AVM", discoveryResult.getProperties().get(PROPERTY_VENDOR));
-        assertEquals("17", discoveryResult.getProperties().get(PROPERTY_MODEL_ID));
+        assertEquals("FRITZ!DECT 210", discoveryResult.getProperties().get(PRODUCT_NAME));
         assertEquals("087610000434", discoveryResult.getProperties().get(PROPERTY_SERIAL_NUMBER));
         assertEquals("03.83", discoveryResult.getProperties().get(PROPERTY_FIRMWARE_VERSION));
         assertEquals(CONFIG_AIN, discoveryResult.getRepresentationProperty());
     }
 
+    @SuppressWarnings("null")
     @Test
-    public void validCometDECTDiscoveryResult() throws JAXBException {
+    public void validCometDECTDiscoveryResult() throws JAXBException, XMLStreamException {
         //@formatter:off
         String xml =
                 "<devicelist version=\"1\">" +
@@ -294,15 +334,17 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
                  "</devicelist>";
         //@formatter:on
 
+        XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(xml));
         Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
-        DeviceListModel devices = (DeviceListModel) u.unmarshal(new StringReader(xml));
+        DeviceListModel devices = u.unmarshal(xsr, DeviceListModel.class).getValue();
+
         assertNotNull(devices);
         assertEquals(1, devices.getDevicelist().size());
 
         AVMFritzBaseModel device = devices.getDevicelist().get(0);
         assertNotNull(device);
 
-        discovery.onDeviceAddedInternal(device);
+        discovery.onDeviceAdded(device);
         assertNotNull(discoveryResult);
 
         assertEquals(DiscoveryResultFlag.NEW, discoveryResult.getFlag());
@@ -311,14 +353,15 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
         assertEquals(BRIGE_THING_ID, discoveryResult.getBridgeUID());
         assertEquals("087610000435", discoveryResult.getProperties().get(CONFIG_AIN));
         assertEquals("AVM", discoveryResult.getProperties().get(PROPERTY_VENDOR));
-        assertEquals("18", discoveryResult.getProperties().get(PROPERTY_MODEL_ID));
+        assertEquals("Comet DECT", discoveryResult.getProperties().get(PRODUCT_NAME));
         assertEquals("087610000435", discoveryResult.getProperties().get(PROPERTY_SERIAL_NUMBER));
         assertEquals("03.50", discoveryResult.getProperties().get(PROPERTY_FIRMWARE_VERSION));
         assertEquals(CONFIG_AIN, discoveryResult.getRepresentationProperty());
     }
 
+    @SuppressWarnings("null")
     @Test
-    public void validDECT300DiscoveryResult() throws JAXBException {
+    public void validDECT300DiscoveryResult() throws JAXBException, XMLStreamException {
         //@formatter:off
         String xml =
                 "<devicelist version=\"1\">" +
@@ -347,15 +390,17 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
                 "</devicelist>";
         //@formatter:on
 
+        XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(xml));
         Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
-        DeviceListModel devices = (DeviceListModel) u.unmarshal(new StringReader(xml));
+        DeviceListModel devices = u.unmarshal(xsr, DeviceListModel.class).getValue();
+
         assertNotNull(devices);
         assertEquals(1, devices.getDevicelist().size());
 
         AVMFritzBaseModel device = devices.getDevicelist().get(0);
         assertNotNull(device);
 
-        discovery.onDeviceAddedInternal(device);
+        discovery.onDeviceAdded(device);
         assertNotNull(discoveryResult);
 
         assertEquals(DiscoveryResultFlag.NEW, discoveryResult.getFlag());
@@ -364,14 +409,15 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
         assertEquals(BRIGE_THING_ID, discoveryResult.getBridgeUID());
         assertEquals("087610000435", discoveryResult.getProperties().get(CONFIG_AIN));
         assertEquals("AVM", discoveryResult.getProperties().get(PROPERTY_VENDOR));
-        assertEquals("18", discoveryResult.getProperties().get(PROPERTY_MODEL_ID));
+        assertEquals("FRITZ!DECT 300", discoveryResult.getProperties().get(PRODUCT_NAME));
         assertEquals("087610000435", discoveryResult.getProperties().get(PROPERTY_SERIAL_NUMBER));
         assertEquals("03.50", discoveryResult.getProperties().get(PROPERTY_FIRMWARE_VERSION));
         assertEquals(CONFIG_AIN, discoveryResult.getRepresentationProperty());
     }
 
+    @SuppressWarnings("null")
     @Test
-    public void validDECT301DiscoveryResult() throws JAXBException {
+    public void validDECT301DiscoveryResult() throws JAXBException, XMLStreamException {
         //@formatter:off
         String xml =
                 "<devicelist version=\"1\">" +
@@ -400,15 +446,17 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
             "</devicelist>";
         //@formatter:on
 
+        XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(xml));
         Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
-        DeviceListModel devices = (DeviceListModel) u.unmarshal(new StringReader(xml));
+        DeviceListModel devices = u.unmarshal(xsr, DeviceListModel.class).getValue();
+
         assertNotNull(devices);
         assertEquals(1, devices.getDevicelist().size());
 
         AVMFritzBaseModel device = devices.getDevicelist().get(0);
         assertNotNull(device);
 
-        discovery.onDeviceAddedInternal(device);
+        discovery.onDeviceAdded(device);
         assertNotNull(discoveryResult);
 
         assertEquals(DiscoveryResultFlag.NEW, discoveryResult.getFlag());
@@ -417,14 +465,15 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
         assertEquals(BRIGE_THING_ID, discoveryResult.getBridgeUID());
         assertEquals("087610000435", discoveryResult.getProperties().get(CONFIG_AIN));
         assertEquals("AVM", discoveryResult.getProperties().get(PROPERTY_VENDOR));
-        assertEquals("18", discoveryResult.getProperties().get(PROPERTY_MODEL_ID));
+        assertEquals("FRITZ!DECT 301", discoveryResult.getProperties().get(PRODUCT_NAME));
         assertEquals("087610000435", discoveryResult.getProperties().get(PROPERTY_SERIAL_NUMBER));
         assertEquals("03.50", discoveryResult.getProperties().get(PROPERTY_FIRMWARE_VERSION));
         assertEquals(CONFIG_AIN, discoveryResult.getRepresentationProperty());
     }
 
+    @SuppressWarnings("null")
     @Test
-    public void validPowerline546EDiscoveryResult() throws JAXBException {
+    public void validPowerline546EDiscoveryResult() throws JAXBException, XMLStreamException {
         //@formatter:off
         String xml =
                 "<devicelist version=\"1\">" +
@@ -446,60 +495,66 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
                 "</devicelist>";
         //@formatter:on
 
+        XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(xml));
         Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
-        DeviceListModel devices = (DeviceListModel) u.unmarshal(new StringReader(xml));
+        DeviceListModel devices = u.unmarshal(xsr, DeviceListModel.class).getValue();
+
         assertNotNull(devices);
         assertEquals(1, devices.getDevicelist().size());
 
         AVMFritzBaseModel device = devices.getDevicelist().get(0);
         assertNotNull(device);
 
-        discovery.onDeviceAddedInternal(device);
+        discovery.onDeviceAdded(device);
         assertNotNull(discoveryResult);
 
         assertEquals(DiscoveryResultFlag.NEW, discoveryResult.getFlag());
         assertEquals(new ThingUID("avmfritz:FRITZ_Powerline_546E:1:5C_49_79_F0_A3_84"), discoveryResult.getThingUID());
-        assertEquals(PL546E_THING_TYPE, discoveryResult.getThingTypeUID());
+        assertEquals(POWERLINE546E_THING_TYPE, discoveryResult.getThingTypeUID());
         assertEquals(BRIGE_THING_ID, discoveryResult.getBridgeUID());
         assertEquals("5C:49:79:F0:A3:84", discoveryResult.getProperties().get(CONFIG_AIN));
         assertEquals("AVM", discoveryResult.getProperties().get(PROPERTY_VENDOR));
-        assertEquals("19", discoveryResult.getProperties().get(PROPERTY_MODEL_ID));
+        assertEquals("FRITZ!Powerline 546E", discoveryResult.getProperties().get(PRODUCT_NAME));
         assertEquals("5C:49:79:F0:A3:84", discoveryResult.getProperties().get(PROPERTY_SERIAL_NUMBER));
         assertEquals("06.92", discoveryResult.getProperties().get(PROPERTY_FIRMWARE_VERSION));
         assertEquals(CONFIG_AIN, discoveryResult.getRepresentationProperty());
     }
 
+    @SuppressWarnings("null")
     @Test
-    public void invalidHANFUNContactDiscoveryResult() throws JAXBException {
+    public void invalidHANFUNContactDiscoveryResult() throws JAXBException, XMLStreamException {
         //@formatter:off
         String xml =
                 "<devicelist version=\"1\">" +
                     "<device identifier=\"11934 0059578\" id=\"406\" functionbitmask=\"1\" fwversion=\"00.00\" manufacturer=\"0x0feb\" productname=\"HAN-FUN\">" +
-                        "<present>0</present>" +
+                        "<present>1</present>" +
                         "<name>HAN-FUN #2</name>" +
                     "</device>" +
                 "</devicelist>";
         //@formatter:on
 
+        XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(xml));
         Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
-        DeviceListModel devices = (DeviceListModel) u.unmarshal(new StringReader(xml));
+        DeviceListModel devices = u.unmarshal(xsr, DeviceListModel.class).getValue();
+
         assertNotNull(devices);
         assertEquals(1, devices.getDevicelist().size());
 
         AVMFritzBaseModel device = devices.getDevicelist().get(0);
         assertNotNull(device);
 
-        discovery.onDeviceAddedInternal(device);
+        discovery.onDeviceAdded(device);
         assertNull(discoveryResult);
     }
 
+    @SuppressWarnings("null")
     @Test
-    public void validHANFUNMagneticContactDiscoveryResult() throws JAXBException {
+    public void validHANFUNMagneticContactDiscoveryResult() throws JAXBException, XMLStreamException {
         //@formatter:off
         String xml =
                 "<devicelist version=\"1\">" +
                     "<device identifier=\"11934 0059578-1\" id=\"2000\" functionbitmask=\"8208\" fwversion=\"0.0\" manufacturer=\"0x0feb\" productname=\"HAN-FUN\">" +
-                        "<present>0</present>" +
+                        "<present>1</present>" +
                         "<name>HAN-FUN #2: Unit #2</name>" +
                         "<etsiunitinfo>" +
                             "<etsideviceid>406</etsideviceid>" +
@@ -513,15 +568,17 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
                 "</devicelist>";
         //@formatter:on
 
+        XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(xml));
         Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
-        DeviceListModel devices = (DeviceListModel) u.unmarshal(new StringReader(xml));
+        DeviceListModel devices = u.unmarshal(xsr, DeviceListModel.class).getValue();
+
         assertNotNull(devices);
         assertEquals(1, devices.getDevicelist().size());
 
         AVMFritzBaseModel device = devices.getDevicelist().get(0);
         assertNotNull(device);
 
-        discovery.onDeviceAddedInternal(device);
+        discovery.onDeviceAdded(device);
         assertNotNull(discoveryResult);
 
         assertEquals(DiscoveryResultFlag.NEW, discoveryResult.getFlag());
@@ -530,19 +587,20 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
         assertEquals(BRIGE_THING_ID, discoveryResult.getBridgeUID());
         assertEquals("119340059578-1", discoveryResult.getProperties().get(CONFIG_AIN));
         assertEquals("0x0feb", discoveryResult.getProperties().get(PROPERTY_VENDOR));
-        assertEquals("2000", discoveryResult.getProperties().get(PROPERTY_MODEL_ID));
+        assertEquals("HAN-FUN", discoveryResult.getProperties().get(PRODUCT_NAME));
         assertEquals("119340059578-1", discoveryResult.getProperties().get(PROPERTY_SERIAL_NUMBER));
         assertEquals("0.0", discoveryResult.getProperties().get(PROPERTY_FIRMWARE_VERSION));
         assertEquals(CONFIG_AIN, discoveryResult.getRepresentationProperty());
     }
 
+    @SuppressWarnings("null")
     @Test
-    public void validHANFUNOpticalContactDiscoveryResult() throws JAXBException {
+    public void validHANFUNOpticalContactDiscoveryResult() throws JAXBException, XMLStreamException {
         //@formatter:off
         String xml =
                 "<devicelist version=\"1\">" +
                     "<device identifier=\"11934 0059578-1\" id=\"2001\" functionbitmask=\"8208\" fwversion=\"0.0\" manufacturer=\"0x0feb\" productname=\"HAN-FUN\">" +
-                        "<present>0</present>" +
+                        "<present>1</present>" +
                         "<name>HAN-FUN #3: Unit #3</name>" +
                         "<etsiunitinfo>" +
                             "<etsideviceid>406</etsideviceid>" +
@@ -556,15 +614,17 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
                 "</devicelist>";
         //@formatter:on
 
+        XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(xml));
         Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
-        DeviceListModel devices = (DeviceListModel) u.unmarshal(new StringReader(xml));
+        DeviceListModel devices = u.unmarshal(xsr, DeviceListModel.class).getValue();
+
         assertNotNull(devices);
         assertEquals(1, devices.getDevicelist().size());
 
         AVMFritzBaseModel device = devices.getDevicelist().get(0);
         assertNotNull(device);
 
-        discovery.onDeviceAddedInternal(device);
+        discovery.onDeviceAdded(device);
         assertNotNull(discoveryResult);
 
         assertEquals(DiscoveryResultFlag.NEW, discoveryResult.getFlag());
@@ -573,19 +633,20 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
         assertEquals(BRIGE_THING_ID, discoveryResult.getBridgeUID());
         assertEquals("119340059578-1", discoveryResult.getProperties().get(CONFIG_AIN));
         assertEquals("0x0feb", discoveryResult.getProperties().get(PROPERTY_VENDOR));
-        assertEquals("2001", discoveryResult.getProperties().get(PROPERTY_MODEL_ID));
+        assertEquals("HAN-FUN", discoveryResult.getProperties().get(PRODUCT_NAME));
         assertEquals("119340059578-1", discoveryResult.getProperties().get(PROPERTY_SERIAL_NUMBER));
         assertEquals("0.0", discoveryResult.getProperties().get(PROPERTY_FIRMWARE_VERSION));
         assertEquals(CONFIG_AIN, discoveryResult.getRepresentationProperty());
     }
 
+    @SuppressWarnings("null")
     @Test
-    public void validHANFUNMotionSensorDiscoveryResult() throws JAXBException {
+    public void validHANFUNMotionSensorDiscoveryResult() throws JAXBException, XMLStreamException {
         //@formatter:off
         String xml =
                 "<devicelist version=\"1\">" +
                     "<device identifier=\"11934 0059578-1\" id=\"2002\" functionbitmask=\"8208\" fwversion=\"0.0\" manufacturer=\"0x0feb\" productname=\"HAN-FUN\">" +
-                        "<present>0</present>" +
+                        "<present>1</present>" +
                         "<name>HAN-FUN #3: Unit #3</name>" +
                         "<etsiunitinfo>" +
                             "<etsideviceid>408</etsideviceid>" +
@@ -599,15 +660,17 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
                 "</devicelist>";
         //@formatter:on
 
+        XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(xml));
         Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
-        DeviceListModel devices = (DeviceListModel) u.unmarshal(new StringReader(xml));
+        DeviceListModel devices = u.unmarshal(xsr, DeviceListModel.class).getValue();
+
         assertNotNull(devices);
         assertEquals(1, devices.getDevicelist().size());
 
         AVMFritzBaseModel device = devices.getDevicelist().get(0);
         assertNotNull(device);
 
-        discovery.onDeviceAddedInternal(device);
+        discovery.onDeviceAdded(device);
         assertNotNull(discoveryResult);
 
         assertEquals(DiscoveryResultFlag.NEW, discoveryResult.getFlag());
@@ -616,14 +679,15 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
         assertEquals(BRIGE_THING_ID, discoveryResult.getBridgeUID());
         assertEquals("119340059578-1", discoveryResult.getProperties().get(CONFIG_AIN));
         assertEquals("0x0feb", discoveryResult.getProperties().get(PROPERTY_VENDOR));
-        assertEquals("2002", discoveryResult.getProperties().get(PROPERTY_MODEL_ID));
+        assertEquals("HAN-FUN", discoveryResult.getProperties().get(PRODUCT_NAME));
         assertEquals("119340059578-1", discoveryResult.getProperties().get(PROPERTY_SERIAL_NUMBER));
         assertEquals("0.0", discoveryResult.getProperties().get(PROPERTY_FIRMWARE_VERSION));
         assertEquals(CONFIG_AIN, discoveryResult.getRepresentationProperty());
     }
 
+    @SuppressWarnings("null")
     @Test
-    public void validHANFUNMSmokeDetectorDiscoveryResult() throws JAXBException {
+    public void validHANFUNMSmokeDetectorDiscoveryResult() throws JAXBException, XMLStreamException {
         //@formatter:off
         String xml =
                 "<devicelist version=\"1\">" +
@@ -642,15 +706,17 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
                 "</devicelist>";
         //@formatter:on
 
+        XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(xml));
         Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
-        DeviceListModel devices = (DeviceListModel) u.unmarshal(new StringReader(xml));
+        DeviceListModel devices = u.unmarshal(xsr, DeviceListModel.class).getValue();
+
         assertNotNull(devices);
         assertEquals(1, devices.getDevicelist().size());
 
         AVMFritzBaseModel device = devices.getDevicelist().get(0);
         assertNotNull(device);
 
-        discovery.onDeviceAddedInternal(device);
+        discovery.onDeviceAdded(device);
         assertNotNull(discoveryResult);
 
         assertEquals(DiscoveryResultFlag.NEW, discoveryResult.getFlag());
@@ -659,19 +725,20 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
         assertEquals(BRIGE_THING_ID, discoveryResult.getBridgeUID());
         assertEquals("113240059952-1", discoveryResult.getProperties().get(CONFIG_AIN));
         assertEquals("0x2c3c", discoveryResult.getProperties().get(PROPERTY_VENDOR));
-        assertEquals("2003", discoveryResult.getProperties().get(PROPERTY_MODEL_ID));
+        assertEquals("HAN-FUN", discoveryResult.getProperties().get(PRODUCT_NAME));
         assertEquals("113240059952-1", discoveryResult.getProperties().get(PROPERTY_SERIAL_NUMBER));
         assertEquals("0.0", discoveryResult.getProperties().get(PROPERTY_FIRMWARE_VERSION));
         assertEquals(CONFIG_AIN, discoveryResult.getRepresentationProperty());
     }
 
+    @SuppressWarnings("null")
     @Test
-    public void validHANFUNSwitchtDiscoveryResult() throws JAXBException {
+    public void validHANFUNSwitchtDiscoveryResult() throws JAXBException, XMLStreamException {
         //@formatter:off
         String xml =
                 "<devicelist version=\"1\">" +
                     "<device identifier=\"11934 0059578-1\" id=\"2001\" functionbitmask=\"8200\" fwversion=\"0.0\" manufacturer=\"0x0feb\" productname=\"HAN-FUN\">" +
-                        "<present>0</present>" +
+                        "<present>1</present>" +
                         "<name>HAN-FUN #2: Unit #2</name>" +
                         "<etsiunitinfo>" +
                             "<etsideviceid>412</etsideviceid>" +
@@ -685,15 +752,17 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
                 "</devicelist>";
         //@formatter:on
 
+        XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(xml));
         Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
-        DeviceListModel devices = (DeviceListModel) u.unmarshal(new StringReader(xml));
+        DeviceListModel devices = u.unmarshal(xsr, DeviceListModel.class).getValue();
+
         assertNotNull(devices);
         assertEquals(1, devices.getDevicelist().size());
 
         AVMFritzBaseModel device = devices.getDevicelist().get(0);
         assertNotNull(device);
 
-        discovery.onDeviceAddedInternal(device);
+        discovery.onDeviceAdded(device);
         assertNotNull(discoveryResult);
 
         assertEquals(DiscoveryResultFlag.NEW, discoveryResult.getFlag());
@@ -702,14 +771,71 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
         assertEquals(BRIGE_THING_ID, discoveryResult.getBridgeUID());
         assertEquals("119340059578-1", discoveryResult.getProperties().get(CONFIG_AIN));
         assertEquals("0x0feb", discoveryResult.getProperties().get(PROPERTY_VENDOR));
-        assertEquals("2001", discoveryResult.getProperties().get(PROPERTY_MODEL_ID));
+        assertEquals("HAN-FUN", discoveryResult.getProperties().get(PRODUCT_NAME));
         assertEquals("119340059578-1", discoveryResult.getProperties().get(PROPERTY_SERIAL_NUMBER));
         assertEquals("0.0", discoveryResult.getProperties().get(PROPERTY_FIRMWARE_VERSION));
         assertEquals(CONFIG_AIN, discoveryResult.getRepresentationProperty());
     }
 
+    @SuppressWarnings("null")
     @Test
-    public void validHeatingGroupDiscoveryResult() throws JAXBException {
+    public void validHANFUNBlindDiscoveryResult() throws JAXBException, XMLStreamException {
+        //@formatter:off
+        String xml =
+                "<devicelist version=\"1\">" +
+                    "<device identifier=\"14276 0503450-1\" id=\"2000\" functionbitmask=\"335888\" fwversion=\"0.0\" manufacturer=\"0x37c4\" productname=\"Rollotron 1213\">"+
+                        "<present>1</present>"+
+                        "<txbusy>0</txbusy>"+
+                        "<name>Rollotron 1213 #1</name>"+
+                        "<blind>"+
+                            "<endpositionsset>1</endpositionsset>"+
+                            "<mode>manuell</mode>"+
+                        "</blind>"+
+                        "<levelcontrol>"+
+                            "<level>26</level>"+
+                            "<levelpercentage>10</levelpercentage>"+
+                        "</levelcontrol>"+
+                        "<etsiunitinfo>"+
+                            "<etsideviceid>406</etsideviceid>"+
+                            "<unittype>281</unittype>"+
+                            "<interfaces>256,513,516,517</interfaces>"+
+                        "</etsiunitinfo>"+
+                        "<alert>"+
+                            "<state>0</state>"+
+                            "<lastalertchgtimestamp></lastalertchgtimestamp>"+
+                        "</alert>"+
+                    "</device>" +
+                "</devicelist>";
+        //@formatter:on
+
+        XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(xml));
+        Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
+        DeviceListModel devices = u.unmarshal(xsr, DeviceListModel.class).getValue();
+
+        assertNotNull(devices);
+        assertEquals(1, devices.getDevicelist().size());
+
+        AVMFritzBaseModel device = devices.getDevicelist().get(0);
+        assertNotNull(device);
+
+        discovery.onDeviceAdded(device);
+        assertNotNull(discoveryResult);
+
+        assertEquals(DiscoveryResultFlag.NEW, discoveryResult.getFlag());
+        assertEquals(new ThingUID("avmfritz:HAN_FUN_BLINDS:1:142760503450_1"), discoveryResult.getThingUID());
+        assertEquals(HAN_FUN_BLINDS_THING_TYPE, discoveryResult.getThingTypeUID());
+        assertEquals(BRIGE_THING_ID, discoveryResult.getBridgeUID());
+        assertEquals("142760503450-1", discoveryResult.getProperties().get(CONFIG_AIN));
+        assertEquals("0x37c4", discoveryResult.getProperties().get(PROPERTY_VENDOR));
+        assertEquals("Rollotron 1213", discoveryResult.getProperties().get(PRODUCT_NAME));
+        assertEquals("142760503450-1", discoveryResult.getProperties().get(PROPERTY_SERIAL_NUMBER));
+        assertEquals("0.0", discoveryResult.getProperties().get(PROPERTY_FIRMWARE_VERSION));
+        assertEquals(CONFIG_AIN, discoveryResult.getRepresentationProperty());
+    }
+
+    @SuppressWarnings("null")
+    @Test
+    public void validHeatingGroupDiscoveryResult() throws JAXBException, XMLStreamException {
         //@formatter:off
         String xml =
                 "<devicelist version=\"1\">" +
@@ -742,15 +868,17 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
                 "</devicelist>";
         //@formatter:on
 
+        XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(xml));
         Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
-        DeviceListModel devices = (DeviceListModel) u.unmarshal(new StringReader(xml));
+        DeviceListModel devices = u.unmarshal(xsr, DeviceListModel.class).getValue();
+
         assertNotNull(devices);
         assertEquals(1, devices.getDevicelist().size());
 
         AVMFritzBaseModel device = devices.getDevicelist().get(0);
         assertNotNull(device);
 
-        discovery.onDeviceAddedInternal(device);
+        discovery.onDeviceAdded(device);
         assertNotNull(discoveryResult);
 
         assertEquals(DiscoveryResultFlag.NEW, discoveryResult.getFlag());
@@ -759,7 +887,7 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
         assertEquals(BRIGE_THING_ID, discoveryResult.getBridgeUID());
         assertEquals("F0:A3:7F-900", discoveryResult.getProperties().get(CONFIG_AIN));
         assertEquals("AVM", discoveryResult.getProperties().get(PROPERTY_VENDOR));
-        assertEquals("20000", discoveryResult.getProperties().get(PROPERTY_MODEL_ID));
+        assertEquals("", discoveryResult.getProperties().get(PRODUCT_NAME));
         assertEquals("F0:A3:7F-900", discoveryResult.getProperties().get(PROPERTY_SERIAL_NUMBER));
         assertEquals("1.0", discoveryResult.getProperties().get(PROPERTY_FIRMWARE_VERSION));
         assertEquals("1000", discoveryResult.getProperties().get(PROPERTY_MASTER));
@@ -767,8 +895,9 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
         assertEquals(CONFIG_AIN, discoveryResult.getRepresentationProperty());
     }
 
+    @SuppressWarnings("null")
     @Test
-    public void validSwitchGroupDiscoveryResult() throws JAXBException {
+    public void validSwitchGroupDiscoveryResult() throws JAXBException, XMLStreamException {
         //@formatter:off
         String xml =
                 "<devicelist version=\"1\">" +
@@ -794,15 +923,17 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
                 "</devicelist>";
         //@formatter:on
 
+        XMLStreamReader xsr = JAXBUtils.XMLINPUTFACTORY.createXMLStreamReader(new StringReader(xml));
         Unmarshaller u = JAXBUtils.JAXBCONTEXT_DEVICES.createUnmarshaller();
-        DeviceListModel devices = (DeviceListModel) u.unmarshal(new StringReader(xml));
+        DeviceListModel devices = u.unmarshal(xsr, DeviceListModel.class).getValue();
+
         assertNotNull(devices);
         assertEquals(1, devices.getDevicelist().size());
 
         AVMFritzBaseModel device = devices.getDevicelist().get(0);
         assertNotNull(device);
 
-        discovery.onDeviceAddedInternal(device);
+        discovery.onDeviceAdded(device);
         assertNotNull(discoveryResult);
 
         assertEquals(DiscoveryResultFlag.NEW, discoveryResult.getFlag());
@@ -811,7 +942,7 @@ public class AVMFritzDiscoveryServiceOSGiTest extends AVMFritzThingHandlerOSGiTe
         assertEquals(BRIGE_THING_ID, discoveryResult.getBridgeUID());
         assertEquals("F0:A3:7F-900", discoveryResult.getProperties().get(CONFIG_AIN));
         assertEquals("AVM", discoveryResult.getProperties().get(PROPERTY_VENDOR));
-        assertEquals("20001", discoveryResult.getProperties().get(PROPERTY_MODEL_ID));
+        assertEquals("", discoveryResult.getProperties().get(PRODUCT_NAME));
         assertEquals("F0:A3:7F-900", discoveryResult.getProperties().get(PROPERTY_SERIAL_NUMBER));
         assertEquals("1.0", discoveryResult.getProperties().get(PROPERTY_FIRMWARE_VERSION));
         assertEquals("1000", discoveryResult.getProperties().get(PROPERTY_MASTER));

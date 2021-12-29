@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,14 +12,13 @@
  */
 package org.openhab.binding.evohome.internal.handler;
 
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
 import org.openhab.binding.evohome.internal.api.models.v2.response.Locations;
 import org.openhab.binding.evohome.internal.configuration.EvohomeThingConfiguration;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseThingHandler;
 
 /**
  * Base class for an evohome handler
@@ -132,9 +131,8 @@ public abstract class BaseEvohomeHandler extends BaseThingHandler {
         if (configuration == null) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
                     "Configuration is missing or corrupted");
-        } else if (StringUtils.isEmpty(configuration.id)) {
+        } else if (configuration.id == null || configuration.id.isEmpty()) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, "Id not configured");
         }
     }
-
 }

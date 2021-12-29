@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -10,7 +10,6 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
-
 /*
  * This file is based on URLServiceSubscription:
  *
@@ -36,6 +35,7 @@ package org.openhab.binding.lgwebos.internal.handler.command;
 
 import java.util.function.Function;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.lgwebos.internal.handler.core.ResponseListener;
 
 import com.google.gson.JsonObject;
@@ -49,10 +49,9 @@ import com.google.gson.JsonObject;
  */
 public class ServiceSubscription<T> extends ServiceCommand<T> {
 
-    public ServiceSubscription(String uri, JsonObject payload, Function<JsonObject, T> converter,
+    public ServiceSubscription(String uri, JsonObject payload, Function<JsonObject, @Nullable T> converter,
             ResponseListener<T> listener) {
         super(uri, payload, converter, listener);
         type = Type.subscribe;
     }
-
 }

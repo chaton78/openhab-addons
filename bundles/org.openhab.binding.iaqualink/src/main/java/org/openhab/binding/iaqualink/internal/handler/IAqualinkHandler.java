@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,8 +12,8 @@
  */
 package org.openhab.binding.iaqualink.internal.handler;
 
-import static org.eclipse.smarthome.core.library.unit.ImperialUnits.FAHRENHEIT;
-import static org.eclipse.smarthome.core.library.unit.SIUnits.CELSIUS;
+import static org.openhab.core.library.unit.ImperialUnits.FAHRENHEIT;
+import static org.openhab.core.library.unit.SIUnits.CELSIUS;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -32,36 +32,36 @@ import java.util.concurrent.TimeUnit;
 import javax.measure.Unit;
 import javax.measure.quantity.Temperature;
 
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jetty.client.HttpClient;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.PercentType;
-import org.eclipse.smarthome.core.library.types.QuantityType;
-import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.Channel;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.thing.binding.builder.ChannelBuilder;
-import org.eclipse.smarthome.core.thing.binding.builder.ThingBuilder;
-import org.eclipse.smarthome.core.thing.type.ChannelTypeUID;
-import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.iaqualink.internal.IAqualinkBindingConstants;
 import org.openhab.binding.iaqualink.internal.api.IAqualinkClient;
 import org.openhab.binding.iaqualink.internal.api.IAqualinkClient.NotAuthorizedException;
-import org.openhab.binding.iaqualink.internal.api.model.AccountInfo;
-import org.openhab.binding.iaqualink.internal.api.model.Auxiliary;
-import org.openhab.binding.iaqualink.internal.api.model.Device;
-import org.openhab.binding.iaqualink.internal.api.model.OneTouch;
+import org.openhab.binding.iaqualink.internal.api.dto.AccountInfo;
+import org.openhab.binding.iaqualink.internal.api.dto.Auxiliary;
+import org.openhab.binding.iaqualink.internal.api.dto.Device;
+import org.openhab.binding.iaqualink.internal.api.dto.Home;
+import org.openhab.binding.iaqualink.internal.api.dto.OneTouch;
 import org.openhab.binding.iaqualink.internal.config.IAqualinkConfiguration;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.thing.binding.builder.ChannelBuilder;
+import org.openhab.core.thing.binding.builder.ThingBuilder;
+import org.openhab.core.thing.type.ChannelTypeUID;
+import org.openhab.core.types.Command;
+import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.State;
+import org.openhab.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -206,7 +206,9 @@ public class IAqualinkHandler extends BaseThingHandler {
                     Optional<Auxiliary> optional = Arrays.stream(auxs).filter(o -> o.getName().equals(channelName))
                             .findFirst();
                     if (optional.isPresent()) {
-                        if (toState(channelName, "Switch", optional.get().getState()) != command) {
+                        OnOffType onOffCommand = (OnOffType) command;
+                        State currentState = toState(channelName, "Switch", optional.get().getState());
+                        if (!currentState.equals(onOffCommand)) {
                             client.auxSetCommand(serialNumber, sessionId, channelName);
                         }
                     }
@@ -225,20 +227,23 @@ public class IAqualinkHandler extends BaseThingHandler {
                     }
                 }
             } else if (command instanceof OnOffType) {
+                OnOffType onOffCommand = (OnOffType) command;
                 // these are toggle commands and require we have the current state to turn on/off
                 if (channelName.startsWith("onetouch_")) {
                     OneTouch[] ota = client.getOneTouch(serialNumber, sessionId);
                     Optional<OneTouch> optional = Arrays.stream(ota).filter(o -> o.getName().equals(channelName))
                             .findFirst();
                     if (optional.isPresent()) {
-                        if (toState(channelName, "Switch", optional.get().getState()) != command) {
+                        State currentState = toState(channelName, "Switch", optional.get().getState());
+                        if (!currentState.equals(onOffCommand)) {
                             logger.debug("Sending command {} to {}", command, channelName);
                             client.oneTouchSetCommand(serialNumber, sessionId, channelName);
                         }
                     }
                 } else if (channelName.endsWith("heater") || channelName.endsWith("pump")) {
                     String value = client.getHome(serialNumber, sessionId).getSerializedMap().get(channelName);
-                    if (toState(channelName, "Switch", value) != command) {
+                    State currentState = toState(channelName, "Switch", value);
+                    if (!currentState.equals(onOffCommand)) {
                         logger.debug("Sending command {} to {}", command, channelName);
                         client.homeScreenSetCommand(serialNumber, sessionId, channelName);
                     }
@@ -267,7 +272,7 @@ public class IAqualinkHandler extends BaseThingHandler {
         String confSerialId = configuration.serialId;
         String confApiKey = configuration.apiKey;
 
-        if (StringUtils.isNotBlank(confApiKey)) {
+        if (confApiKey != null && !confApiKey.isBlank()) {
             this.apiKey = confApiKey;
         } else {
             this.apiKey = DEFAULT_API_KEY;
@@ -290,7 +295,7 @@ public class IAqualinkHandler extends BaseThingHandler {
                 return;
             }
 
-            if (StringUtils.isNotBlank(confSerialId)) {
+            if (confSerialId != null && !confSerialId.isBlank()) {
                 serialNumber = confSerialId.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
                 if (!Arrays.stream(devices).anyMatch(device -> device.getSerialNumber().equals(serialNumber))) {
                     updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
@@ -302,7 +307,6 @@ public class IAqualinkHandler extends BaseThingHandler {
             }
 
             initPolling(COMMAND_REFRESH_SECONDS);
-
         } catch (IOException e) {
             logger.debug("Could not connect to service {}", e.getMessage());
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, e.getMessage());
@@ -343,7 +347,15 @@ public class IAqualinkHandler extends BaseThingHandler {
     private void pollController() {
         ScheduledFuture<?> localFuture = pollFuture;
         try {
-            Map<String, String> map = client.getHome(serialNumber, sessionId).getSerializedMap();
+            Home home = client.getHome(serialNumber, sessionId);
+
+            if ("Error".equals(home.getResponse())) {
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
+                        "Service reports controller status as: " + home.getStatus());
+                return;
+            }
+
+            Map<String, String> map = home.getSerializedMap();
             if (map != null) {
                 temperatureUnit = "F".equalsIgnoreCase(map.get("temp_scale")) ? FAHRENHEIT : CELSIUS;
                 map.forEach((k, v) -> {
@@ -430,8 +442,7 @@ public class IAqualinkHandler extends BaseThingHandler {
      */
     private State toState(String name, @Nullable String type, @Nullable String value) {
         try {
-            // @nullable checker does not recognize isBlank as checking null here, so must use == null to make happy
-            if (value == null || StringUtils.isBlank(value)) {
+            if (value == null || value.isBlank()) {
                 return UnDefType.UNDEF;
             }
 
@@ -441,7 +452,7 @@ public class IAqualinkHandler extends BaseThingHandler {
 
             switch (type) {
                 case "Number:Temperature":
-                    return new QuantityType<Temperature>(Float.parseFloat(value), temperatureUnit);
+                    return new QuantityType<>(Float.parseFloat(value), temperatureUnit);
                 case "Number":
                     return new DecimalType(value);
                 case "Dimmer":
@@ -451,7 +462,7 @@ public class IAqualinkHandler extends BaseThingHandler {
                 default:
                     return StringType.valueOf(value);
             }
-        } catch (NumberFormatException e) {
+        } catch (IllegalArgumentException e) {
             return UnDefType.UNDEF;
         }
     }
@@ -460,7 +471,7 @@ public class IAqualinkHandler extends BaseThingHandler {
      * Creates channels based on what is supported by the controller.
      */
     private void updateChannels(Auxiliary[] auxes, OneTouch[] oneTouches) {
-        List<Channel> channels = new ArrayList<Channel>(getThing().getChannels());
+        List<Channel> channels = new ArrayList<>(getThing().getChannels());
         for (Auxiliary aux : auxes) {
             ChannelUID channelUID = new ChannelUID(getThing().getUID(), aux.getName());
             logger.debug("Add channel Aux Name: {} Label: {} Type: {} Subtype: {}", aux.getName(), aux.getLabel(),
@@ -518,12 +529,11 @@ public class IAqualinkHandler extends BaseThingHandler {
     @SuppressWarnings("unchecked")
     private @Nullable BigDecimal commandToRoundedTemperature(Command command, Unit<Temperature> unit)
             throws IllegalArgumentException {
-
         QuantityType<Temperature> quantity;
         if (command instanceof QuantityType) {
             quantity = (QuantityType<Temperature>) command;
         } else {
-            quantity = new QuantityType<Temperature>(new BigDecimal(command.toString()), unit);
+            quantity = new QuantityType<>(new BigDecimal(command.toString()), unit);
         }
 
         QuantityType<Temperature> temparatureQuantity = quantity.toUnit(unit);
@@ -544,5 +554,4 @@ public class IAqualinkHandler extends BaseThingHandler {
         Objects.requireNonNull(channelTypeUID);
         return channelTypeUID;
     }
-
 }

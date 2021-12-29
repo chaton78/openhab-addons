@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -26,24 +26,22 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.config.discovery.AbstractDiscoveryService;
-import org.eclipse.smarthome.config.discovery.DiscoveryResult;
-import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
-import org.eclipse.smarthome.config.discovery.DiscoveryService;
-import org.eclipse.smarthome.core.thing.ThingUID;
+import org.openhab.binding.lifx.internal.dto.GetLabelRequest;
+import org.openhab.binding.lifx.internal.dto.GetServiceRequest;
+import org.openhab.binding.lifx.internal.dto.GetVersionRequest;
+import org.openhab.binding.lifx.internal.dto.Packet;
+import org.openhab.binding.lifx.internal.dto.StateLabelResponse;
+import org.openhab.binding.lifx.internal.dto.StateServiceResponse;
+import org.openhab.binding.lifx.internal.dto.StateVersionResponse;
 import org.openhab.binding.lifx.internal.fields.MACAddress;
-import org.openhab.binding.lifx.internal.protocol.GetLabelRequest;
-import org.openhab.binding.lifx.internal.protocol.GetServiceRequest;
-import org.openhab.binding.lifx.internal.protocol.GetVersionRequest;
-import org.openhab.binding.lifx.internal.protocol.Packet;
-import org.openhab.binding.lifx.internal.protocol.Product;
-import org.openhab.binding.lifx.internal.protocol.StateLabelResponse;
-import org.openhab.binding.lifx.internal.protocol.StateServiceResponse;
-import org.openhab.binding.lifx.internal.protocol.StateVersionResponse;
 import org.openhab.binding.lifx.internal.util.LifxSelectorUtil;
+import org.openhab.core.config.discovery.AbstractDiscoveryService;
+import org.openhab.core.config.discovery.DiscoveryResult;
+import org.openhab.core.config.discovery.DiscoveryResultBuilder;
+import org.openhab.core.config.discovery.DiscoveryService;
+import org.openhab.core.thing.ThingUID;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -59,7 +57,7 @@ import org.slf4j.LoggerFactory;
  * @author Karel Goderis - Rewrite for Firmware V2, and remove dependency on external libraries
  * @author Wouter Born - Discover light labels, improve locking, optimize packet handling
  */
-@Component(immediate = true, service = DiscoveryService.class, configurationPid = "discovery.lifx")
+@Component(service = DiscoveryService.class, configurationPid = "discovery.lifx")
 @NonNullByDefault
 public class LifxLightDiscovery extends AbstractDiscoveryService {
 
@@ -69,7 +67,7 @@ public class LifxLightDiscovery extends AbstractDiscoveryService {
 
     private final Logger logger = LoggerFactory.getLogger(LifxLightDiscovery.class);
 
-    private final Map<MACAddress, @Nullable DiscoveredLight> discoveredLights = new HashMap<>();
+    private final Map<MACAddress, DiscoveredLight> discoveredLights = new HashMap<>();
     private final long sourceId = randomSourceId();
     private final Supplier<Integer> sequenceNumberSupplier = new LifxSequenceNumberSupplier();
 
@@ -87,7 +85,7 @@ public class LifxLightDiscovery extends AbstractDiscoveryService {
         private InetSocketAddress socketAddress;
         private String logId;
         private @Nullable String label;
-        private @Nullable Product product;
+        private @Nullable LifxProduct product;
         private long productVersion;
         private boolean supportedProduct = true;
         private LifxSelectorContext selectorContext;
@@ -121,13 +119,13 @@ public class LifxLightDiscovery extends AbstractDiscoveryService {
 
     @Activate
     @Override
-    protected void activate(@Nullable Map<String, @Nullable Object> configProperties) {
+    protected void activate(@Nullable Map<String, Object> configProperties) {
         super.activate(configProperties);
     }
 
     @Modified
     @Override
-    protected void modified(@Nullable Map<String, @Nullable Object> configProperties) {
+    protected void modified(@Nullable Map<String, Object> configProperties) {
         super.modified(configProperties);
     }
 
@@ -248,9 +246,6 @@ public class LifxLightDiscovery extends AbstractDiscoveryService {
         // Iterate through the discovered lights that have to be set up, and the packets that have to be sent
         // Workaround to avoid a ConcurrentModifictionException on the selector.SelectedKeys() Set
         for (DiscoveredLight light : discoveredLights.values()) {
-            if (light == null) {
-                continue;
-            }
             boolean waitingForLightResponse = System.currentTimeMillis() - light.lastRequestTimeMillis < 200;
 
             if (light.supportedProduct && !light.isDataComplete() && !waitingForLightResponse) {
@@ -303,8 +298,11 @@ public class LifxLightDiscovery extends AbstractDiscoveryService {
                     light.label = ((StateLabelResponse) packet).getLabel().trim();
                 } else if (packet instanceof StateVersionResponse) {
                     try {
-                        light.product = Product.getProductFromProductID(((StateVersionResponse) packet).getProduct());
+                        LifxProduct product = LifxProduct
+                                .getProductFromProductID(((StateVersionResponse) packet).getProduct());
+                        light.product = product;
                         light.productVersion = ((StateVersionResponse) packet).getVersion();
+                        light.supportedProduct = product.isLight();
                     } catch (IllegalArgumentException e) {
                         logger.debug("Discovered an unsupported light ({}): {}", light.macAddress.getAsLabel(),
                                 e.getMessage());
@@ -313,7 +311,7 @@ public class LifxLightDiscovery extends AbstractDiscoveryService {
                 }
             }
 
-            if (light != null && light.isDataComplete()) {
+            if (light != null && light.supportedProduct && light.isDataComplete()) {
                 try {
                     thingDiscovered(createDiscoveryResult(light));
                 } catch (IllegalArgumentException e) {
@@ -325,7 +323,7 @@ public class LifxLightDiscovery extends AbstractDiscoveryService {
     }
 
     private DiscoveryResult createDiscoveryResult(DiscoveredLight light) throws IllegalArgumentException {
-        Product product = light.product;
+        LifxProduct product = light.product;
         if (product == null) {
             throw new IllegalArgumentException("Product of discovered light is null");
         }
@@ -334,7 +332,7 @@ public class LifxLightDiscovery extends AbstractDiscoveryService {
         ThingUID thingUID = new ThingUID(product.getThingTypeUID(), macAsLabel);
 
         String label = light.label;
-        if (StringUtils.isBlank(label)) {
+        if (label == null || label.isBlank()) {
             label = product.getName();
         }
 
@@ -354,5 +352,4 @@ public class LifxLightDiscovery extends AbstractDiscoveryService {
 
         return builder.build();
     }
-
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,20 +14,19 @@ package org.openhab.binding.hue.internal.action;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.thing.binding.ThingActions;
-import org.eclipse.smarthome.core.thing.binding.ThingActionsScope;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.types.Command;
-import org.openhab.binding.hue.internal.handler.HueLightHandler;
+import org.openhab.binding.hue.internal.handler.HueLightActionsHandler;
 import org.openhab.core.automation.annotation.ActionInput;
 import org.openhab.core.automation.annotation.RuleAction;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.thing.binding.ThingActions;
+import org.openhab.core.thing.binding.ThingActionsScope;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.types.Command;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This is the automation engine action handler service for the
- * fadingLightCommand action.
+ * The {@link LightActions} defines {@link ThingActions} for the hue lights.
  *
  * @author Jochen Leopold - Initial contribution
  */
@@ -35,16 +34,16 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class LightActions implements ThingActions {
     private final Logger logger = LoggerFactory.getLogger(LightActions.class);
-    private @Nullable HueLightHandler handler;
+    private @Nullable HueLightActionsHandler handler;
 
     @Override
     public void setThingHandler(@Nullable ThingHandler handler) {
-        this.handler = (HueLightHandler) handler;
+        this.handler = (HueLightActionsHandler) handler;
     }
 
     @Override
     public @Nullable ThingHandler getThingHandler() {
-        return this.handler;
+        return handler;
     }
 
     @RuleAction(label = "@text/actionLabel", description = "@text/actionDesc")
@@ -52,8 +51,8 @@ public class LightActions implements ThingActions {
             @ActionInput(name = "channel", label = "@text/actionInputChannelLabel", description = "@text/actionInputChannelDesc") @Nullable String channel,
             @ActionInput(name = "command", label = "@text/actionInputCommandLabel", description = "@text/actionInputCommandDesc") @Nullable Command command,
             @ActionInput(name = "fadeTime", label = "@text/actionInputFadeTimeLabel", description = "@text/actionInputFadeTimeDesc") @Nullable DecimalType fadeTime) {
-        HueLightHandler lightHandler = handler;
-        if (lightHandler == null) {
+        HueLightActionsHandler lightActionsHandler = handler;
+        if (lightActionsHandler == null) {
             logger.warn("Hue Action service ThingHandler is null!");
             return;
         }
@@ -62,7 +61,6 @@ public class LightActions implements ThingActions {
             logger.debug("skipping Hue fadingLightCommand to channel '{}' due to null value.", channel);
             return;
         }
-
         if (command == null) {
             logger.debug("skipping Hue fadingLightCommand to command '{}' due to null value.", command);
             return;
@@ -72,16 +70,12 @@ public class LightActions implements ThingActions {
             return;
         }
 
-        lightHandler.handleCommand(channel, command, fadeTime.longValue());
-        logger.debug("send LightAction to {} with {}ms of fadeTime", channel, fadeTime);
+        lightActionsHandler.handleCommand(channel, command, fadeTime.longValue());
+        logger.debug("send fadingLightCommand to channel '{}' with fadeTime of {}ms.", channel, fadeTime);
     }
 
-    public static void fadingLightCommand(@Nullable ThingActions actions, @Nullable String channel,
-            @Nullable Command command, @Nullable DecimalType fadeTime) {
-        if (actions instanceof LightActions) {
-            ((LightActions) actions).fadingLightCommand(channel, command, fadeTime);
-        } else {
-            throw new IllegalArgumentException("Instance is not an LightActions class.");
-        }
+    public static void fadingLightCommand(ThingActions actions, @Nullable String channel, @Nullable Command command,
+            @Nullable DecimalType fadeTime) {
+        ((LightActions) actions).fadingLightCommand(channel, command, fadeTime);
     }
 }

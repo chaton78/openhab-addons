@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,22 +16,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang.StringUtils;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.thing.Bridge;
-import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
-import org.eclipse.smarthome.core.thing.ThingStatusDetail;
-import org.eclipse.smarthome.core.thing.ThingStatusInfo;
-import org.eclipse.smarthome.core.thing.ThingTypeUID;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
-import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.digitalstrom.internal.DigitalSTROMBindingConstants;
 import org.openhab.binding.digitalstrom.internal.lib.listener.DeviceStatusListener;
 import org.openhab.binding.digitalstrom.internal.lib.structure.devices.Circuit;
-import org.openhab.binding.digitalstrom.internal.lib.structure.devices.Device;
 import org.openhab.binding.digitalstrom.internal.lib.structure.devices.GeneralDeviceInformation;
 import org.openhab.binding.digitalstrom.internal.lib.structure.devices.deviceparameters.CachedMeteringValue;
 import org.openhab.binding.digitalstrom.internal.lib.structure.devices.deviceparameters.DeviceStateUpdate;
@@ -39,6 +26,17 @@ import org.openhab.binding.digitalstrom.internal.lib.structure.devices.devicepar
 import org.openhab.binding.digitalstrom.internal.lib.structure.devices.deviceparameters.constants.MeteringTypeEnum;
 import org.openhab.binding.digitalstrom.internal.lib.structure.devices.deviceparameters.constants.MeteringUnitsEnum;
 import org.openhab.binding.digitalstrom.internal.providers.DsChannelTypeProvider;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.ThingStatusInfo;
+import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.types.Command;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +57,7 @@ public class CircuitHandler extends BaseThingHandler implements DeviceStatusList
     /**
      * Contains all supported thing types of this handler, will be filled by DsDeviceThingTypeProvider.
      */
-    public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<ThingTypeUID>();
+    public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = new HashSet<>();
 
     private String dSID;
     private Circuit circuit;
@@ -78,8 +76,8 @@ public class CircuitHandler extends BaseThingHandler implements DeviceStatusList
     @Override
     public void initialize() {
         logger.debug("Initializing CircuitHandler.");
-        if (StringUtils.isNotBlank((String) getConfig().get(DigitalSTROMBindingConstants.DEVICE_DSID))) {
-            dSID = getConfig().get(DigitalSTROMBindingConstants.DEVICE_DSID).toString();
+        dSID = (String) getConfig().get(DigitalSTROMBindingConstants.DEVICE_DSID);
+        if (dSID != null && !dSID.isBlank()) {
             final Bridge bridge = getBridge();
             if (bridge != null) {
                 bridgeStatusChanged(bridge.getStatusInfo());
@@ -152,9 +150,6 @@ public class CircuitHandler extends BaseThingHandler implements DeviceStatusList
         if (bridgeStatusInfo.getStatus().equals(ThingStatus.OFFLINE)) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_OFFLINE);
         }
-        if (bridgeStatusInfo.getStatus().equals(ThingStatus.REMOVED)) {
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.NONE, "Bridge has been removed.");
-        }
         logger.debug("Set status to {}", getThing().getStatusInfo());
     }
 
@@ -180,20 +175,19 @@ public class CircuitHandler extends BaseThingHandler implements DeviceStatusList
                 }
             }
         }
-
     }
 
     @Override
     public void onDeviceRemoved(GeneralDeviceInformation device) {
         if (device instanceof Circuit) {
-            this.circuit = null;
-            if (this.getThing().getStatus().equals(ThingStatus.ONLINE)) {
-                if (!((Device) circuit).isPresent()) {
+            this.circuit = (Circuit) device;
+            if (getThing().getStatus().equals(ThingStatus.ONLINE)) {
+                if (!circuit.isPresent()) {
                     updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.NONE,
                             "Circuit is not present in the digitalSTROM-System.");
                 } else {
                     updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.NONE,
-                            "Circuit is not avaible in the digitalSTROM-System.");
+                            "Circuit is not available in the digitalSTROM-System.");
                 }
 
             }
@@ -309,5 +303,4 @@ public class CircuitHandler extends BaseThingHandler implements DeviceStatusList
     public String getDeviceStatusListenerID() {
         return this.dSID;
     }
-
 }

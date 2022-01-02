@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.openhab.binding.sinope.SinopeBindingConstants;
+import org.openhab.binding.sinope.handler.SinopeDimmerHandler;
 import org.openhab.binding.sinope.handler.SinopeGatewayHandler;
 import org.openhab.binding.sinope.handler.SinopeThermostatHandler;
 import org.openhab.binding.sinope.internal.discovery.SinopeThingsDiscoveryService;
@@ -58,6 +59,8 @@ public class SinopeHandlerFactory extends BaseThingHandlerFactory {
             return bridge;
         } else if (SinopeBindingConstants.THING_TYPE_THERMO.equals(thingTypeUID)) {
             return new SinopeThermostatHandler(thing);
+        } else if (SinopeBindingConstants.THING_TYPE_DIMMER.equals(thingTypeUID)) {
+            return new SinopeDimmerHandler(thing);
         }
         return null;
     }

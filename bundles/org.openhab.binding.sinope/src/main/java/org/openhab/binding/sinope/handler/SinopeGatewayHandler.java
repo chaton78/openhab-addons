@@ -63,6 +63,7 @@ public class SinopeGatewayHandler extends ConfigStatusBridgeHandler {
     private @Nullable ScheduledFuture<?> pollFuture;
     private long refreshInterval; // In seconds
     private final List<SinopeThermostatHandler> thermostatHandlers = new CopyOnWriteArrayList<>();
+    private final List<SinopeDimmerHandler> dimmerHandlers = new CopyOnWriteArrayList<>();
     private int seq = 1;
     private @Nullable Socket clientSocket;
     private boolean searching; // In searching mode..
@@ -132,13 +133,17 @@ public class SinopeGatewayHandler extends ConfigStatusBridgeHandler {
     }
 
     private synchronized void poll() {
-        if (!thermostatHandlers.isEmpty()) {
+        if (!thermostatHandlers.isEmpty() || !dimmerHandlers.isEmpty()) {
             logger.debug("Polling for state");
             try {
                 if (connectToBridge()) {
                     logger.debug("Connected to bridge");
                     for (SinopeThermostatHandler sinopeThermostatHandler : thermostatHandlers) {
                         sinopeThermostatHandler.update();
+                    }
+
+                    for (SinopeDimmerHandler sinopeDimmerHandler : dimmerHandlers) {
+                        sinopeDimmerHandler.update();
                     }
                 }
             } catch (IOException e) {
@@ -205,6 +210,14 @@ public class SinopeGatewayHandler extends ConfigStatusBridgeHandler {
 
     public boolean unregisterThermostatHandler(SinopeThermostatHandler thermostatHandler) {
         return thermostatHandlers.remove(thermostatHandler);
+    }
+
+    public boolean registerDimmerHandler(SinopeDimmerHandler dimmerHandler) {
+        return dimmerHandlers.add(dimmerHandler);
+    }
+
+    public boolean unregisterDimmerHandler(SinopeThermostatHandler dimmerHandler) {
+        return dimmerHandlers.remove(dimmerHandler);
     }
 
     @Override

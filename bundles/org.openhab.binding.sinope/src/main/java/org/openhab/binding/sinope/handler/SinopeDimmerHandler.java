@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,30 +12,33 @@
  */
 package org.openhab.binding.sinope.handler;
 
+import java.io.IOException;
+import java.net.UnknownHostException;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.config.core.Configuration;
-import org.eclipse.smarthome.core.library.types.DecimalType;
-import org.eclipse.smarthome.core.library.types.QuantityType;
-import org.eclipse.smarthome.core.library.unit.SmartHomeUnits;
-import org.eclipse.smarthome.core.thing.*;
-import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.sinope.SinopeBindingConstants;
 import org.openhab.binding.sinope.internal.config.SinopeConfig;
 import org.openhab.binding.sinope.internal.core.SinopeDataReadRequest;
 import org.openhab.binding.sinope.internal.core.SinopeDataWriteRequest;
 import org.openhab.binding.sinope.internal.core.appdata.SinopeLightModeData;
 import org.openhab.binding.sinope.internal.core.appdata.SinopeOutputIntensityData;
-import org.openhab.binding.sinope.internal.core.appdata.SinopeSetPointModeData;
 import org.openhab.binding.sinope.internal.core.base.SinopeDataAnswer;
 import org.openhab.binding.sinope.internal.util.ByteUtil;
+import org.openhab.core.config.core.Configuration;
+import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.ThingStatusInfo;
+import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.types.Command;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.net.UnknownHostException;
-import java.util.Arrays;
 
 /**
  * The {@link SinopeDimmerHandler} is responsible for handling commands, which are
@@ -60,10 +63,11 @@ public class SinopeDimmerHandler extends BaseThingHandler {
     public void handleCommand(ChannelUID channelUID, Command command) {
 
         try {
-            if (SinopeBindingConstants.CHANNEL_DIMMER_OUTPUTINTENSITY.equals(channelUID.getId()) && command instanceof QuantityType) {
+            if (SinopeBindingConstants.CHANNEL_DIMMER_OUTPUTINTENSITY.equals(channelUID.getId())
+                    && command instanceof QuantityType) {
                 setDimmerOutputIntensity(((QuantityType<?>) command).intValue());
-            }
-            else if (SinopeBindingConstants.CHANNEL_LIGHTMODE.equals(channelUID.getId()) && command instanceof DecimalType) {
+            } else if (SinopeBindingConstants.CHANNEL_LIGHTMODE.equals(channelUID.getId())
+                    && command instanceof DecimalType) {
                 setLightMode(((DecimalType) command).intValue());
             }
 
@@ -80,12 +84,11 @@ public class SinopeDimmerHandler extends BaseThingHandler {
             if (this.getSinopeGatewayHandler().connectToBridge()) {
                 logger.debug("Connected to bridge");
 
-                SinopeDataWriteRequest req = new SinopeDataWriteRequest(this.getSinopeGatewayHandler().newSeq(), deviceId,
-                        new SinopeOutputIntensityData());
+                SinopeDataWriteRequest req = new SinopeDataWriteRequest(this.getSinopeGatewayHandler().newSeq(),
+                        deviceId, new SinopeOutputIntensityData());
                 ((SinopeOutputIntensityData) req.getAppData()).setOutputIntensity(outputIntensity);
 
                 SinopeDataAnswer answ = (SinopeDataAnswer) this.getSinopeGatewayHandler().execute(req);
-
 
                 if (answ.getStatus() == DATA_ANSWER) {
                     int answOutputIntensity = (((SinopeOutputIntensityData) answ.getAppData())).getOutputIntensity();
@@ -102,7 +105,6 @@ public class SinopeDimmerHandler extends BaseThingHandler {
         } finally {
             this.getSinopeGatewayHandler().schedulePoll();
         }
-
     }
 
     private void setLightMode(int mode) throws UnknownHostException, IOException {
@@ -152,7 +154,7 @@ public class SinopeDimmerHandler extends BaseThingHandler {
     }
 
     public void updateDimmerOutputIntensity(int outputIntensity) {
-        updateState(SinopeBindingConstants.CHANNEL_DIMMER_OUTPUTINTENSITY, new QuantityType<>(outputIntensity, SmartHomeUnits.PERCENT));
+        updateState(SinopeBindingConstants.CHANNEL_DIMMER_OUTPUTINTENSITY, new PercentType(outputIntensity));
     }
 
     public void updateLightMode(int lightMode) {
@@ -222,5 +224,4 @@ public class SinopeDimmerHandler extends BaseThingHandler {
             return null;
         }
     }
-
 }

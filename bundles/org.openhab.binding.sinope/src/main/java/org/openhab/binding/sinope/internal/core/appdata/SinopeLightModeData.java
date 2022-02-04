@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2019 Contributors to the openHAB project
+ * Copyright (c) 2010-2021 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -12,10 +12,10 @@
  */
 package org.openhab.binding.sinope.internal.core.appdata;
 
-import org.eclipse.jdt.annotation.NonNullByDefault;
-
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+
+import org.eclipse.jdt.annotation.NonNullByDefault;
 
 /**
  * The Class SinopeLightModeData.
@@ -36,13 +36,14 @@ public class SinopeLightModeData extends SinopeAppData {
     /**
      * Gets the light mode
      *
-     * @return the light mode: 1 = Manual (Hold), 2 = Auto (Schedule), 3 = Random (simulation of presence), 130 = Bypass Auto (Temporary hold until next scheduled period)
+     * @return the light mode: 1 = Manual (Hold), 2 = Auto (Schedule), 3 = Random (simulation of presence), 130 = Bypass
+     *         Auto (Temporary hold until next scheduled period)
      */
     public int getLightMode() {
         if (getData() != null) {
             ByteBuffer bb = ByteBuffer.wrap(getData());
             bb.order(ByteOrder.LITTLE_ENDIAN);
-            return (int)(bb.get()) & 0xFF;
+            return (int) (bb.get()) & 0xFF;
         }
         return 0;
     }
@@ -65,5 +66,4 @@ public class SinopeLightModeData extends SinopeAppData {
         bb.order(ByteOrder.LITTLE_ENDIAN);
         bb.put((byte) (newLightMode & 0xFF));
     }
-
 }

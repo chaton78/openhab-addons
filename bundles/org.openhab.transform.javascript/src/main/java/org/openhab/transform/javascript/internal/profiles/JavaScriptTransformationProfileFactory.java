@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2021 Contributors to the openHAB project
+ * Copyright (c) 2010-2019 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -18,49 +18,49 @@ import java.util.Locale;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.thing.profiles.Profile;
-import org.openhab.core.thing.profiles.ProfileCallback;
-import org.openhab.core.thing.profiles.ProfileContext;
-import org.openhab.core.thing.profiles.ProfileFactory;
-import org.openhab.core.thing.profiles.ProfileType;
-import org.openhab.core.thing.profiles.ProfileTypeBuilder;
-import org.openhab.core.thing.profiles.ProfileTypeProvider;
-import org.openhab.core.thing.profiles.ProfileTypeUID;
-import org.openhab.core.transform.TransformationService;
-import org.openhab.transform.javascript.internal.JavaScriptTransformationService;
+import org.eclipse.smarthome.core.thing.profiles.Profile;
+import org.eclipse.smarthome.core.thing.profiles.ProfileCallback;
+import org.eclipse.smarthome.core.thing.profiles.ProfileContext;
+import org.eclipse.smarthome.core.thing.profiles.ProfileFactory;
+import org.eclipse.smarthome.core.thing.profiles.ProfileType;
+import org.eclipse.smarthome.core.thing.profiles.ProfileTypeBuilder;
+import org.eclipse.smarthome.core.thing.profiles.ProfileTypeProvider;
+import org.eclipse.smarthome.core.thing.profiles.ProfileTypeUID;
+import org.eclipse.smarthome.core.transform.TransformationService;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
 /**
- * {@link ProfileFactory} that creates the transformation profile for the {@link JavaScriptTransformationService}
+ * Profilefactory that creates the transformation profile for the javascript transformation service
  *
- * @author Stefan Triller - Initial contribution
+ * @author Stefan Triller - initial contribution
+ *
  */
 @NonNullByDefault
 @Component(service = { ProfileFactory.class, ProfileTypeProvider.class })
-public class JavaScriptTransformationProfileFactory implements ProfileFactory, ProfileTypeProvider {
+public class JavascriptTransformationProfileFactory implements ProfileFactory, ProfileTypeProvider {
 
     @NonNullByDefault({})
     private TransformationService service;
 
     @Override
     public Collection<ProfileType> getProfileTypes(@Nullable Locale locale) {
-        return Arrays.asList(ProfileTypeBuilder.newState(JavaScriptTransformationProfile.PROFILE_TYPE_UID,
-                JavaScriptTransformationProfile.PROFILE_TYPE_UID.getId()).build());
+        return Arrays.asList(ProfileTypeBuilder.newState(JavascriptTransformationProfile.PROFILE_TYPE_UID,
+                JavascriptTransformationProfile.PROFILE_TYPE_UID.getId()).build());
     }
 
     @Override
     public @Nullable Profile createProfile(ProfileTypeUID profileTypeUID, ProfileCallback callback,
             ProfileContext profileContext) {
-        return new JavaScriptTransformationProfile(callback, profileContext, service);
+        return new JavascriptTransformationProfile(callback, profileContext, service);
     }
 
     @Override
     public Collection<ProfileTypeUID> getSupportedProfileTypeUIDs() {
-        return Arrays.asList(JavaScriptTransformationProfile.PROFILE_TYPE_UID);
+        return Arrays.asList(JavascriptTransformationProfile.PROFILE_TYPE_UID);
     }
 
-    @Reference(target = "(openhab.transform=JS)")
+    @Reference(target = "(smarthome.transform=JS)")
     public void addTransformationService(TransformationService service) {
         this.service = service;
     }
